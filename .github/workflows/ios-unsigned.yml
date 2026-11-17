@@ -43,9 +43,24 @@ jobs:
         run: |
           set -euo pipefail
           WS=$(ls -d ios/*.xcworkspace | head -1)
-          SCHEME=$(xcodebuild -list -json -workspace "$WS" 2>/dev/null \
-            | python3 -c "import json,sys;print(json.load(sys.stdin)['workspace']['schemes'][0])")
-          echo "workspace=$WS scheme=$SCHEME"
+          # The app scheme is named after the .xcodeproj; a CocoaPods workspace
+          # also lists Pods-* schemes, which build without producing an .app.
+          PROJECT=$(ls -d ios/*.xcodeproj | head -1)
+          APP_NAME=$(basename "$PROJECT" .xcodeproj)
+          echo "workspace=$WS app=$APP_NAME"
+          xcodebuild -list -json -workspace "$WS" 2>/dev/null | python3 -c "
+import json, sys
+d = json.load(sys.stdin)['workspace']
+schemes = d['schemes']
+print('all schemes:', ', '.join(schemes))
+target = [s for s in schemes if s == '${APP_NAME}']
+if not target:
+    target = [s for s in schemes if not s.startswith('Pods')]
+scheme = target[0] if target else schemes[0]
+print('chosen scheme:', scheme)
+open('build_scheme.txt', 'w').write(scheme)
+"
+          SCHEME=$(cat build_scheme.txt)
           xcodebuild \
             -workspace "$WS" \
             -scheme "$SCHEME" \
@@ -62,15 +77,19 @@ jobs:
         run: |
           set -euo pipefail
           PROD="$PWD/build/dd/Build/Products/Release-iphoneos"
-          ls -la "$PROD" | head -20
-          APP=$(find "$PROD" -maxdepth 1 -name "*.app" | head -1)
+          echo "--- products ---"
+          ls -la "$PROD" | head -30
+          APP=$(find "$PWD/build/dd/Build/Products" -maxdepth 2 -name "*.app" | head -1)
           echo "app=$APP"
+          test -n "$APP"
           test -d "$APP"
           rm -rf build/Payload && mkdir -p build/Payload
           cp -R "$APP" build/Payload/
-          cd build && zip -qry DS-Bot-unsigned.ipa Payload
-          ls -lh DS-Bot-unsigned.ipa
-          shasum -a 256 DS-Bot-unsigned.ipa
+          # ditto, not zip: it preserves the symlinks inside the frameworks,
+          # which a plain zip flattens and which breaks on install.
+          ditto -c -k --sequesterRsrc --keepParent build/Payload build/DS-Bot-unsigned.ipa
+          ls -lh build/DS-Bot-unsigned.ipa
+          shasum -a 256 build/DS-Bot-unsigned.ipa
 
       - uses: softprops/action-gh-release@v2
         with:
