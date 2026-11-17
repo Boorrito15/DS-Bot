@@ -35,8 +35,18 @@ jobs:
         env:
           CI: '1'
 
-      - run: pod install
+      - name: Install pods (Expo modules from source)
         working-directory: mobile/ios
+        env:
+          # Expo ships precompiled xcframeworks for its modules; when one resolves
+          # against a different expo-modules-core ABI, dyld aborts at launch with
+          # "Symbol not found". Building every module from source keeps them in sync.
+          EXPO_USE_PRECOMPILED_MODULES: '0'
+        run: |
+          echo "EXPO_USE_PRECOMPILED_MODULES=$EXPO_USE_PRECOMPILED_MODULES"
+          pod install
+          echo "--- prebuilt xcframeworks still vendored (expect none) ---"
+          find Pods -maxdepth 3 -name "*.xcframework" | head -10 || true
 
       - name: Build app (unsigned)
         working-directory: mobile
@@ -75,6 +85,8 @@ jobs:
         with:
           tag_name: ios-unsigned
           name: iOS unsigned build
-          body: Unsigned DS Bot iOS build for SideStore sideloading.
+          body: |
+            Unsigned DS Bot iOS build for SideStore sideloading.
+            Commit: ${{ github.sha }}
           files: mobile/build/DS-Bot-unsigned.ipa
           make_latest: false
