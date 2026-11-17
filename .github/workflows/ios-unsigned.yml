@@ -1,37 +1,81 @@
 name: ios-unsigned
+
+# Builds the Expo iOS app with signing disabled and publishes the .ipa as a
+# release asset. SideStore signs it on-device with a free Apple ID.
+
 on:
   push:
     paths: ['.github/workflows/ios-unsigned.yml']
   workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 1'
+
 permissions:
   contents: write
+
 jobs:
   build:
     runs-on: macos-latest
     timeout-minutes: 75
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
-        with: {node-version: 22}
+        with:
+          node-version: 22
+
       - run: npm ci --no-audit --no-fund
         working-directory: mobile
+
       - run: npm ci --no-audit --no-fund
         working-directory: link
+
       - run: npx expo prebuild --platform ios --clean --no-install
         working-directory: mobile
-        env: {CI: '1'}
+        env:
+          CI: '1'
+
       - run: pod install
         working-directory: mobile/ios
-      - run: |
-          WS=$(ls -d ios/*.xcworkspace | head -1)
-          SCHEME=$(xcodebuild -list -json -workspace "$WS" 2>/dev/null | python3 -c "import json,sys;print(json.load(sys.stdin)['workspace']['schemes'][0])")
-          xcodebuild archive -workspace "$WS" -scheme "$SCHEME" -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -archivePath "$PWD/build/DSBot.xcarchive" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" | tail -20
-          mkdir -p build/Payload && cp -R build/DSBot.xcarchive/Products/Applications/*.app build/Payload/
-          (cd build && zip -qry DS-Bot-unsigned.ipa Payload)
+
+      - name: Build app (unsigned)
         working-directory: mobile
+        run: |
+          set -euo pipefail
+          WS=$(ls -d ios/*.xcworkspace | head -1)
+          SCHEME=$(xcodebuild -list -json -workspace "$WS" 2>/dev/null \
+            | python3 -c "import json,sys;print(json.load(sys.stdin)['workspace']['schemes'][0])")
+          echo "workspace=$WS scheme=$SCHEME"
+          xcodebuild \
+            -workspace "$WS" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath "$PWD/build/dd" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build | tail -30
+
+      - name: Package IPA
+        working-directory: mobile
+        run: |
+          set -euo pipefail
+          PROD="$PWD/build/dd/Build/Products/Release-iphoneos"
+          ls -la "$PROD" | head -20
+          APP=$(find "$PROD" -maxdepth 1 -name "*.app" | head -1)
+          echo "app=$APP"
+          test -d "$APP"
+          rm -rf build/Payload && mkdir -p build/Payload
+          cp -R "$APP" build/Payload/
+          cd build && zip -qry DS-Bot-unsigned.ipa Payload
+          ls -lh DS-Bot-unsigned.ipa
+          shasum -a 256 DS-Bot-unsigned.ipa
+
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ios-unsigned
           name: iOS unsigned build
+          body: Unsigned DS Bot iOS build for SideStore sideloading.
           files: mobile/build/DS-Bot-unsigned.ipa
           make_latest: false
