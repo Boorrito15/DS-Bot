@@ -43,49 +43,29 @@ jobs:
         run: |
           set -euo pipefail
           WS=$(ls -d ios/*.xcworkspace | head -1)
-          # The app scheme is named after the .xcodeproj; a CocoaPods workspace
-          # also lists Pods-* schemes, which build without producing an .app.
           PROJECT=$(ls -d ios/*.xcodeproj | head -1)
           APP_NAME=$(basename "$PROJECT" .xcodeproj)
           echo "workspace=$WS app=$APP_NAME"
-          xcodebuild -list -json -workspace "$WS" 2>/dev/null | python3 -c "
-import json, sys
-d = json.load(sys.stdin)['workspace']
-schemes = d['schemes']
-print('all schemes:', ', '.join(schemes))
-target = [s for s in schemes if s == '${APP_NAME}']
-if not target:
-    target = [s for s in schemes if not s.startswith('Pods')]
-scheme = target[0] if target else schemes[0]
-print('chosen scheme:', scheme)
-open('build_scheme.txt', 'w').write(scheme)
-"
-          SCHEME=$(cat build_scheme.txt)
-          xcodebuild \
-            -workspace "$WS" \
-            -scheme "$SCHEME" \
-            -configuration Release \
-            -sdk iphoneos \
-            -derivedDataPath "$PWD/build/dd" \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            build | tail -30
+          SCHEMES=$(xcodebuild -list -json -workspace "$WS" 2>/dev/null | python3 -c "import json,sys; print(' '.join(json.load(sys.stdin)['workspace']['schemes']))")
+          echo "schemes: $SCHEMES"
+          SCHEME=$(echo "$SCHEMES" | APP_NAME="$APP_NAME" python3 -c "import os,sys; n=os.environ['APP_NAME']; s=sys.stdin.read().split(); print(n if n in s else [x for x in s if not x.startswith('Pods')][0])")
+          echo "chosen scheme: $SCHEME"
+          xcodebuild -workspace "$WS" -scheme "$SCHEME" -configuration Release -sdk iphoneos -derivedDataPath "$PWD/build/dd" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build | tail -30
 
       - name: Package IPA
         working-directory: mobile
         run: |
           set -euo pipefail
-          PROD="$PWD/build/dd/Build/Products/Release-iphoneos"
           echo "--- products ---"
-          ls -la "$PROD" | head -30
+          ls -la "$PWD/build/dd/Build/Products/Release-iphoneos" | head -30
           APP=$(find "$PWD/build/dd/Build/Products" -maxdepth 2 -name "*.app" | head -1)
           echo "app=$APP"
           test -n "$APP"
           test -d "$APP"
-          rm -rf build/Payload && mkdir -p build/Payload
+          rm -rf build/Payload
+          mkdir -p build/Payload
           cp -R "$APP" build/Payload/
-          # ditto, not zip: it preserves the symlinks inside the frameworks,
+          # ditto, not zip: preserves the symlinks inside the frameworks,
           # which a plain zip flattens and which breaks on install.
           ditto -c -k --sequesterRsrc --keepParent build/Payload build/DS-Bot-unsigned.ipa
           ls -lh build/DS-Bot-unsigned.ipa
