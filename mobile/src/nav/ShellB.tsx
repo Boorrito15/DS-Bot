@@ -321,7 +321,9 @@ function Inner({ initial }: { initial: ChatTarget | null }) {
 
 export default function ShellB() {
   const { p } = useTheme()
-  const width = Math.min(Dimensions.get('window').width * 0.85, 340)
+  // The sidebar is the whole page while it is open, so a long folder name and a
+  // chat's preview have room to show.
+  const width = Dimensions.get('window').width
   // Render the navigator only once the saved chat is known, so it can start on it.
   const [saved, setSaved] = useState<ChatTarget | null | undefined>(undefined)
   useEffect(() => {
