@@ -89,19 +89,7 @@ export function createSeenStore(storage: SeenStorage = defaultStorage) {
     return seen.get(hostId)?.get(id) ?? 0
   }
 
-  function markSeen(hostId: string, id: string, at = Date.now()): Promise<void> {
-    if (hostId === '' || id === '' || !Number.isFinite(at) || at <= 0) return Promise.resolve()
-    let map = seen.get(hostId)
-    if (map === undefined) {
-      map = new Map<string, number>()
-      seen.set(hostId, map)
-    }
-    const prev = map.get(id) ?? 0
-    if (at <= prev && !pendingPersist) return flushing ?? Promise.resolve()
-    if (at > prev) {
-      map.set(id, at)
-      bump()
-    }
+  function persist(): Promise<void> {
     dirty = true
     pendingPersist = true
     if (flushing === null) {
@@ -125,6 +113,33 @@ export function createSeenStore(storage: SeenStorage = defaultStorage) {
     return flushing
   }
 
+  function markSeen(hostId: string, id: string, at = Date.now()): Promise<void> {
+    if (hostId === '' || id === '' || !Number.isFinite(at) || at <= 0) return Promise.resolve()
+    let map = seen.get(hostId)
+    if (map === undefined) {
+      map = new Map<string, number>()
+      seen.set(hostId, map)
+    }
+    const prev = map.get(id) ?? 0
+    if (at <= prev && !pendingPersist) return flushing ?? Promise.resolve()
+    if (at > prev) {
+      map.set(id, at)
+      bump()
+    }
+    return persist()
+  }
+
+  // "Mark as unread": forget when this chat was last read, so its next host time
+  // counts as new again.
+  function clearSeen(hostId: string, id: string): Promise<void> {
+    if (hostId === '' || id === '') return Promise.resolve()
+    const map = seen.get(hostId)
+    if (map === undefined || !map.has(id)) return flushing ?? Promise.resolve()
+    map.delete(id)
+    bump()
+    return persist()
+  }
+
   function isUnread(hostId: string, id: string, lastAt: number | undefined, open: boolean): boolean {
     return !open && lastAt !== undefined && Number.isFinite(lastAt) && lastAt > seenAt(hostId, id)
   }
@@ -138,6 +153,7 @@ export function createSeenStore(storage: SeenStorage = defaultStorage) {
     loadSeen,
     seenAt,
     markSeen,
+    clearSeen,
     isUnread,
     subscribe,
     version: () => ver,
@@ -149,6 +165,7 @@ const defaultStore = createSeenStore()
 export const loadSeen = () => defaultStore.loadSeen()
 export const seenAt = (hostId: string, id: string) => defaultStore.seenAt(hostId, id)
 export const markSeen = (hostId: string, id: string, at?: number) => defaultStore.markSeen(hostId, id, at)
+export const clearSeen = (hostId: string, id: string) => defaultStore.clearSeen(hostId, id)
 export const isUnread = (hostId: string, id: string, lastAt: number | undefined, open: boolean) => defaultStore.isUnread(hostId, id, lastAt, open)
 export const subscribeSeen = (listener: () => void) => defaultStore.subscribe(listener)
 export const seenVersion = () => defaultStore.version()

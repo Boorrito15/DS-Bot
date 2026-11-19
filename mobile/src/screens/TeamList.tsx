@@ -1,11 +1,15 @@
 import { useMemo, useRef, useState, useSyncExternalStore, type ComponentRef } from 'react'
-import { Pressable, StyleSheet, Text, View, SectionList } from 'react-native'
+import { Platform, Pressable, SectionList, Share, StyleSheet, Text, View } from 'react-native'
 import { Gesture, GestureDetector } from 'react-native-gesture-handler'
 import { runOnJS } from 'react-native-reanimated'
 import type { Bot, Room } from '../connection.ts'
 import { useTeam } from '../team/context.tsx'
 import { botHasPending, roomHasPending } from '../nav/pending.ts'
-import { isUnread, seenVersion, subscribeSeen } from '../team/seen.ts'
+import { clearSeen, isUnread, seenVersion, subscribeSeen } from '../team/seen.ts'
+import { moreMenuItems, rowMenuItems, templateText, type RowTarget } from '../team/menus.ts'
+import { presentMenu } from '../nav/row-menu.ts'
+import { confirmDanger } from '../nav/sheet.tsx'
+import * as Clipboard from 'expo-clipboard'
 import { collapsedChange, folderAt, groupBySection, sectionInk, type DropZone, type Section } from '../team/sections.ts'
 import { useFolderSheets } from '../nav/folder-sheets.tsx'
 import { t } from '../ui/i18n.ts'
@@ -119,6 +123,48 @@ export function TeamList({ onOpen, query = '', current }: { onOpen: (target: Cha
   const entryOf = (key: string): Entry | undefined => entries.find(entry => `${entry.kind}-${entry.item.id}` === key)
   const moveEntry = (entry: Entry) => sheets.move({ id: entry.item.id, name: entry.item.name, sectionId: entry.item.sectionId })
 
+  const targetOf = (entry: Entry): RowTarget => ({
+    kind: entry.kind,
+    id: entry.item.id,
+    name: entry.item.name,
+    pinned: entry.item.pinned,
+    main: entry.kind === 'bot' && mains.has(entry.item.id),
+    role: entry.kind === 'bot' ? entry.item.role : undefined,
+    instructions: entry.kind === 'bot' ? entry.item.instructions : undefined,
+    copyId: entry.item.sessionId ?? entry.item.id,
+  })
+
+  // Every action is the host's to make; a refusal lands under the list the way a
+  // folder change's does.
+  const runAction = (target: RowTarget, id: string) => {
+    if (id === 'unread') { void clearSeen(hostId, target.id); return }
+    if (id === 'pin') { act('set-flags', { id: target.id, pinned: target.pinned !== true }); return }
+    if (id === 'hide') { act('set-flags', { id: target.id, hidden: true }); return }
+    if (id === 'template') { void Share.share({ message: templateText(target) }); return }
+    if (id === 'copy-id') { void Clipboard.setStringAsync(target.copyId); return }
+    if (id === 'move') {
+      const entry = entryOf(`${target.kind}-${target.id}`)
+      if (entry !== undefined) moveEntry(entry)
+      return
+    }
+    if (id === 'delete') {
+      confirmDanger(t('Delete {name}?', { name: target.name }), t('Delete'),
+        () => act(target.kind === 'room' ? 'delete-room' : 'delete-bot', { id: target.id }),
+        target.kind === 'room' ? t('The group chat and its messages are deleted.') : t('The Bot and its conversation are deleted.'))
+    }
+  }
+
+  // A held row opens that chat's own menu. Only iOS has the system sheet; elsewhere
+  // the hold keeps its old job and offers the folder picker.
+  const showMenu = (entry: Entry) => {
+    const target = targetOf(entry)
+    const shown = presentMenu(target.name, rowMenuItems(target), id => {
+      if (id === 'more') { presentMenu(target.name, moreMenuItems(target), next => runAction(target, next)); return }
+      runAction(target, id)
+    })
+    if (!shown) moveEntry(entry)
+  }
+
   const beginDrag = (key: string) => {
     dragKey.current = key
     held.current = key
@@ -161,7 +207,7 @@ export function TeamList({ onOpen, query = '', current }: { onOpen: (target: Cha
     setTimeout(() => { if (held.current === key) held.current = null }, 400)
     if (entry === undefined) return
     if (target !== null) sheets.move({ id: entry.item.id, name: entry.item.name, sectionId: target })
-    else if (!moved.current) moveEntry(entry)
+    else if (!moved.current) showMenu(entry)
   }
 
   const openRow = (entry: Entry) => {
@@ -187,6 +233,7 @@ export function TeamList({ onOpen, query = '', current }: { onOpen: (target: Cha
           <View style={styles.tiles}>
             {mainList.map(main => (
               <Pressable key={main.id} accessibilityRole="button" accessibilityLabel={`${main.name}, ${t('Main Bot')}`} onPress={() => onOpen({ kind: 'bot', id: main.id })}
+                onLongPress={Platform.OS === 'ios' ? () => showMenu({ kind: 'bot', item: main }) : undefined} delayLongPress={350}
                 style={({ pressed }) => [styles.tile, { backgroundColor: pressed || current === main.id ? p.active : p.hover }]}>
                 <Avatar bot={main} dark={dark} size={52} ring={p.hover} main working={workBots[main.id] !== undefined} waiting={botHasPending(team, main)} />
                 <Text style={[typeScale.small, { color: p.ink, fontWeight: '600', marginTop: 6 }]} numberOfLines={1}>{main.name}</Text>
