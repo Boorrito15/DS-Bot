@@ -334,15 +334,27 @@ const call = useMemo(() => async (endpoint: string, payload: unknown = {}): Prom
         return { ok: true }
       }
       case 'file-text': return { text: '# Release notes\n\n- Drawer lands today\n- Mobile cards render natively\n- Needs-you groups the queue\n', truncated: false }
-      case 'usage': return {
-        total: { input: 402100, output: 90300 },
-        bots: [
-          { name: 'Chief', input: 152100, output: 40100 }, { name: 'Writer', input: 120100, output: 30400 },
-          { name: 'Coder', input: 80000, output: 13000 }, { name: 'Researcher', input: 50000, output: 6800 },
-        ],
-        models: [
-          { name: 'DeepSeek v4.1', input: 300100, output: 70100 }, { name: 'DeepSeek Flash', input: 102000, output: 20200 },
-        ],
+      // The usage page reads the desktop's own shape: hourly rows, with the owners and
+      // models named by index.
+      case 'usage': {
+        const pad = (n: number) => String(n).padStart(2, '0')
+        const hourOf = (ms: number) => { const d = new Date(ms); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}` }
+        const owners = [
+          { key: 'b-chief', kind: 'bot', name: 'Chief' },
+          { key: 'b-coder', kind: 'bot', name: 'Coder' },
+          { key: 'b-writer', kind: 'bot', name: 'Writer' },
+          { key: 'room:r-launch', kind: 'room', name: 'Launch plan' },
+        ]
+        const models = (state.models ?? []).map(model => ({ name: model.name }))
+        const rows: (string | number)[][] = []
+        for (let day = 13; day >= 0; day -= 1) {
+          const at = Date.now() - day * 86400e3 - 2 * 3600e3
+          rows.push([hourOf(at), 0, 0, 0, 5200 + day * 137, 3400 + day * 61, 0, 900 + day * 11, 12 + day])
+          rows.push([hourOf(at - 3600e3), 1, 0, 0, 2100 + day * 91, 1800 + day * 40, 0, 420 + day * 7, 6 + day])
+          rows.push([hourOf(at - 5 * 3600e3), 2, 1, 0, 900 + day * 33, 600 + day * 12, 0, 210 + day * 3, 3])
+          if (day % 2 === 0) rows.push([hourOf(at - 3 * 3600e3), 3, 0, 0, 450 + day * 21, 300 + day * 9, 0, 120 + day * 2, 2])
+        }
+        return { now: hourOf(Date.now()), owners, models, rows, scanning: false }
       }
       case 'update-check': return { update: { phase: 'current', latest: '0.1.2', available: false, checkedAt: Date.now() - 3600e3, source: 'registry' }, dsh: { phase: 'installed', installed: '0.0.1', available: false } }
       case 'update-install': case 'dsh-update-install': return { ok: true }

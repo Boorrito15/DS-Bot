@@ -7,6 +7,8 @@ import * as Clipboard from 'expo-clipboard'
 import { connectorActionOf, connectorRows, type ConnectorPending, type ConnectorRow } from '../team/connectors.ts'
 import { capabilityStatusFor, capabilityStatusText, unapprovedCapabilitiesFor } from '../team/capabilities.ts'
 import { useTeam } from '../team/context.tsx'
+import { RANGES, compact, dayKey, percent, summarize, type Range, type Totals, type UsageView } from '../team/usage.ts'
+import { dayLabel } from '../ui/i18n.ts'
 import { t } from '../ui/i18n.ts'
 import { ChevronLeftIcon, ChevronRightIcon } from '../ui/icons.tsx'
 import { radius, shadow, type as typeScale, useTheme } from '../ui/tokens.ts'
@@ -660,33 +662,108 @@ export function Capabilities({ navigation }: any) {
   )
 }
 
+const RANGE_LABEL: Record<Range['id'], string> = { '24h': '24 hours', '7d': '7 days', '30d': '30 days', '12w': '12 weeks', '12m': '12 months' }
+
 export function TeamUsage({ navigation }: any) {
+  const { p } = useTheme()
   const { call } = useTeam()
   // The computer's usage view (usage.js): hourly rows of
   // [hour, owner, model, kind, input, cacheRead, cacheWrite, output, calls].
-  const [view, setView] = useState<{ owners?: { name: string; kind: string; deleted?: boolean }[]; models?: { name: string }[]; rows?: number[][] } | null>(null)
+  const [view, setView] = useState<UsageView | null>(null)
+  const [rangeId, setRangeId] = useState<Range['id']>('7d')
   useEffect(() => {
-    void call('usage', { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }).then(v => setView(v as typeof view)).catch(() => {})
+    void call('usage', { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }).then(v => setView(v as UsageView)).catch(() => {})
   }, [])
-  const rows = (view?.rows ?? []) as unknown as [string, number, number, string, number, number, number, number, number][]
-  const sum = (pick: (row: typeof rows[number]) => boolean) => rows.filter(pick).reduce((total, row) => ({ input: total.input + row[4] + row[5] + row[6], output: total.output + row[7] }), { input: 0, output: 0 })
-  const all = sum(() => true)
-  const fmt = (n: number) => n.toLocaleString()
-  const owners = (view?.owners ?? []).map((owner, index) => ({ owner, total: sum(row => row[1] === index) })).filter(entry => entry.total.input + entry.total.output > 0)
-  const models = (view?.models ?? []).map((model, index) => ({ model, total: sum(row => row[2] === index) })).filter(entry => entry.total.input + entry.total.output > 0)
+  const range = RANGES.find(entry => entry.id === rangeId) ?? RANGES[1]
+  const summary = view === null ? null : summarize(view, range)
+  const total = summary?.total.total ?? 0
+  const groups = [
+    { key: 'output', label: t('Output'), value: summary?.total.output ?? 0, ink: p.accent },
+    { key: 'input', label: t('Input'), value: summary?.total.input ?? 0, ink: p.ink2 },
+    { key: 'cache', label: t('Cache hit'), value: summary?.total.cacheRead ?? 0, ink: p.green },
+  ]
+  const top = Math.max(1, ...(summary?.buckets.map(bucket => bucket.total) ?? [0]))
+  const rank = (list: { index: number; total: Totals }[], name: (index: number) => string) => {
+    const most = Math.max(1, ...list.map(entry => entry.total.total))
+    return list.map(entry => (
+      <View key={entry.index} style={styles.row}>
+        <View style={{ flex: 1, minWidth: 96 }}>
+          <Text style={[typeScale.settingsRow, { color: p.ink }]} numberOfLines={1}>{name(entry.index)}</Text>
+          <View style={{ height: 4, borderRadius: 2, backgroundColor: p.hover, marginTop: 6, overflow: 'hidden' }}>
+            <View style={{ height: 4, width: `${Math.max(2, entry.total.total / most * 100)}%`, backgroundColor: p.accent }} />
+          </View>
+        </View>
+        <Text style={[typeScale.small, { color: p.ink2 }]}>{compact(entry.total.total)}</Text>
+        <Text style={[typeScale.small, { color: p.ink3, minWidth: 38, textAlign: 'right' }]}>{percent(entry.total.total, total)}%</Text>
+      </View>
+    ))
+  }
   return (
     <Screen><Back title={t('Usage')} onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-        <Section label={t('Usage')}>
-          <Row label={t('Tokens in')} value={view === null ? '—' : fmt(all.input)} />
-          <Row label={t('Tokens out')} value={view === null ? '—' : fmt(all.output)} />
+        <View style={{ flexDirection: 'row', gap: 6, paddingHorizontal: 14, marginTop: 12 }}>
+          {RANGES.map(entry => {
+            const on = entry.id === rangeId
+            return (
+              <Pressable key={entry.id} accessibilityRole="radio" accessibilityState={{ checked: on }} onPress={() => setRangeId(entry.id)}
+                style={{ flex: 1, borderRadius: 10, paddingVertical: 7, alignItems: 'center', backgroundColor: on ? p.accent : p.hover }}>
+                <Text style={[typeScale.small, { color: on ? p.accentInk : p.ink2, fontWeight: on ? '600' : '400' }]} numberOfLines={1}>
+                  {t(RANGE_LABEL[entry.id])}
+                </Text>
+              </Pressable>
+            )
+          })}
+        </View>
+        <Section label={t('Tokens')}>
+          <View style={{ paddingHorizontal: 16, paddingVertical: 14 }}>
+            <Text style={{ color: p.ink, fontSize: 30, lineHeight: 36, fontWeight: '600' }}>{summary === null ? '—' : compact(total)}</Text>
+            {summary === null ? null : (
+              <Text style={[typeScale.small, { color: p.ink3, marginTop: 2 }]}>
+                {summary.previous === 0
+                  ? t('Nothing in the span before')
+                  : t('{change} compared with the span before', { change: `${total >= summary.previous ? '+' : '−'}${percent(Math.abs(total - summary.previous), summary.previous)}%` })}
+              </Text>
+            )}
+            <View style={{ flexDirection: 'row', height: 10, borderRadius: 5, overflow: 'hidden', backgroundColor: p.hover, marginTop: 12 }}>
+              {groups.map(group => (
+                <View key={group.key} style={{ flex: Math.max(0, group.value), backgroundColor: group.ink }} />
+              ))}
+            </View>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 8 }}>
+              {groups.map(group => (
+                <View key={group.key} style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: group.ink }} />
+                  <Text style={[typeScale.small, { color: p.ink2 }]}>{group.label} {compact(group.value)}</Text>
+                </View>
+              ))}
+            </View>
+            <Text style={[typeScale.small, { color: p.ink3, marginTop: 8 }]}>
+              {t('{rate}% of the input came from cache', { rate: percent(summary?.total.cacheRead ?? 0, (summary?.total.input ?? 0) + (summary?.total.cacheRead ?? 0)) })}
+            </Text>
+          </View>
+        </Section>
+        <Section label={t('Over the range')}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 2, height: 96, paddingHorizontal: 14, paddingVertical: 12 }}>
+            {(summary?.buckets ?? []).map(bucket => (
+              <View key={bucket.key} style={{ flex: 1, height: Math.max(2, bucket.total / top * 88), borderRadius: 2, backgroundColor: bucket.total === 0 ? p.hover : p.accent }} />
+            ))}
+          </View>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 10 }}>
+            <Text style={[typeScale.small, { color: p.ink3 }]}>{summary?.buckets[0]?.start !== undefined ? dayLabel(summary.buckets[0].start) : ''}</Text>
+            <Text style={[typeScale.small, { color: p.ink3 }]}>{t('Today')}</Text>
+          </View>
         </Section>
         <Section label={t('Bots')}>
-          {owners.map(({ owner, total }, index) => <Row key={index} label={owner.name} value={fmt(total.input + total.output)} />)}
+          {summary === null ? <Row label={t('Loading…')} value="" /> : summary.owners.length === 0 ? <Row label={t('Nothing in this range')} value="" />
+            : rank(summary.owners, index => view?.owners?.[index]?.name ?? t('Other'))}
         </Section>
         <Section label={t('Models')}>
-          {models.map(({ model, total }, index) => <Row key={index} label={model.name} value={fmt(total.input + total.output)} />)}
+          {summary === null ? <Row label={t('Loading…')} value="" /> : summary.models.length === 0 ? <Row label={t('Nothing in this range')} value="" />
+            : rank(summary.models, index => view?.models?.[index]?.name ?? t('Unknown'))}
         </Section>
+        <Text style={[typeScale.small, { color: p.ink3, paddingHorizontal: 18, marginTop: 12 }]}>
+          {t('The computer counts every call it makes; the phone shows what it has read.')}
+        </Text>
       </ScrollView>
     </Screen>
   )
