@@ -41,6 +41,8 @@ export function rowMenuActions(target: RowTarget, folders: Section[]): MenuActio
   if (target.kind === 'bot') {
     actions.push({ id: 'template', title: t('Share as Template') })
     if (target.private !== true) actions.push({ id: 'duplicate', title: t('Duplicate') })
+    // The name is edited in the Bot's own settings, which is where the menu sends it.
+    actions.push({ id: 'rename', title: t('Rename Bot') })
   }
   if (target.main !== true) actions.push({ id: 'hide', title: t('Hide from sidebar') })
   actions.push({

@@ -68,7 +68,7 @@ function TeamScreen({ navigation }: any) {
       ) : null}
       {/* The list scrolls clear of the search bar rather than behind it. */}
       <View style={{ flex: 1, marginBottom: TEAM_SEARCH_INSET }}>
-        <TeamList onOpen={open} query={query} current={current} />
+        <TeamList onOpen={open} onEdit={botId => navigation.navigate('BotEdit', { botId })} query={query} current={current} />
       </View>
       <TeamSearchBar query={query} onChange={setQuery} onSettings={() => open({ kind: 'settings' })} dimmed={team === null} />
       <Modal visible={newOpen} transparent animationType="fade" onRequestClose={() => setNewOpen(false)}>

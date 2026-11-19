@@ -26,7 +26,7 @@ type Entry = { kind: 'bot'; item: Bot } | { kind: 'room'; item: Room }
 // Bot as a tile on top, then the other Bots and groups as rows, pinned first, then
 // by their latest message, and each folder after the plain rows with its own chats
 // inside it.
-export function TeamList({ onOpen, query = '', current }: { onOpen: (target: ChatTarget) => void; query?: string; current?: string }) {
+export function TeamList({ onOpen, onEdit, query = '', current }: { onOpen: (target: ChatTarget) => void; onEdit: (botId: string) => void; query?: string; current?: string }) {
   const { team, error, computer, call } = useTeam()
   const { p, dark } = useTheme()
   const hostId = computer?.hostDeviceId ?? ''
@@ -138,6 +138,7 @@ export function TeamList({ onOpen, query = '', current }: { onOpen: (target: Cha
       return
     }
     if (id === 'copy-id') { void Clipboard.setStringAsync(target.copyId); return }
+    if (id === 'rename') { onEdit(target.id); return }
     if (id === 'delete') {
       confirmDanger(t('Delete {name}?', { name: target.name }), t('Delete'),
         () => act(target.kind === 'room' ? 'delete-room' : 'delete-bot', { id: target.id }),

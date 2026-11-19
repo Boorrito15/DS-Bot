@@ -12,7 +12,7 @@ const plan: RowTarget = { kind: 'room', id: 'r-launch', name: 'Launch plan', cop
 const ids = (target: RowTarget) => rowMenuActions(target, [work, launch]).map(action => action.id)
 
 test('a Bot offers read state, pin, folder, template, copy, hide, and the ids', () => {
-  assert.deepEqual(ids(coder), ['unread', 'pin', 'move', 'template', 'duplicate', 'hide', 'more'])
+  assert.deepEqual(ids(coder), ['unread', 'pin', 'move', 'template', 'duplicate', 'rename', 'hide', 'more'])
 })
 
 test('a pinned chat offers to unpin instead of pin', () => {
@@ -21,7 +21,7 @@ test('a pinned chat offers to unpin instead of pin', () => {
 })
 
 test('a Main Bot has nothing to pin or hide: it already sits on top and cannot be hidden', () => {
-  assert.deepEqual(ids({ ...coder, main: true }), ['unread', 'move', 'template', 'duplicate', 'more'])
+  assert.deepEqual(ids({ ...coder, main: true }), ['unread', 'move', 'template', 'duplicate', 'rename', 'more'])
 })
 
 test('a private Bot offers no copy, as on the desktop', () => {
