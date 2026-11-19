@@ -1,8 +1,10 @@
-// The long-press menu of a chat row, grouped the way the desktop's context menu is
-// (ds-bot/src/client/context-menu.js): read state and pinning first, then the folder,
-// then the things that change the Bot itself, and a second page for the ids and the
-// delete. The labels are built here so both the native sheet and its fallback show
-// the same words in the same order.
+// The long-press menu of a chat row, as the desktop's context menu groups it
+// (ds-bot/src/client/context-menu.js): read state and pinning, the folder, the things
+// that change the Bot itself, and a second page for the id and the delete. The native
+// menu draws these, so the list says what the words are and where the folder
+// submenu's ticks go.
+import type { MenuAction } from '@react-native-menu/menu'
+import type { Section } from './sections.ts'
 import { t } from '../ui/i18n.ts'
 
 export interface RowTarget {
@@ -12,37 +14,53 @@ export interface RowTarget {
   pinned?: boolean
   // A Main Bot cannot be hidden, and it already sits on top of the list.
   main?: boolean
+  // A private Bot cannot be copied.
+  private?: boolean
   role?: string
   instructions?: string
-  // A private Bot cannot be copied, as on the desktop.
-  private?: boolean
+  sectionId?: string
   // What "Copy ID" puts on the clipboard: the conversation on screen, as the desktop
   // copies it (text.js currentPart).
   copyId: string
 }
 
-export interface MenuItem {
-  id: string
-  label: string
-  destructive?: boolean
-}
+// A submenu pick is the folder's id after this prefix; "none" means no folder and
+// "new" asks for the picker, which can make one on the way.
+export const MOVE_PREFIX = 'move:'
+export const MOVE_NEW = `${MOVE_PREFIX}new`
 
-export function rowMenuItems(target: RowTarget): MenuItem[] {
-  const items: MenuItem[] = [{ id: 'unread', label: t('Mark as Unread') }]
-  if (target.main !== true) items.push({ id: 'pin', label: target.pinned === true ? t('Unpin') : t('Pin') })
-  items.push({ id: 'move', label: t('Move to…') })
-  if (target.kind === 'bot') items.push({ id: 'template', label: t('Share as Template') })
-  if (target.kind === 'bot' && target.private !== true) items.push({ id: 'duplicate', label: t('Duplicate') })
-  if (target.main !== true) items.push({ id: 'hide', label: t('Hide from sidebar') })
-  items.push({ id: 'more', label: t('More…') })
-  return items
-}
-
-export function moreMenuItems(target: RowTarget): MenuItem[] {
-  return [
-    { id: 'copy-id', label: t('Copy ID') },
-    { id: 'delete', label: target.kind === 'room' ? t('Delete group') : t('Delete'), destructive: true },
+export function rowMenuActions(target: RowTarget, folders: Section[]): MenuAction[] {
+  const move: MenuAction[] = [
+    { id: `${MOVE_PREFIX}none`, title: t('No folder'), state: target.sectionId === undefined ? 'on' as const : 'off' as const },
+    ...folders.map(folder => ({ id: `${MOVE_PREFIX}${folder.id}`, title: folder.name, state: target.sectionId === folder.id ? 'on' as const : 'off' as const })),
+    { id: MOVE_NEW, title: t('New folder…') },
   ]
+  const actions: MenuAction[] = [{ id: 'unread', title: t('Mark as Unread') }]
+  if (target.main !== true) actions.push({ id: 'pin', title: target.pinned === true ? t('Unpin') : t('Pin') })
+  actions.push({ id: 'move', title: t('Move to…'), subactions: move })
+  if (target.kind === 'bot') {
+    actions.push({ id: 'template', title: t('Share as Template') })
+    if (target.private !== true) actions.push({ id: 'duplicate', title: t('Duplicate') })
+  }
+  if (target.main !== true) actions.push({ id: 'hide', title: t('Hide from sidebar') })
+  actions.push({
+    id: 'more',
+    title: t('More…'),
+    subactions: [
+      { id: 'copy-id', title: t('Copy ID') },
+      { id: 'delete', title: target.kind === 'room' ? t('Delete group') : t('Delete'), attributes: { destructive: true } },
+    ],
+  })
+  return actions
+}
+
+// The folder a submenu pick names, `undefined` for the plain list, and `null` when the
+// action was not a folder pick at all.
+export function pickedFolder(actionId: string, folders: Section[]): string | null | undefined {
+  if (!actionId.startsWith(MOVE_PREFIX)) return null
+  const id = actionId.slice(MOVE_PREFIX.length)
+  if (id === 'none') return undefined
+  return folders.some(folder => folder.id === id) ? id : null
 }
 
 // What "Share as Template" sends: the parts another person needs to set up the same

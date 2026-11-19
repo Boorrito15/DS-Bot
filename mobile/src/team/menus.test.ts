@@ -1,34 +1,54 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { moreMenuItems, rowMenuItems, templateText, type RowTarget } from './menus.ts'
+import { MOVE_NEW, MOVE_PREFIX, pickedFolder, rowMenuActions, templateText, type RowTarget } from './menus.ts'
+import type { Section } from './sections.ts'
 
-const coder: RowTarget = { kind: 'bot', id: 'b-coder', name: 'Coder', copyId: 's-coder', role: 'Builds and fixes' }
-const launch: RowTarget = { kind: 'room', id: 'r-launch', name: 'Launch plan', copyId: 's-launch' }
+const work: Section = { id: 'sec-work', name: 'Work' }
+const launch: Section = { id: 'sec-launch', name: 'Launch week' }
 
-test('a Bot offers read state, pin, folder, template, hide, and a second page', () => {
-  assert.deepEqual(rowMenuItems(coder).map(item => item.id), ['unread', 'pin', 'move', 'template', 'duplicate', 'hide', 'more'])
+const coder: RowTarget = { kind: 'bot', id: 'b-coder', name: 'Coder', copyId: 's-coder', role: 'Builds and fixes', sectionId: work.id }
+const plan: RowTarget = { kind: 'room', id: 'r-launch', name: 'Launch plan', copyId: 's-launch' }
+
+const ids = (target: RowTarget) => rowMenuActions(target, [work, launch]).map(action => action.id)
+
+test('a Bot offers read state, pin, folder, template, copy, hide, and the ids', () => {
+  assert.deepEqual(ids(coder), ['unread', 'pin', 'move', 'template', 'duplicate', 'hide', 'more'])
 })
 
 test('a pinned chat offers to unpin instead of pin', () => {
-  assert.equal(rowMenuItems({ ...coder, pinned: true }).find(item => item.id === 'pin')?.label, 'Unpin')
+  const action = rowMenuActions({ ...coder, pinned: true }, []).find(entry => entry.id === 'pin')
+  assert.equal(action?.title, 'Unpin')
 })
 
 test('a Main Bot has nothing to pin or hide: it already sits on top and cannot be hidden', () => {
-  assert.deepEqual(rowMenuItems({ ...coder, main: true }).map(item => item.id), ['unread', 'move', 'template', 'duplicate', 'more'])
+  assert.deepEqual(ids({ ...coder, main: true }), ['unread', 'move', 'template', 'duplicate', 'more'])
 })
 
 test('a private Bot offers no copy, as on the desktop', () => {
-  assert.equal(rowMenuItems({ ...coder, private: true }).some(item => item.id === 'duplicate'), false)
+  assert.equal(ids({ ...coder, private: true }).includes('duplicate'), false)
 })
 
 test('a group chat has no template of its own', () => {
-  assert.deepEqual(rowMenuItems(launch).map(item => item.id), ['unread', 'pin', 'move', 'hide', 'more'])
+  assert.deepEqual(ids(plan), ['unread', 'pin', 'move', 'hide', 'more'])
 })
 
-test('the second page copies the id and deletes, with the right word for the kind', () => {
-  assert.deepEqual(moreMenuItems(coder), [{ id: 'copy-id', label: 'Copy ID' }, { id: 'delete', label: 'Delete', destructive: true }])
-  assert.equal(moreMenuItems(launch)[1].label, 'Delete group')
-  assert.equal(moreMenuItems(launch)[1].destructive, true)
+test('the folder submenu lists each folder and ticks the one the chat sits in', () => {
+  const move = rowMenuActions(coder, [work, launch]).find(action => action.id === 'move')
+  assert.deepEqual(move?.subactions?.map(action => action.id), [`${MOVE_PREFIX}none`, `${MOVE_PREFIX}sec-work`, `${MOVE_PREFIX}sec-launch`, MOVE_NEW])
+  assert.deepEqual(move?.subactions?.map(action => action.state), ['off', 'on', 'off', undefined])
+})
+
+test('a submenu pick names its folder, or no folder, and says when it was something else', () => {
+  assert.equal(pickedFolder(`${MOVE_PREFIX}sec-work`, [work, launch]), 'sec-work')
+  assert.equal(pickedFolder(`${MOVE_PREFIX}none`, [work, launch]), undefined)
+  assert.equal(pickedFolder(`${MOVE_PREFIX}sec-gone`, [work, launch]), null)
+  assert.equal(pickedFolder('pin', [work, launch]), null)
+})
+
+test('the second page deletes with the right word for the kind', () => {
+  const more = rowMenuActions(plan, []).find(action => action.id === 'more')
+  assert.deepEqual(more?.subactions?.map(action => action.title), ['Copy ID', 'Delete group'])
+  assert.equal(more?.subactions?.[1].attributes?.destructive, true)
 })
 
 test('a shared template carries what another person needs, and no empty fields', () => {
