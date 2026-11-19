@@ -131,6 +131,7 @@ export function TeamList({ onOpen, query = '', current }: { onOpen: (target: Cha
     main: entry.kind === 'bot' && mains.has(entry.item.id),
     role: entry.kind === 'bot' ? entry.item.role : undefined,
     instructions: entry.kind === 'bot' ? entry.item.instructions : undefined,
+    private: entry.kind === 'bot' ? entry.item.private : undefined,
     copyId: entry.item.sessionId ?? entry.item.id,
   })
 
@@ -141,6 +142,14 @@ export function TeamList({ onOpen, query = '', current }: { onOpen: (target: Cha
     if (id === 'pin') { act('set-flags', { id: target.id, pinned: target.pinned !== true }); return }
     if (id === 'hide') { act('set-flags', { id: target.id, hidden: true }); return }
     if (id === 'template') { void Share.share({ message: templateText(target) }); return }
+    // The copy arrives as the whole new Bot; the host has already added it to the team.
+    if (id === 'duplicate') {
+      void call('duplicate-bot', { id: target.id }).then(
+        value => { const copy = value as Bot | undefined; if (copy?.id !== undefined) onOpen({ kind: 'bot', id: copy.id }) },
+        (failure: Error) => setActionError(failure?.message ?? String(failure)),
+      )
+      return
+    }
     if (id === 'copy-id') { void Clipboard.setStringAsync(target.copyId); return }
     if (id === 'move') {
       const entry = entryOf(`${target.kind}-${target.id}`)

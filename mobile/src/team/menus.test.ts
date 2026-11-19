@@ -6,7 +6,7 @@ const coder: RowTarget = { kind: 'bot', id: 'b-coder', name: 'Coder', copyId: 's
 const launch: RowTarget = { kind: 'room', id: 'r-launch', name: 'Launch plan', copyId: 's-launch' }
 
 test('a Bot offers read state, pin, folder, template, hide, and a second page', () => {
-  assert.deepEqual(rowMenuItems(coder).map(item => item.id), ['unread', 'pin', 'move', 'template', 'hide', 'more'])
+  assert.deepEqual(rowMenuItems(coder).map(item => item.id), ['unread', 'pin', 'move', 'template', 'duplicate', 'hide', 'more'])
 })
 
 test('a pinned chat offers to unpin instead of pin', () => {
@@ -14,7 +14,11 @@ test('a pinned chat offers to unpin instead of pin', () => {
 })
 
 test('a Main Bot has nothing to pin or hide: it already sits on top and cannot be hidden', () => {
-  assert.deepEqual(rowMenuItems({ ...coder, main: true }).map(item => item.id), ['unread', 'move', 'template', 'more'])
+  assert.deepEqual(rowMenuItems({ ...coder, main: true }).map(item => item.id), ['unread', 'move', 'template', 'duplicate', 'more'])
+})
+
+test('a private Bot offers no copy, as on the desktop', () => {
+  assert.equal(rowMenuItems({ ...coder, private: true }).some(item => item.id === 'duplicate'), false)
 })
 
 test('a group chat has no template of its own', () => {

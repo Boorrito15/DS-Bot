@@ -14,6 +14,8 @@ export interface RowTarget {
   main?: boolean
   role?: string
   instructions?: string
+  // A private Bot cannot be copied, as on the desktop.
+  private?: boolean
   // What "Copy ID" puts on the clipboard: the conversation on screen, as the desktop
   // copies it (text.js currentPart).
   copyId: string
@@ -30,6 +32,7 @@ export function rowMenuItems(target: RowTarget): MenuItem[] {
   if (target.main !== true) items.push({ id: 'pin', label: target.pinned === true ? t('Unpin') : t('Pin') })
   items.push({ id: 'move', label: t('Move to…') })
   if (target.kind === 'bot') items.push({ id: 'template', label: t('Share as Template') })
+  if (target.kind === 'bot' && target.private !== true) items.push({ id: 'duplicate', label: t('Duplicate') })
   if (target.main !== true) items.push({ id: 'hide', label: t('Hide from sidebar') })
   items.push({ id: 'more', label: t('More…') })
   return items
