@@ -1,7 +1,7 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { useNavigation, type NavigationProp, type ParamListBase } from '@react-navigation/native'
 import { useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { ActivityIndicator, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { onPrefsChange, readPrefs } from '../store.ts'
 import { FolderSheetsProvider } from './folder-sheets.tsx'
@@ -10,11 +10,12 @@ import { ErrorBoundary } from '../ui/error-boundary.tsx'
 import { t } from '../ui/i18n.ts'
 import { shadow, type as typeScale, useTheme } from '../ui/tokens.ts'
 import { Avatar, RoomAvatar } from '../ui/marks.tsx'
-import { ChevronLeftIcon, GearIcon, PeopleIcon, PlusIcon, SearchIcon, SideIcon } from '../ui/icons.tsx'
+import { ChevronLeftIcon, PeopleIcon, PlusIcon, SideIcon } from '../ui/icons.tsx'
 import { ChatView } from '../screens/Chat.tsx'
 import { NeedsYou } from '../screens/NeedsYou.tsx'
 import { Settings } from '../screens/Settings.tsx'
 import { TeamList, type ChatTarget } from '../screens/TeamList.tsx'
+import { TEAM_SEARCH_INSET, TeamSearchBar } from '../screens/team-search.tsx'
 import { BotDetails, BotEdit, NewBot, NewGroup, GroupDetails, GroupSettings, Memory, Schedules, Folder, Usage, Computers, Secrets } from '../screens/manage.tsx'
 import { Providers, Connectors, Capabilities, TeamUsage, Location, Updates, About } from '../screens/settings-pages.tsx'
 import { Side } from '../screens/side.tsx'
@@ -35,7 +36,6 @@ function TeamScreen({ navigation }: any) {
   const { team } = useTeam()
   const insets = useSafeAreaInsets()
   const pending = pendingCountOf(team)
-  const [searching, setSearching] = useState(false)
   const [query, setQuery] = useState('')
   const [newOpen, setNewOpen] = useState(false)
   const create = (screen: 'NewBot' | 'NewGroup') => { setNewOpen(false); navigation.navigate(screen) }
@@ -55,20 +55,10 @@ function TeamScreen({ navigation }: any) {
       {/* The desktop sidebar's head: the product name, search and New. */}
       <View style={[styles.drawerHead, { paddingTop: insets.top + 6 }]}>
         <Text style={{ color: p.ink, fontSize: 17, fontWeight: '600', flex: 1 }}>DS Bot</Text>
-        <Pressable accessibilityRole="button" accessibilityLabel={t('Search')} onPress={() => setSearching(on => !on)} hitSlop={4} style={[styles.round, { borderColor: p.line, backgroundColor: p.card }]}>
-          <SearchIcon size={16} color={p.ink2} />
-        </Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel={t('New')} onPress={() => setNewOpen(true)} hitSlop={4} style={[styles.round, { borderColor: p.line, backgroundColor: p.card }]}>
           <PlusIcon size={16} color={p.ink2} />
         </Pressable>
       </View>
-      {searching ? (
-        <View style={[styles.search, { backgroundColor: p.hover }]}>
-          <SearchIcon size={15} color={p.ink3} />
-          <TextInput value={query} onChangeText={setQuery} placeholder={t('Search the team')} placeholderTextColor={p.ink3} autoFocus
-            style={{ flex: 1, fontSize: 15, paddingVertical: 4, color: p.ink }} autoCapitalize="none" autoCorrect={false} />
-        </View>
-      ) : null}
       {pending > 0 ? (
         <Pressable accessibilityRole="button" onPress={() => open({ kind: 'needs' })}
           style={({ pressed }) => [styles.needsRow, { backgroundColor: pressed ? p.hover : 'transparent' }]}>
@@ -76,9 +66,11 @@ function TeamScreen({ navigation }: any) {
           <View style={[styles.badge, { backgroundColor: p.accent }]}><Text style={{ color: p.accentInk, fontSize: 12, fontWeight: '600' }}>{pending}</Text></View>
         </Pressable>
       ) : null}
-      <View style={{ flex: 1 }}>
-        <TeamList onOpen={open} query={searching ? query : ''} current={current} />
+      {/* The list scrolls clear of the search bar rather than behind it. */}
+      <View style={{ flex: 1, marginBottom: TEAM_SEARCH_INSET }}>
+        <TeamList onOpen={open} query={query} current={current} />
       </View>
+      <TeamSearchBar query={query} onChange={setQuery} onSettings={() => open({ kind: 'settings' })} dimmed={team === null} />
       <Modal visible={newOpen} transparent animationType="fade" onRequestClose={() => setNewOpen(false)}>
         <Pressable style={styles.sheetScrim} onPress={() => setNewOpen(false)} accessibilityLabel={t('Close')}>
           <View style={[styles.newSheet, { backgroundColor: p.card, borderColor: p.line, marginBottom: insets.bottom + 12 }, shadow(3)]}>
@@ -94,11 +86,6 @@ function TeamScreen({ navigation }: any) {
           </View>
         </Pressable>
       </Modal>
-      <View style={[styles.foot, { paddingBottom: insets.bottom + 8 }]}>
-        <Pressable accessibilityRole="button" accessibilityLabel={t('Settings')} onPress={() => open({ kind: 'settings' })} hitSlop={4} style={[styles.round, { borderColor: p.line, backgroundColor: p.card }]}>
-          <GearIcon size={18} color={p.ink2} />
-        </Pressable>
-      </View>
     </View>
   )
 }
@@ -320,10 +307,8 @@ export default function ShellB() {
 const styles = StyleSheet.create({
   needsRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 12, marginBottom: 4, borderRadius: 10, paddingHorizontal: 12, height: 44 },
   badge: { minWidth: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
-  foot: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingTop: 8 },
   drawerHead: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingBottom: 10 },
   round: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth },
-  search: { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 14, marginBottom: 8, borderRadius: 10, paddingHorizontal: 10, height: 36 },
   you: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 4, height: 44 },
   sheetScrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.25)', justifyContent: 'flex-end' },
   newSheet: { marginHorizontal: 12, borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
