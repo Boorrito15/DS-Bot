@@ -1,19 +1,17 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { useNavigation, type NavigationProp, type ParamListBase } from '@react-navigation/native'
 import { useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, Dimensions, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { ActivityIndicator, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import * as SecureStore from 'expo-secure-store'
 import { onPrefsChange, readPrefs } from '../store.ts'
-import { Drawer, useDrawer } from './Drawer.tsx'
 import { FolderSheetsProvider } from './folder-sheets.tsx'
 import { useTeam } from '../team/context.tsx'
 import { ErrorBoundary } from '../ui/error-boundary.tsx'
 import { t } from '../ui/i18n.ts'
 import { shadow, type as typeScale, useTheme } from '../ui/tokens.ts'
 import { Avatar, RoomAvatar } from '../ui/marks.tsx'
-import { GearIcon, PeopleIcon, PlusIcon, SearchIcon, SidebarIcon, SideIcon } from '../ui/icons.tsx'
-import { ChatView, prefetchChat } from '../screens/Chat.tsx'
+import { ChevronLeftIcon, GearIcon, PeopleIcon, PlusIcon, SearchIcon, SideIcon } from '../ui/icons.tsx'
+import { ChatView } from '../screens/Chat.tsx'
 import { NeedsYou } from '../screens/NeedsYou.tsx'
 import { Settings } from '../screens/Settings.tsx'
 import { TeamList, type ChatTarget } from '../screens/TeamList.tsx'
@@ -27,34 +25,27 @@ import { activeChatTarget, openChat } from './open-chat.ts'
 import { Sheet, SheetHeader } from './sheet.tsx'
 
 const Stack = createNativeStackNavigator()
-const LAST_KEY = 'dsbot.lastChat'
 
-// Drawer content = the desktop sidebar as a drawer: "Needs you" row on top when
-// anything is pending, the team list, and a footer with the You mark + gear.
-function DrawerContent() {
+// The team list is the app's home screen, the desktop sidebar at full width: the
+// product name, search and New on top, the "Needs you" row when anything is pending,
+// the team list, and a footer with the gear. A chat is pushed over it, and the back
+// swipe returns here.
+function TeamScreen({ navigation }: any) {
   const { p } = useTheme()
   const { team } = useTeam()
   const insets = useSafeAreaInsets()
-  const navigation = useNavigation<NavigationProp<ParamListBase>>()
-  const drawer = useDrawer()
   const pending = pendingCountOf(team)
-  const fallbackId = (team?.bots?.find(b => b.id === team?.mainBotId) ?? team?.bots?.[0])?.id
   const [searching, setSearching] = useState(false)
   const [query, setQuery] = useState('')
   const [newOpen, setNewOpen] = useState(false)
-  const create = (screen: 'NewBot' | 'NewGroup') => { setNewOpen(false); drawer.close(); navigation.navigate(screen) }
-  // The chat on screen is marked in the list, as the desktop marks its open chat. The
-  // drawer sits outside the navigator, so it follows the container's own state.
+  const create = (screen: 'NewBot' | 'NewGroup') => { setNewOpen(false); navigation.navigate(screen) }
+  // The last chat opened stays marked while the list is on screen, so coming back
+  // from a chat shows where you were, as the desktop marks its open chat.
   const [current, setCurrent] = useState<string | undefined>(undefined)
-  useEffect(() => {
-    const update = () => setCurrent(activeChatTarget(navigation.getState(), fallbackId)?.id)
-    update()
-    return navigation.addListener('state', update)
-  }, [navigation, fallbackId])
-  // A chat replaces the one on screen; nothing stays stacked under it. Needs you and
-  // Settings slide up over the chat and go back down to it.
+  // A chat is pushed over the list, so the back swipe is the way home. Needs you and
+  // Settings slide up over whatever is below them.
   const open = (target: ChatTarget | { kind: 'needs' } | { kind: 'settings' }) => {
-    drawer.close()
+    if (target.kind === 'bot' || target.kind === 'room') setCurrent(target.id)
     if (target.kind === 'needs') navigation.navigate('Needs')
     else if (target.kind === 'settings') navigation.navigate('Settings')
     else openChat(navigation, target)
@@ -132,8 +123,8 @@ function Header({ title, bot, room, bots = [], onMenu, onPill, onSide }: { title
   return (
     <View style={{ backgroundColor: p.main }}>
     <View style={{ flexDirection: 'row', alignItems: 'center', paddingTop: insets.top + 4, paddingBottom: 8, paddingHorizontal: 10 }}>
-      <Pressable accessibilityRole="button" accessibilityLabel={t('Open team list')} onPress={onMenu} hitSlop={8} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
-        <SidebarIcon size={20} color={p.ink2} />
+      <Pressable accessibilityRole="button" accessibilityLabel={t('Back')} onPress={onMenu} hitSlop={8} style={{ width: 44, height: 44, alignItems: 'center', justifyContent: 'center' }}>
+        <ChevronLeftIcon size={22} color={p.ink2} />
         {pending ? <View style={{ position: 'absolute', top: 8, right: 8, width: 8, height: 8, borderRadius: 4, backgroundColor: p.accent }} /> : null}
       </Pressable>
       {/* A long group name ends in an ellipsis inside the pill instead of pushing past the side buttons. */}
@@ -159,13 +150,9 @@ function Header({ title, bot, room, bots = [], onMenu, onPill, onSide }: { title
 }
 
 function ChatScreenB({ route, navigation }: any) {
-  const { team, error, linked, call, computer } = useTeam()
+  const { team, error, computer } = useTeam()
   const { p, dark } = useTheme()
-  const drawer = useDrawer()
   const params = route.params as ChatTarget | undefined
-  // On launch the saved chat is read while the team state is still on its way.
-  useEffect(() => { if (linked === true && team === null && params !== undefined) prefetchChat(call, computer?.hostDeviceId ?? '', params) }, [linked, team === null])
-  useEffect(() => { if (params) void SecureStore.setItemAsync(LAST_KEY, JSON.stringify(params)) }, [params])
   const fallback = team?.bots?.find(b => b.id === team?.mainBotId) ?? team?.bots?.[0]
   const kind = params?.kind ?? 'bot'
   const id = params?.id ?? fallback?.id ?? ''
@@ -176,10 +163,9 @@ function ChatScreenB({ route, navigation }: any) {
   const missing = team !== null && params !== undefined && ((kind === 'bot' && bot === undefined) || (kind === 'room' && room === undefined))
   useEffect(() => {
     if (!missing) return
-    void SecureStore.deleteItemAsync(LAST_KEY)
     if (fallback !== undefined) navigation.setParams({ kind: 'bot', id: fallback.id })
   }, [missing])
-  const header = <Header title={bot?.name ?? room?.name ?? ''} bot={bot} room={room} bots={team?.bots ?? []} onMenu={() => drawer.open()} onPill={() => { if (bot) navigation.navigate('BotDetails', { botId: bot.id }); else if (room) navigation.navigate('GroupDetails', { roomId: room.id }) }} onSide={bot !== undefined && bot.sessionId !== undefined ? () => navigation.navigate('Side', { bot, sessionId: bot.sessionId }) : undefined} />
+  const header = <Header title={bot?.name ?? room?.name ?? ''} bot={bot} room={room} bots={team?.bots ?? []} onMenu={() => navigation.goBack()} onPill={() => { if (bot) navigation.navigate('BotDetails', { botId: bot.id }); else if (room) navigation.navigate('GroupDetails', { roomId: room.id }) }} onSide={bot !== undefined && bot.sessionId !== undefined ? () => navigation.navigate('Side', { bot, sessionId: bot.sessionId }) : undefined} />
   if (team === null) return (
     <View style={{ flex: 1, backgroundColor: p.main }}>
       {header}
@@ -192,7 +178,7 @@ function ChatScreenB({ route, navigation }: any) {
       </View>
     </View>
   )
-  const onMissing = () => { void SecureStore.deleteItemAsync(LAST_KEY); if (fallback !== undefined) navigation.setParams({ kind: 'bot', id: fallback.id }) }
+  const onMissing = () => { if (fallback !== undefined) navigation.setParams({ kind: 'bot', id: fallback.id }) }
   return <ChatView key={`${computer?.hostDeviceId ?? ''}:${kind}:${id}`} bot={bot} room={room} header={header} onMissing={onMissing} />
 }
 
@@ -291,13 +277,14 @@ function NoticeBanner() {
 // up as sheets with Done or Cancel.
 const PUSH = Platform.OS === 'android' ? 'slide_from_right' as const : 'default' as const
 const RISE = Platform.OS === 'android' ? 'slide_from_bottom' as const : 'default' as const
-function Inner({ initial }: { initial: ChatTarget | null }) {
+function Inner() {
   const { p } = useTheme()
   return (
     <View style={{ flex: 1 }}>
     <NoticeBanner />
-    <Stack.Navigator initialRouteName="Chat" screenOptions={{ headerShown: false, animation: PUSH, contentStyle: { backgroundColor: p.main } }}>
-      <Stack.Screen name="Chat" component={ChatScreenB} initialParams={initial ?? undefined} />
+    <Stack.Navigator initialRouteName="Team" screenOptions={{ headerShown: false, animation: PUSH, contentStyle: { backgroundColor: p.main } }}>
+      <Stack.Screen name="Team" component={TeamScreen} />
+      <Stack.Screen name="Chat" component={ChatScreenB} />
       <Stack.Screen name="BotDetails" component={BotDetails} />
       <Stack.Screen name="BotEdit" component={BotEdit} />
       <Stack.Screen name="GroupDetails" component={GroupDetails} />
@@ -320,39 +307,11 @@ function Inner({ initial }: { initial: ChatTarget | null }) {
 }
 
 export default function ShellB() {
-  const { p } = useTheme()
-  // The sidebar is the whole page while it is open, so a long folder name and a
-  // chat's preview have room to show.
-  const width = Dimensions.get('window').width
-  // Render the navigator only once the saved chat is known, so it can start on it.
-  const [saved, setSaved] = useState<ChatTarget | null | undefined>(undefined)
-  useEffect(() => {
-    void SecureStore.getItemAsync(LAST_KEY).then(text => {
-      try { setSaved(text === null ? null : JSON.parse(text) as ChatTarget) } catch { setSaved(null) }
-    })
-  }, [])
-  // The left edge swipe is the iOS back gesture on pushed screens, so the
-  // drawer only claims it while the root Chat is on top. The shell sits
-  // outside the navigator, so it tracks the top route through the container's
-  // own navigation object instead of useNavigationState.
-  const navigation = useNavigation<NavigationProp<ParamListBase>>()
-  const [top, setTop] = useState('Chat')
-  useEffect(() => {
-    const update = () => {
-      const state = navigation.getState()
-      setTop(state?.routes?.[state.index ?? 0]?.name ?? 'Chat')
-    }
-    update()
-    return navigation.addListener('state', update)
-  }, [navigation])
-  if (saved === undefined) return <View style={{ flex: 1, backgroundColor: p.main }} />
   return (
     <FolderSheetsProvider>
-      <Drawer width={width} content={<DrawerContent />} edgeEnabled={top === 'Chat'}>
-        <ErrorBoundary>
-          <Inner initial={saved} />
-        </ErrorBoundary>
-      </Drawer>
+      <ErrorBoundary>
+        <Inner />
+      </ErrorBoundary>
     </FolderSheetsProvider>
   )
 }

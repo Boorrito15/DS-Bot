@@ -1,19 +1,24 @@
-import { StackActions, type NavigationAction, type NavigationState, type PartialState } from '@react-navigation/core'
+import { CommonActions, StackActions, type NavigationAction, type NavigationState, type PartialState } from '@react-navigation/core'
 import type { ChatTarget } from '../screens/TeamList.tsx'
-
-// Components outside Stack.Navigator (the drawer and the notice banner) receive the
-// NavigationContainer ref, which exposes CommonActions and dispatch but not stack
-// helpers like popTo. Dispatching StackActions.popTo works from both the container
-// and any screen or modal sheet inside the stack.
-export function openChat(navigation: { dispatch: (action: NavigationAction) => void }, target?: ChatTarget) {
-  navigation.dispatch(StackActions.popTo('Chat', target, target === undefined ? { merge: true } : undefined))
-}
 
 type StateLike = NavigationState | PartialState<NavigationState> | undefined
 
-// Which chat is currently visible on top of the root stack, accounting for the
-// launch state before explicit route params are set (where Chat falls back to the
-// first Main Bot).
+// The team list is the first screen and a chat is pushed over it, so opening a chat
+// goes back to the one already in the stack or pushes a new one. The notice banner
+// sits outside the navigator and holds a container ref, which has no stack helpers,
+// so the action is dispatched rather than called.
+export function openChat(navigation: { dispatch: (action: NavigationAction) => void; getState?: () => StateLike }, target?: ChatTarget) {
+  const state = navigation.getState?.()
+  const open = state?.routes?.some(route => route.name === 'Chat') === true
+  if (open) {
+    navigation.dispatch(StackActions.popTo('Chat', target, target === undefined ? { merge: true } : undefined))
+    return
+  }
+  navigation.dispatch(CommonActions.navigate({ name: 'Chat', params: target }))
+}
+
+// Which chat is visible on top of the stack, if any. The list is the screen below a
+// chat, so this answers about the chat only while it is on top.
 export function activeChatTarget(state: StateLike, fallbackBotId?: string): ChatTarget | undefined {
   const index = state?.index ?? 0
   const top = state?.routes?.[index]

@@ -3,7 +3,7 @@ import { test } from 'node:test'
 import { CommonActions, StackRouter, type NavigationAction } from '@react-navigation/routers'
 import { activeChatTarget, openChat } from './open-chat.ts'
 
-const ROUTE_NAMES = ['Chat', 'BotDetails', 'BotEdit', 'GroupDetails', 'GroupSettings', 'Memory', 'Settings', 'Needs', 'NewBot', 'NewGroup']
+const ROUTE_NAMES = ['Team', 'Chat', 'BotDetails', 'BotEdit', 'GroupDetails', 'GroupSettings', 'Memory', 'Settings', 'Needs', 'NewBot', 'NewGroup']
 const SETTINGS_NAMES = ['SettingsHome', 'Computers', 'Providers']
 const OPTIONS = {
   routeNames: ROUTE_NAMES,
@@ -19,13 +19,10 @@ const SETTINGS_OPTIONS = {
 // Simulates NavigationContainerRef outside Stack.Navigator: exposes dispatch and
 // CommonActions, never StackActions methods like popTo, and bubbles unhandled
 // child-stack actions up to the root stack router.
-function createContainer(initialParams?: { kind: 'bot' | 'room'; id: string }) {
+function createContainer() {
   const rootRouter = StackRouter({})
   const settingsRouter = StackRouter({})
   let state = rootRouter.getInitialState(OPTIONS)
-  if (initialParams !== undefined) {
-    state = { ...state, routes: [{ ...state.routes[0], params: initialParams }] }
-  }
   return {
     getState: () => state,
     dispatch(action: NavigationAction) {
@@ -62,49 +59,63 @@ function createContainer(initialParams?: { kind: 'bot' | 'room'; id: string }) {
   }
 }
 
-test('openChat switches Bots in place from a container-level caller without popTo method', () => {
-  const container = createContainer({ kind: 'bot', id: 'b-chief' })
-  assert.equal('popTo' in container, false)
-  openChat(container, { kind: 'bot', id: 'b-coder' })
-  assert.equal(container.getState().routes.length, 1)
-  assert.equal(container.getState().routes[0].name, 'Chat')
-  assert.deepEqual(container.getState().routes[0].params, { kind: 'bot', id: 'b-coder' })
+const names = (container: ReturnType<typeof createContainer>) => container.getState().routes.map(route => route.name)
+
+test('the app starts on the team list, not on a chat', () => {
+  assert.deepEqual(names(createContainer()), ['Team'])
 })
 
-test('openChat pops pushed details screens and nested Settings sheets back to the target chat', () => {
-  const container = createContainer({ kind: 'bot', id: 'b-chief' })
+test('opening a chat from the list pushes it over the list', () => {
+  const container = createContainer()
+  assert.equal('popTo' in container, false)
+  openChat(container, { kind: 'bot', id: 'b-coder' })
+  assert.deepEqual(names(container), ['Team', 'Chat'])
+  assert.deepEqual(container.getState().routes[1].params, { kind: 'bot', id: 'b-coder' })
+})
+
+test('opening another chat while one is up replaces it instead of stacking', () => {
+  const container = createContainer()
+  openChat(container, { kind: 'bot', id: 'b-chief' })
+  openChat(container, { kind: 'room', id: 'r-launch' })
+  assert.deepEqual(names(container), ['Team', 'Chat'])
+  assert.deepEqual(container.getState().routes[1].params, { kind: 'room', id: 'r-launch' })
+})
+
+test('openChat pops pushed details screens and nested Settings sheets back to the chat', () => {
+  const container = createContainer()
+  openChat(container, { kind: 'bot', id: 'b-chief' })
   container.dispatch(CommonActions.navigate('BotDetails', { botId: 'b-chief' }))
   container.dispatch(CommonActions.navigate('Memory', { id: 'b-chief', name: 'Chief', group: false }))
-  assert.equal(container.getState().routes.length, 3)
+  assert.equal(container.getState().routes.length, 4)
 
   openChat(container, { kind: 'room', id: 'r-team' })
-  assert.equal(container.getState().routes.length, 1)
-  assert.deepEqual(container.getState().routes[0].params, { kind: 'room', id: 'r-team' })
+  assert.deepEqual(names(container), ['Team', 'Chat'])
+  assert.deepEqual(container.getState().routes[1].params, { kind: 'room', id: 'r-team' })
 
   container.openSettingsSubpage('Providers')
   assert.equal(container.getState().routes.at(-1)?.name, 'Settings')
   openChat(container, { kind: 'bot', id: 'b-writer' })
-  assert.equal(container.getState().routes.length, 1)
-  assert.deepEqual(container.getState().routes[0].params, { kind: 'bot', id: 'b-writer' })
+  assert.deepEqual(names(container), ['Team', 'Chat'])
+  assert.deepEqual(container.getState().routes[1].params, { kind: 'bot', id: 'b-writer' })
 })
 
 test('openChat with no target pops back to Chat while preserving existing params', () => {
-  const container = createContainer({ kind: 'bot', id: 'b-coder' })
+  const container = createContainer()
+  openChat(container, { kind: 'bot', id: 'b-coder' })
   container.dispatch(CommonActions.navigate('BotDetails', { botId: 'b-coder' }))
   container.dispatch(CommonActions.navigate('BotEdit', { botId: 'b-coder' }))
   openChat(container)
-  assert.equal(container.getState().routes.length, 1)
-  assert.deepEqual(container.getState().routes[0].params, { kind: 'bot', id: 'b-coder' })
+  assert.deepEqual(names(container), ['Team', 'Chat'])
+  assert.deepEqual(container.getState().routes[1].params, { kind: 'bot', id: 'b-coder' })
 })
 
-test('activeChatTarget resolves launch fallback and clears when another screen is on top', () => {
-  const fresh = createContainer()
-  assert.deepEqual(activeChatTarget(fresh.getState(), 'b-chief'), { kind: 'bot', id: 'b-chief' })
-  assert.equal(activeChatTarget(fresh.getState(), undefined), undefined)
+test('activeChatTarget answers only while the chat is on top', () => {
+  const container = createContainer()
+  assert.equal(activeChatTarget(container.getState()), undefined)
 
-  openChat(fresh, { kind: 'room', id: 'r-1' })
-  assert.deepEqual(activeChatTarget(fresh.getState(), 'b-chief'), { kind: 'room', id: 'r-1' })
+  openChat(container, { kind: 'room', id: 'r-1' })
+  assert.deepEqual(activeChatTarget(container.getState()), { kind: 'room', id: 'r-1' })
 
-  fresh.dispatch(CommonActions.navigate('Needs'))
-  assert.equal(activeChatTarget(fresh.getState(), 'b-chief'), undefined)
+  container.dispatch(CommonActions.navigate('Needs'))
+  assert.equal(activeChatTarget(container.getState()), undefined)
 })
