@@ -3,7 +3,7 @@
 // "new" sheet. Every write goes through the same endpoints the desktop calls.
 import { Children, Fragment, useCallback, useContext, useEffect, useState } from 'react'
 import { useIsFocused } from '@react-navigation/native'
-import { Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Dimensions, Image, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { confirmDanger, Sheet, SheetHeader, useInSheet } from '../nav/sheet.tsx'
 import { openChat } from '../nav/open-chat.ts'
@@ -476,6 +476,7 @@ function PickGrid({ columns, ids, picked, onPick, draw }: { columns: number; ids
 export function NewBot({ navigation }: any) {
   const { p, dark } = useTheme()
   const { team } = useTeam()
+  const insets = useSafeAreaInsets()
   const { run, error } = useWrite(navigation)
   const [name, setName] = useState('')
   const [shape, setShape] = useState('star')
@@ -483,6 +484,18 @@ export function NewBot({ navigation }: any) {
   const models = team?.models ?? []
   const [model, setModel] = useState<string | undefined>(() => (models.find(m => m.ref === team?.defaultModel) ?? models[0])?.ref)
   const [busy, setBusy] = useState(false)
+  // The sheet is pinned to the bottom of the screen, so the footer rises by the
+  // keyboard's own height. A KeyboardAvoidingView inside a modal sheet measures its
+  // frame wrong here and left the button half behind the keyboard.
+  const [keyboard, setKeyboard] = useState(0)
+  useEffect(() => {
+    if (Platform.OS !== 'ios') return
+    const change = Keyboard.addListener('keyboardWillChangeFrame', event => {
+      setKeyboard(Math.max(0, Dimensions.get('window').height - event.endCoordinates.screenY))
+    })
+    const hide = Keyboard.addListener('keyboardWillHide', () => setKeyboard(0))
+    return () => { change.remove(); hide.remove() }
+  }, [])
   const open = useOpenWhenListed(navigation)
   const finalName = name.trim() || t('New Bot')
   const clash = (team?.bots ?? []).some(bot => bot.name.toLowerCase() === finalName.toLowerCase())
@@ -495,9 +508,8 @@ export function NewBot({ navigation }: any) {
   }
   return (
     <Sheet>
-      <SheetHeader title={t('Create new Bot')} left={{ label: t('Cancel'), onPress: () => navigation.goBack() }}
-        right={{ label: t('Create'), onPress: () => void create(), disabled: busy || clash, strong: true }} />
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets keyboardDismissMode="interactive">
+      <SheetHeader title={t('Create new Bot')} left={{ label: t('Cancel'), onPress: () => navigation.goBack() }} />
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive">
         {error ? <Text style={[typeScale.small, { color: p.danger, marginHorizontal: 18, marginTop: 10 }]}>{error}</Text> : null}
         {/* The Bot as it will look, over its name, as the picks change. */}
         <View style={{ alignItems: 'center', marginTop: 8 }}>
@@ -523,6 +535,15 @@ export function NewBot({ navigation }: any) {
           <ModelPicker current={model} onPick={setModel} />
         </View>
       </ScrollView>
+      {/* The one action that finishes the form sits in reach of the thumb, at the
+          bottom of the page, rather than in the corner of the bar. It rides above the
+          keyboard with the scroll view. */}
+      <View style={[styles.footer, { borderTopColor: p.line, backgroundColor: p.main, paddingBottom: (keyboard > 0 ? keyboard : insets.bottom) + 10 }]}>
+        <Pressable accessibilityRole="button" disabled={busy || clash} onPress={() => void create()}
+          style={({ pressed }) => [styles.cta, { backgroundColor: busy || clash ? p.hover : p.accent, opacity: pressed ? 0.85 : 1 }]}>
+          <Text style={[typeScale.settingsRow, { color: busy || clash ? p.ink3 : p.accentInk, fontWeight: '600' }]}>{busy ? t('Creating…') : t('Create')}</Text>
+        </Pressable>
+      </View>
     </Sheet>
   )
 }
@@ -1125,6 +1146,7 @@ const styles = StyleSheet.create({
   adminTag: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, overflow: 'hidden' },
   pillBtn: { borderRadius: 20, paddingHorizontal: 18, minHeight: 40, paddingVertical: 8, alignItems: 'center', justifyContent: 'center' },
   cta: { minHeight: 48, borderRadius: radius.pill, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' },
+  footer: { paddingHorizontal: 16, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth },
   modalWrap: { flex: 1, justifyContent: 'center', paddingHorizontal: 20 },
   scrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.4)' },
   sheet: { maxHeight: '72%', borderRadius: radius.card, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden', ...shadow(2) },
