@@ -85,6 +85,16 @@ const call = useMemo(() => async (endpoint: string, payload: unknown = {}): Prom
         list.push(created); touch()
         return created
       }
+      case 'section-order': {
+        const ids = (Array.isArray(body.ids) ? body.ids : []).map(String)
+        const list = state.sections ?? []
+        // Only the folders that were sent move; anything else keeps its place at the end.
+        const moved = ids.map(id => list.find(entry => entry.id === id)).filter(entry => entry !== undefined)
+        const rest = list.filter(entry => !ids.includes(entry.id))
+        state.sections = [...moved, ...rest]
+        touch()
+        return { ok: true }
+      }
       case 'section-delete': {
         const id = String(body.id ?? '')
         state.sections = (state.sections ?? []).filter(entry => entry.id !== id)
@@ -325,5 +335,16 @@ const call = useMemo(() => async (endpoint: string, payload: unknown = {}): Prom
     }
   }, [data])
 
-  return { team: stateRef.current, online: true, error: null, call }
+  // The demo keeps one state object and changes it in place. Every screen memoizes on
+  // the arrays it is handed, so a change only shows if those are new objects too.
+  const snapshot = () => {
+    const current = stateRef.current
+    return {
+      ...current,
+      bots: (current.bots ?? []).map(bot => ({ ...bot })),
+      rooms: (current.rooms ?? []).map(room => ({ ...room })),
+      sections: (current.sections ?? []).map(section => ({ ...section })),
+    }
+  }
+  return { team: snapshot(), online: true, error: null, call }
 }
