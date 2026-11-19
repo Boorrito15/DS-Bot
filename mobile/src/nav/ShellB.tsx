@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as SecureStore from 'expo-secure-store'
 import { onPrefsChange, readPrefs } from '../store.ts'
 import { Drawer, useDrawer } from './Drawer.tsx'
+import { FolderSheetsProvider } from './folder-sheets.tsx'
 import { useTeam } from '../team/context.tsx'
 import { ErrorBoundary } from '../ui/error-boundary.tsx'
 import { t } from '../ui/i18n.ts'
@@ -344,11 +345,13 @@ export default function ShellB() {
   }, [navigation])
   if (saved === undefined) return <View style={{ flex: 1, backgroundColor: p.main }} />
   return (
-    <Drawer width={width} content={<DrawerContent />} edgeEnabled={top === 'Chat'}>
-      <ErrorBoundary>
-        <Inner initial={saved} />
-      </ErrorBoundary>
-    </Drawer>
+    <FolderSheetsProvider>
+      <Drawer width={width} content={<DrawerContent />} edgeEnabled={top === 'Chat'}>
+        <ErrorBoundary>
+          <Inner initial={saved} />
+        </ErrorBoundary>
+      </Drawer>
+    </FolderSheetsProvider>
   )
 }
 

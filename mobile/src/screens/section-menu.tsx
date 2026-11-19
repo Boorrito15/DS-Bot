@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { SECTION_COLORS, SECTION_NAME_MAX, cleanSectionName, sectionInk, type Section } from '../team/sections.ts'
 import { t } from '../ui/i18n.ts'
@@ -9,23 +9,25 @@ import { radius, type as typeScale, useTheme } from '../ui/tokens.ts'
 // Moving a chat into a folder, the way the desktop's section menu does it
 // (ds-bot/src/client/context-menu.js): the folders the host has, "No folder" to take
 // it out, and a way to make a new one without leaving the list.
-export function FolderPicker({ visible, title, sections, current, onPick, onCreate, onClose }: {
+export function FolderPicker({ visible, title, sections, current, error, onPick, onCreate, onClose }: {
   visible: boolean
   title: string
   sections: Section[]
   current?: string
+  error?: string | null
   onPick: (sectionId: string | null) => void
   onCreate: () => void
   onClose: () => void
 }) {
   const { p } = useTheme()
   const insets = useSafeAreaInsets()
+  if (!visible) return null
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel={t('Close')} />
+    <SheetOverlay onClose={onClose}>
       <View style={[styles.sheet, { backgroundColor: p.card, paddingBottom: insets.bottom + 8 }]}>
         <View style={[styles.grab, { backgroundColor: p.line }]} />
         <Text style={[typeScale.caption, { color: p.ink3, paddingHorizontal: 16, paddingTop: 6, paddingBottom: 2 }]}>{title}</Text>
+        {error ? <Text style={[typeScale.small, { color: p.danger, paddingHorizontal: 16, paddingBottom: 4 }]} accessibilityRole="alert">{error}</Text> : null}
         <ScrollView style={{ maxHeight: 360 }}>
           <Pressable accessibilityRole="radio" accessibilityState={{ checked: current === undefined }}
             onPress={() => onPick(null)} style={({ pressed }) => [styles.row, pressed && { backgroundColor: p.hover }]}>
@@ -51,14 +53,15 @@ export function FolderPicker({ visible, title, sections, current, onPick, onCrea
           </Pressable>
         </ScrollView>
       </View>
-    </Modal>
+    </SheetOverlay>
   )
 }
 
 // A folder's own menu: its name, its colour, and removing it. Deleting a folder in the
 // host puts its chats back in the plain list, so the phone never moves them itself.
-export function FolderEditor({ section, onSave, onDelete, onClose }: {
+export function FolderEditor({ section, error, onSave, onDelete, onClose }: {
   section: Section
+  error?: string | null
   onSave: (patch: { name?: string; color?: string | null }) => void
   onDelete: () => void
   onClose: () => void
@@ -74,8 +77,7 @@ export function FolderEditor({ section, onSave, onDelete, onClose }: {
     else onClose()
   }
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel={t('Close')} />
+    <SheetOverlay onClose={onClose}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={[styles.sheet, { backgroundColor: p.card, paddingBottom: insets.bottom + 8 }]}>
           <View style={[styles.grab, { backgroundColor: p.line }]} />
@@ -86,6 +88,7 @@ export function FolderEditor({ section, onSave, onDelete, onClose }: {
               <Text style={[typeScale.settingsRow, { color: cleaned === '' ? p.ink3 : p.accent, fontWeight: '600' }]}>{t('Save')}</Text>
             </Pressable>
           </View>
+          {error ? <Text style={[typeScale.small, { color: p.danger, paddingHorizontal: 16, paddingBottom: 4 }]} accessibilityRole="alert">{error}</Text> : null}
           <View style={[styles.field, { borderColor: p.line }]}>
             <TextInput value={name} onChangeText={setName} placeholder={t('Folder name')} placeholderTextColor={p.ink3}
               maxLength={SECTION_NAME_MAX} autoFocus selectTextOnFocus accessibilityLabel={t('Folder name')}
@@ -115,12 +118,24 @@ export function FolderEditor({ section, onSave, onDelete, onClose }: {
           </Pressable>
         </View>
       </KeyboardAvoidingView>
-    </Modal>
+    </SheetOverlay>
+  )
+}
+
+// A sheet drawn in the app's own tree, not a native Modal: a Modal opened from the
+// drawer is laid out at the drawer panel's width, which cut the sheet in half.
+function SheetOverlay({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
+  return (
+    <View style={styles.overlay}>
+      <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel={t('Close')} />
+      {children}
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
-  scrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.25)' },
+  overlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, justifyContent: 'flex-end' },
+  scrim: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.25)' },
   sheet: { borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingTop: 8 },
   grab: { alignSelf: 'center', width: 36, height: 4, borderRadius: 2, marginBottom: 4 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 48, paddingHorizontal: 16 },

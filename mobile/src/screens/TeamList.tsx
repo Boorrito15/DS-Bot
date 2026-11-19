@@ -7,8 +7,7 @@ import { useTeam } from '../team/context.tsx'
 import { botHasPending, roomHasPending } from '../nav/pending.ts'
 import { isUnread, seenVersion, subscribeSeen } from '../team/seen.ts'
 import { collapsedChange, folderAt, groupBySection, sectionInk, type DropZone, type Section } from '../team/sections.ts'
-import { confirmDanger } from '../nav/sheet.tsx'
-import { FolderEditor, FolderPicker } from './section-menu.tsx'
+import { useFolderSheets } from '../nav/folder-sheets.tsx'
 import { t } from '../ui/i18n.ts'
 import { ArrowDownIcon, ChevronRightIcon, FolderIcon, PlusIcon } from '../ui/icons.tsx'
 import { radius, type as typeScale, useTheme } from '../ui/tokens.ts'
@@ -45,8 +44,7 @@ export function TeamList({ onOpen, query = '', current }: { onOpen: (target: Cha
   // A folder change is the host's to make; the phone shows what comes back and any
   // refusal under the list, like the desktop does.
   const [actionError, setActionError] = useState<string | null>(null)
-  const [moving, setMoving] = useState<Entry | null>(null)
-  const [editing, setEditing] = useState<Section | null>(null)
+  const sheets = useFolderSheets()
   // A held chat can be dragged onto a folder header. The same hold, let go without
   // moving, opens the folder picker instead.
   const [dragging, setDragging] = useState<string | null>(null)
@@ -118,23 +116,8 @@ export function TeamList({ onOpen, query = '', current }: { onOpen: (target: Cha
     return room.preview
   }
 
-  const makeFolder = () => {
-    setActionError(null)
-    void call('section-save', {}).then(saved => {
-      const section = saved as Section | undefined
-      if (section?.id) { setMoving(null); setEditing(section) }
-    }, (failure: Error) => setActionError(failure?.message ?? String(failure)))
-  }
-
-  const moveInto = (entry: Entry, sectionId: string | null) => {
-    setMoving(null)
-    act('set-flags', { id: entry.item.id, sectionId })
-    // Landing in a closed folder would hide what was just moved.
-    const target = folders.find(folder => folder.id === sectionId)
-    if (target?.collapsed === true) act('section-save', collapsedChange(target, false))
-  }
-
   const entryOf = (key: string): Entry | undefined => entries.find(entry => `${entry.kind}-${entry.item.id}` === key)
+  const moveEntry = (entry: Entry) => sheets.move({ id: entry.item.id, name: entry.item.name, sectionId: entry.item.sectionId })
 
   const beginDrag = (key: string) => {
     dragKey.current = key
@@ -177,8 +160,8 @@ export function TeamList({ onOpen, query = '', current }: { onOpen: (target: Cha
     // The row's own press must not also open the chat after the hold.
     setTimeout(() => { if (held.current === key) held.current = null }, 400)
     if (entry === undefined) return
-    if (target !== null) moveInto(entry, target)
-    else if (!moved.current) setMoving(entry)
+    if (target !== null) sheets.move({ id: entry.item.id, name: entry.item.name, sectionId: target })
+    else if (!moved.current) moveEntry(entry)
   }
 
   const openRow = (entry: Entry) => {
@@ -219,7 +202,7 @@ export function TeamList({ onOpen, query = '', current }: { onOpen: (target: Cha
             <FolderHead section={folder} count={section.total} highlighted={dropTarget === folder.id}
               headRef={node => { heads.current.set(folder.id, node) }}
               onToggle={() => act('section-save', collapsedChange(folder, folder.collapsed !== true))}
-              onMenu={() => setEditing(folder)} />
+              onMenu={() => sheets.edit(folder)} />
           )
         }}
         renderItem={({ item: entry }) => {
@@ -240,27 +223,12 @@ export function TeamList({ onOpen, query = '', current }: { onOpen: (target: Cha
         }}
         ListEmptyComponent={<Text style={[typeScale.small, { color: p.ink3, textAlign: 'center', marginTop: 40 }]}>{team === null ? t('Connecting…') : ''}</Text>}
         ListFooterComponent={(
-          <Pressable accessibilityRole="button" onPress={makeFolder} style={({ pressed }) => [styles.footer, pressed && { backgroundColor: p.hover }]}>
+          <Pressable accessibilityRole="button" onPress={() => sheets.create()} style={({ pressed }) => [styles.footer, pressed && { backgroundColor: p.hover }]}>
             <PlusIcon color={p.ink3} />
             <Text style={[typeScale.small, { color: p.ink2 }]}>{t('New folder')}</Text>
           </Pressable>
         )}
       />
-      <FolderPicker visible={moving !== null} title={moving === null ? '' : t('Move {name} to', { name: moving.item.name })}
-        sections={folders} current={moving?.item.sectionId} onClose={() => setMoving(null)}
-        onPick={sectionId => moving === null ? undefined : moveInto(moving, sectionId)}
-        onCreate={makeFolder} />
-      {editing === null ? null : (
-        <FolderEditor section={editing} onClose={() => setEditing(null)}
-          onSave={patch => { act('section-save', { id: editing.id, ...patch }); setEditing(null) }}
-          onDelete={() => {
-            const target = editing
-            setEditing(null)
-            confirmDanger(t('Remove {name}?', { name: target.name }), t('Remove'),
-              () => act('section-delete', { id: target.id }),
-              t('Its chats go back to the list. Nothing is deleted.'))
-          }} />
-      )}
     </View>
   )
 }
