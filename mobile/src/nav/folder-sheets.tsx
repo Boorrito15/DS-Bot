@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from 'react'
-import { reordered, type Section } from '../team/sections.ts'
+import { collapsedChange, reordered, type Section } from '../team/sections.ts'
 import { useTeam } from '../team/context.tsx'
 import { FolderEditor, FolderPicker } from '../screens/section-menu.tsx'
 import { confirmDanger } from './sheet.tsx'
@@ -54,7 +54,7 @@ export function FolderSheetsProvider({ children }: { children: ReactNode }) {
     act('set-flags', { id: target.id, sectionId })
     // Landing in a closed folder would hide what was just moved.
     const folder = folders.find(entry => entry.id === sectionId)
-    if (folder?.collapsed === true) act('section-save', { id: folder.id })
+    if (folder?.collapsed === true) act('section-save', collapsedChange(folder, false))
   }
 
   const save = (section: Section, patch: { name?: string; color?: string | null }) => {

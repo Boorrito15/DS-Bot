@@ -32,9 +32,9 @@ test('folders keep the host order, and an empty one keeps its place', () => {
   assert.equal(groups[0].entries.length, 0)
 })
 
-test('reopening a folder drops the collapsed flag rather than storing false', () => {
+test('a folder says whether it is closed or open, so tapping it again reopens it', () => {
   assert.deepEqual(collapsedChange(home, true), { id: home.id, collapsed: true })
-  assert.deepEqual(collapsedChange(home, false), { id: home.id })
+  assert.deepEqual(collapsedChange(home, false), { id: home.id, collapsed: false })
 })
 
 test('a folder name is trimmed and stops at the host limit', () => {

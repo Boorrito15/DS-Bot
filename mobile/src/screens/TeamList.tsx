@@ -160,7 +160,8 @@ export function TeamList({ onOpen, query = '', current }: { onOpen: (target: Cha
       // "No folder" must say so: a missing sectionId would leave the folder alone.
       act('set-flags', { id: target.id, sectionId: folder === undefined ? null : folder })
       // Landing in a closed folder would hide what was just moved.
-      if (folder !== undefined && folders.find(entry => entry.id === folder)?.collapsed === true) act('section-save', { id: folder })
+      const moved = folders.find(entry => entry.id === folder)
+      if (moved?.collapsed === true) act('section-save', collapsedChange(moved, false))
       return
     }
     runAction(target, actionId)
@@ -181,7 +182,7 @@ export function TeamList({ onOpen, query = '', current }: { onOpen: (target: Cha
             {mainList.map(main => {
               const target = targetOf({ kind: 'bot', item: main })
               return (
-                <MenuView key={main.id} actions={rowMenuActions(target, folders)} onPressAction={({ nativeEvent }) => onMenuPick(target, nativeEvent.event)}>
+                <MenuView key={main.id} shouldOpenOnLongPress actions={rowMenuActions(target, folders)} onPressAction={({ nativeEvent }) => onMenuPick(target, nativeEvent.event)}>
                   <Pressable accessibilityRole="button" accessibilityLabel={`${main.name}, ${t('Main Bot')}`} onPress={() => onOpen({ kind: 'bot', id: main.id })}
                     style={({ pressed }) => [styles.tile, { backgroundColor: pressed || current === main.id ? p.active : p.hover }]}>
                     <Avatar bot={main} dark={dark} size={52} ring={p.hover} main working={workBots[main.id] !== undefined} waiting={botHasPending(team, main)} />
@@ -207,7 +208,7 @@ export function TeamList({ onOpen, query = '', current }: { onOpen: (target: Cha
           const label = folder === undefined ? undefined : `${entry.item.name}, ${folder}`
           const target = targetOf(entry)
           return (
-            <MenuView style={{ width: '100%' }} actions={rowMenuActions(target, folders)} onPressAction={({ nativeEvent }) => onMenuPick(target, nativeEvent.event)}>
+            <MenuView style={{ width: '100%' }} shouldOpenOnLongPress actions={rowMenuActions(target, folders)} onPressAction={({ nativeEvent }) => onMenuPick(target, nativeEvent.event)}>
               <View>
                 {entry.kind === 'bot' ? (
                   <BotRow bot={entry.item} p={p} dark={dark} mains={mains} waiting={botHasPending(team, entry.item)} workBots={workBots} preview={preview(entry.item)} selected={current === entry.item.id} unread={isUnread(hostId, entry.item.id, entry.item.lastAt, current === entry.item.id)} label={label} onPress={() => openRow(entry)} />
@@ -255,14 +256,18 @@ function BotRow({ bot, p, dark, mains, waiting, workBots, preview, unread, selec
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress}
       style={({ pressed }) => [styles.row, (pressed || selected) && { backgroundColor: p.hover }]}>
-      <Avatar bot={bot} dark={dark} size={36} ring={p.sidebar} main={mains.has(bot.id)} working={workBots[bot.id] !== undefined} waiting={waiting} />
+      <Avatar bot={bot} dark={dark} size={38} ring={p.sidebar} main={mains.has(bot.id)} working={workBots[bot.id] !== undefined} waiting={waiting} />
       <View style={styles.rowBody}>
         <View style={styles.nameRow}>
           <Text style={[typeScale.rowName, { color: p.ink, flexShrink: 1 }]} numberOfLines={1}>{bot.name}</Text>
           {bot.pinned === true ? <PinMarkIcon size={12} /> : null}
-          {unread === true ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: p.accent, marginLeft: 'auto' }} /> : null}
         </View>
-        {preview ? <Text style={[typeScale.rowPreview, { color: p.ink2 }]} numberOfLines={1}>{preview}</Text> : null}
+        {preview !== undefined || unread === true ? (
+          <View style={styles.previewRow}>
+            <Text style={[typeScale.rowPreview, { color: p.ink2, flexShrink: 1 }]} numberOfLines={1}>{preview ?? ''}</Text>
+            {unread === true ? <View style={[styles.unreadDot, { backgroundColor: p.accent }]} /> : null}
+          </View>
+        ) : null}
       </View>
     </Pressable>
   )
@@ -286,9 +291,13 @@ function RoomRow({ room, bots, p, dark, waiting, preview, unread, working, selec
         <View style={styles.nameRow}>
           <Text style={[typeScale.rowName, { color: p.ink, flexShrink: 1 }]} numberOfLines={1}>{room.name}</Text>
           {room.pinned === true ? <PinMarkIcon size={12} /> : null}
-          {unread === true ? <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: p.accent, marginLeft: 'auto' }} /> : null}
         </View>
-        {preview ? <Text style={[typeScale.rowPreview, { color: p.ink2 }]} numberOfLines={1}>{preview}</Text> : null}
+        {preview !== undefined || unread === true ? (
+          <View style={styles.previewRow}>
+            <Text style={[typeScale.rowPreview, { color: p.ink2, flexShrink: 1 }]} numberOfLines={1}>{preview ?? ''}</Text>
+            {unread === true ? <View style={[styles.unreadDot, { backgroundColor: p.accent }]} /> : null}
+          </View>
+        ) : null}
       </View>
     </Pressable>
   )
@@ -299,9 +308,11 @@ const styles = StyleSheet.create({
   tiles: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, paddingHorizontal: 12, paddingTop: 4, paddingBottom: 10 },
   tile: { width: 104, alignItems: 'center', borderRadius: radius.card, paddingTop: 10, paddingBottom: 8, paddingHorizontal: 6 },
   tag: { marginTop: 3, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, maxWidth: '100%' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 52, paddingVertical: 6, paddingHorizontal: 10, marginHorizontal: 8, borderRadius: 10 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 64, paddingVertical: 10, paddingHorizontal: 10, marginHorizontal: 8, borderRadius: 10 },
   rowBody: { flex: 1, minWidth: 0 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  previewRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 1 },
+  unreadDot: { width: 8, height: 8, borderRadius: 4 },
   folderHead: { flexDirection: 'row', alignItems: 'center', gap: 7, minHeight: 44, paddingHorizontal: 10, marginHorizontal: 8, marginTop: 6, borderRadius: 10 },
   footer: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44, paddingHorizontal: 16, marginHorizontal: 8, marginTop: 8, marginBottom: 12, borderRadius: 10 },
   waitDot: { position: 'absolute', bottom: -2, right: -2, width: 18, height: 18, borderRadius: 9, borderWidth: 3, alignItems: 'center', justifyContent: 'center' },

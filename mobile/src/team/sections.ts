@@ -52,10 +52,11 @@ export function groupBySection<T extends { sectionId?: string }>(entries: T[], s
   return { loose, groups: sections.map(section => ({ section, entries: inside.get(section.id) ?? [] })) }
 }
 
-// What a folder asks for when its header is tapped: the host stores `collapsed` as
-// present-or-absent, so reopening one deletes the flag.
-export function collapsedChange(section: Section, collapsed: boolean): { id: string; collapsed?: boolean } {
-  return collapsed ? { id: section.id, collapsed: true } : { id: section.id }
+// What a folder asks for when its header is tapped. The host stores `collapsed` as
+// present-or-absent, and reads an explicit false as "delete the flag"; sending nothing
+// at all would leave the folder as it was, so the state is always said out loud.
+export function collapsedChange(section: Section, collapsed: boolean): { id: string; collapsed: boolean } {
+  return { id: section.id, collapsed }
 }
 
 // A folder stops at the host's own limit (SECTION_NAME_MAX), counted the way a name
