@@ -213,6 +213,7 @@ function SettingsSheet() {
         <SettingsStack.Screen name="Providers" component={Providers} />
         <SettingsStack.Screen name="Connectors" component={Connectors} />
         <SettingsStack.Screen name="Capabilities" component={Capabilities} />
+        <SettingsStack.Screen name="Schedules" component={Schedules} />
         <SettingsStack.Screen name="TeamUsage" component={TeamUsage} />
         <SettingsStack.Screen name="Location" component={Location} />
         <SettingsStack.Screen name="Updates" component={Updates} />

@@ -825,6 +825,22 @@ export function Memory({ route, navigation }: any) {
 const KINDS: [string, string][] = [['at', 'Once'], ['daily', 'Every day'], ['weekly', 'Every week'], ['every', 'Repeat']]
 const UNITS: [string, number, string][] = [['minutes', 1, 'minutes'], ['hours', 60, 'hours'], ['days', 1440, 'days']]
 
+interface Task {
+  id: string
+  botId?: string
+  roomId?: string
+  sessionId: string
+  title: string
+  prompt?: string
+  kind: string
+  status: string
+  time?: string
+  everySeconds?: number
+  weekdays?: number[]
+  expression?: string
+  scheduledAt?: number
+}
+
 const todayString = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
 
 const whenText = (task: { kind: string; time?: string; everySeconds?: number; minutes?: number; weekdays?: number[]; expression?: string; scheduledAt?: number }) => {
@@ -849,14 +865,19 @@ const whenText = (task: { kind: string; time?: string; everySeconds?: number; mi
 }
 
 export function Schedules({ route, navigation }: any) {
-  const { p } = useTheme()
-  const { call } = useTeam()
+  const { p, dark } = useTheme()
+  const { team, call } = useTeam()
   const { run, error } = useWrite(navigation)
-  const botId = String(route.params?.botId ?? '')
-  const sessionId = String(route.params?.sessionId ?? '')
-  const [tasks, setTasks] = useState<{ id: string; botId?: string; sessionId: string; title: string; prompt?: string; kind: string; status: string; time?: string; everySeconds?: number; weekdays?: number[]; expression?: string; scheduledAt?: number }[]>([])
+  // Opened from a Bot, the page is that Bot's tasks; opened from Settings it is the
+  // whole team's, grouped by the chat each task speaks in.
+  const owner = String(route.params?.botId ?? '')
+  const bots = (team?.bots ?? []).filter(bot => bot.hidden !== true)
+  const rooms = (team?.rooms ?? []).filter(room => room.hidden !== true)
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [available, setAvailable] = useState(true)
   const [title, setTitle] = useState('')
   const [prompt, setPrompt] = useState('')
+  const [target, setTarget] = useState(owner !== '' ? owner : '')
   const [kind, setKind] = useState('daily')
   const [time, setTime] = useState('09:00')
   const [atDate, setAtDate] = useState(todayString)
@@ -865,8 +886,14 @@ export function Schedules({ route, navigation }: any) {
   const [count, setCount] = useState('1')
   const [unit, setUnit] = useState('hours')
   const [adding, setAdding] = useState(false)
-  const load = () => void call('schedules').then(v => setTasks(((v as { tasks?: typeof tasks })?.tasks ?? []).filter(t2 => t2.botId === undefined || t2.botId === botId))).catch(() => {})
-  useEffect(() => { load() }, [botId])
+  const load = () => void call('schedules').then(v => {
+    const view = v as { available?: boolean; tasks?: Task[] }
+    setAvailable(view?.available !== false)
+    setTasks((view?.tasks ?? []).filter(task => owner === '' || task.botId === owner))
+  }).catch(() => {})
+  useEffect(() => { load() }, [owner])
+  // The chat a task speaks in, as the host stores it: a Bot's id, or a room's.
+  const chatOf = (task: Task) => task.roomId !== undefined ? rooms.find(room => room.id === task.roomId) : bots.find(bot => bot.id === task.botId)
   const when = () => {
     if (kind === 'at') { const at = new Date(`${atDate}T${atTime}`); return Number.isNaN(at.getTime()) ? null : { kind, at: at.toISOString() } }
     if (kind === 'every') { const minutes = Math.round(Number(count) * (UNITS.find(([id]) => id === unit)?.[1] ?? 60)); return minutes > 0 ? { kind, minutes } : null }
@@ -874,72 +901,129 @@ export function Schedules({ route, navigation }: any) {
   }
   const create = () => {
     const timing = when()
-    if (!title.trim() || !prompt.trim() || timing === null) return
-    setAdding(true)
-    void run('schedule-create', { target: botId, title: title.trim(), prompt: prompt.trim(), when: timing }, () => { setTitle(''); setPrompt(''); load() })
-    setAdding(false)
+    if (target === '' || !title.trim() || !prompt.trim() || timing === null) return
+    void run('schedule-create', { target, title: title.trim(), prompt: prompt.trim(), when: timing }, () => { setTitle(''); setPrompt(''); setAdding(false); load() })
   }
+  const remove = (task: Task) => confirmDanger(t('Delete {name}?', { name: task.title }), t('Delete'),
+    () => void run('schedule-delete', { sessionId: task.sessionId, id: task.id }, load))
+  const groups = owner === '' ? [
+    ...bots.map(bot => ({ id: bot.id, tasks: tasks.filter(task => task.botId === bot.id) })),
+    ...rooms.map(room => ({ id: room.id, tasks: tasks.filter(task => task.botId === undefined && task.roomId === room.id) })),
+  ].filter(group => group.tasks.length > 0) : [{ id: owner, tasks }]
+  const targetName = (id: string) => bots.find(bot => bot.id === id)?.name ?? rooms.find(room => room.id === id)?.name ?? ''
   return (
-    <Screen title={String(route.params?.name ?? '')}>
-      <BackRow title={t('Schedules')} onBack={() => navigation.goBack()} />
-      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-        <Section label={t('Schedules')}>
-          {tasks.map(task => (
-            <View key={task.id} style={styles.row}>
-              <View style={{ flex: 1 }}>
-                <Text style={[typeScale.settingsRow, { color: p.ink }]}>{task.title}</Text>
-                <Text style={[typeScale.small, { color: p.ink3, marginTop: 2 }]}>{whenText(task)}</Text>
-              </View>
-              <Pressable accessibilityRole="button" accessibilityLabel={t('Delete task')} onPress={() => void run('schedule-delete', { sessionId: task.sessionId ?? sessionId, id: task.id }, load)} hitSlop={8}>
-                <Text style={{ color: p.ink3, fontSize: 17 }}>×</Text>
-              </Pressable>
-            </View>
-          ))}
-          {tasks.length === 0 ? <Row label={t('Nothing saved yet')} disabled /> : null}
-        </Section>
-        <Section label={t('New task')}>
-          <View style={styles.row}><TextInput style={[typeScale.settingsRow, { color: p.ink, flex: 1 }]} value={title} onChangeText={setTitle} placeholder={t('Morning briefing')} placeholderTextColor={p.ink3} /></View>
-          <View style={styles.row}><TextInput style={[typeScale.settingsRow, { color: p.ink, flex: 1, minHeight: 70, textAlignVertical: 'top' }]} value={prompt} onChangeText={setPrompt} placeholder={t('Sum up what changed since yesterday and what needs me today.')} placeholderTextColor={p.ink3} multiline /></View>
-          <View style={{ paddingHorizontal: 16, paddingVertical: 10 }}>
-            <Text style={[typeScale.small, { color: p.ink3, marginBottom: 6 }]}>{t('When')}</Text>
-            <Segmented value={kind} onPick={id => setKind(id)} options={KINDS.map(([id, label]) => ({ id, label: t(label) }))} />
-          </View>
-          {kind === 'at' ? (
-            <View style={styles.row}>
-              <TextInput style={[typeScale.settingsRow, { color: p.ink, flex: 1 }]} value={atDate} onChangeText={setAtDate} placeholder="YYYY-MM-DD" placeholderTextColor={p.ink3} autoCapitalize="none" />
-              <TextInput style={[typeScale.settingsRow, { color: p.ink, width: 70 }]} value={atTime} onChangeText={setAtTime} placeholder="09:00" placeholderTextColor={p.ink3} autoCapitalize="none" />
-            </View>
-          ) : null}
-          {kind === 'weekly' ? (
-            <View style={[styles.row, { flexWrap: 'wrap', gap: 6 }]}>
-              {[1, 2, 3, 4, 5, 6, 7].map(day => (
-                <Pressable key={day} accessibilityRole="button" accessibilityState={{ selected: weekdays.includes(day) }} onPress={() => setWeekdays(days => days.includes(day) ? days.filter(d => d !== day) : [...days, day].sort())}
-                  style={[styles.dayBtn, { borderColor: weekdays.includes(day) ? p.accent : p.line, backgroundColor: weekdays.includes(day) ? p.accent : 'transparent' }]}>
-                  <Text style={[typeScale.caption, { color: weekdays.includes(day) ? p.accentInk : p.ink2 }]}>{weekdayShort(day)}</Text>
+    <Screen title="">
+      <BackRow title={t('Scheduled tasks')} onBack={() => navigation.goBack()} />
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+        {error ? <Text style={[typeScale.small, { color: p.danger, marginHorizontal: 18, marginTop: 10 }]}>{error}</Text> : null}
+        {/* DSH runs the tasks; with its Automation plugin off there is nothing to list
+            and nothing to add, so the page says what to switch on instead. */}
+        {!available ? (
+          <>
+            <Section label={t('Scheduled tasks')}>
+              <Row label={t('Turn on Automation tasks in DSH')} hint={t('Switch on Automation tasks on the Plugins page in Settings.')} disabled />
+            </Section>
+          </>
+        ) : (
+          <>
+            {groups.length === 0 && !adding ? (
+              <Section label={t('Scheduled tasks')}><Row label={t('No scheduled tasks yet.')} disabled /></Section>
+            ) : null}
+            {groups.map(group => {
+              const chat = chatOf(group.tasks[0]) ?? bots.find(bot => bot.id === group.id) ?? rooms.find(room => room.id === group.id)
+              return (
+                <Section key={group.id} label={owner === '' ? (chat?.name ?? '') : t('Tasks')}>
+                  {group.tasks.map(task => (
+                    <View key={task.id} style={styles.row}>
+                      {owner === '' && chat !== undefined ? (
+                        'members' in chat
+                          ? <RoomAvatar room={chat} bots={bots} dark={dark} size={28} ring={p.card} />
+                          : <Avatar bot={chat} dark={dark} size={28} ring={p.card} />
+                      ) : null}
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={[typeScale.settingsRow, { color: task.status === 'active' ? p.ink : p.ink2 }]} numberOfLines={2}>{task.title}</Text>
+                        <Text style={[typeScale.small, { color: p.ink3, marginTop: 2 }]} numberOfLines={2}>{[whenText(task), task.status === 'paused' ? t('Paused') : ''].filter(Boolean).join(' · ')}</Text>
+                      </View>
+                      <Pressable accessibilityRole="button" accessibilityLabel={t('Delete task')} onPress={() => remove(task)} hitSlop={8} style={{ minWidth: 44, minHeight: 44, alignItems: 'flex-end', justifyContent: 'center' }}>
+                        <Text style={{ color: p.ink3, fontSize: 17 }}>×</Text>
+                      </Pressable>
+                    </View>
+                  ))}
+                </Section>
+              )
+            })}
+            {adding ? (
+              <Section label={t('New task')}>
+                {owner === '' ? (
+                  <View style={{ paddingHorizontal: 16, paddingTop: 12, gap: 8 }}>
+                    <Text style={[typeScale.caption, { color: p.ink3 }]}>{t('Send to')}</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                      {[...bots, ...rooms].map(chat => {
+                        const picked = target === chat.id
+                        return (
+                          <Pressable key={chat.id} accessibilityRole="radio" accessibilityState={{ checked: picked }} onPress={() => setTarget(chat.id)}
+                            style={{ borderRadius: 16, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: picked ? p.accent : p.hover }}>
+                            <Text style={[typeScale.small, { color: picked ? p.accentInk : p.ink2 }]} numberOfLines={1}>{chat.name}</Text>
+                          </Pressable>
+                        )
+                      })}
+                    </View>
+                  </View>
+                ) : null}
+                <View style={styles.row}><TextInput style={[typeScale.settingsRow, { color: p.ink, flex: 1 }]} value={title} onChangeText={setTitle} placeholder={t('Morning briefing')} placeholderTextColor={p.ink3} /></View>
+                <View style={styles.row}><TextInput style={[typeScale.settingsRow, { color: p.ink, flex: 1, minHeight: 70, textAlignVertical: 'top' }]} value={prompt} onChangeText={setPrompt} placeholder={t('Sum up what changed since yesterday and what needs me today.')} placeholderTextColor={p.ink3} multiline /></View>
+                <View style={{ paddingHorizontal: 16, paddingVertical: 10 }}>
+                  <Text style={[typeScale.small, { color: p.ink3, marginBottom: 6 }]}>{t('When')}</Text>
+                  <Segmented value={kind} onPick={id => setKind(id)} options={KINDS.map(([id, label]) => ({ id, label: t(label) }))} />
+                </View>
+                {kind === 'at' ? (
+                  <View style={styles.row}>
+                    <TextInput style={[typeScale.settingsRow, { color: p.ink, flex: 1 }]} value={atDate} onChangeText={setAtDate} placeholder="YYYY-MM-DD" placeholderTextColor={p.ink3} autoCapitalize="none" />
+                    <TextInput style={[typeScale.settingsRow, { color: p.ink, width: 70 }]} value={atTime} onChangeText={setAtTime} placeholder="09:00" placeholderTextColor={p.ink3} autoCapitalize="none" />
+                  </View>
+                ) : null}
+                {kind === 'weekly' ? (
+                  <View style={[styles.row, { flexWrap: 'wrap', gap: 6 }]}>
+                    {[1, 2, 3, 4, 5, 6, 7].map(day => (
+                      <Pressable key={day} accessibilityRole="button" accessibilityState={{ selected: weekdays.includes(day) }} onPress={() => setWeekdays(days => days.includes(day) ? days.filter(d => d !== day) : [...days, day].sort())}
+                        style={[styles.dayBtn, { borderColor: weekdays.includes(day) ? p.accent : p.line, backgroundColor: weekdays.includes(day) ? p.accent : 'transparent' }]}>
+                        <Text style={[typeScale.caption, { color: weekdays.includes(day) ? p.accentInk : p.ink2 }]}>{weekdayShort(day)}</Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                ) : null}
+                {kind === 'daily' || kind === 'weekly' ? (
+                  <View style={styles.row}><Text style={[typeScale.settingsRow, { color: p.ink3, flex: 1 }]}>{t('Time')}</Text>
+                    <TextInput style={[typeScale.settingsRow, { color: p.ink, minWidth: 70, textAlign: 'right' }]} value={time} onChangeText={setTime} placeholder="09:00" placeholderTextColor={p.ink3} autoCapitalize="none" /></View>
+                ) : null}
+                {kind === 'every' ? (
+                  <View style={{ paddingHorizontal: 16, paddingVertical: 10, gap: 8 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Text style={[typeScale.settingsRow, { color: p.ink3 }]}>{t('Every')}</Text>
+                      <TextInput style={[typeScale.settingsRow, { color: p.ink, minWidth: 72, borderWidth: 1, borderColor: p.line, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, textAlign: 'center' }]} value={count} onChangeText={setCount} placeholder="1" placeholderTextColor={p.ink3} keyboardType="number-pad" />
+                    </View>
+                    <Segmented value={unit} onPick={setUnit} options={UNITS.map(([id, , label]) => ({ id, label: t(label) }))} />
+                  </View>
+                ) : null}
+                <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingVertical: 12 }}>
+                  <Pressable accessibilityRole="button" onPress={() => setAdding(false)} style={[styles.pillBtn, { backgroundColor: p.hover, flex: 1 }]}>
+                    <Text style={{ color: p.ink2, fontWeight: '600' }}>{t('Cancel')}</Text>
+                  </Pressable>
+                  <Pressable accessibilityRole="button" disabled={!title.trim() || !prompt.trim() || target === ''} onPress={create} style={[styles.pillBtn, { backgroundColor: p.accent, flex: 2, opacity: !title.trim() || !prompt.trim() || target === '' ? 0.5 : 1 }]}>
+                    <Text style={{ color: p.accentInk, fontWeight: '600' }}>{t('Create task')}</Text>
+                  </Pressable>
+                </View>
+              </Section>
+            ) : (
+              <View style={{ paddingHorizontal: 18, marginTop: 14 }}>
+                <Pressable accessibilityRole="button" onPress={() => setAdding(true)} style={({ pressed }) => [styles.cta, { backgroundColor: p.accent, opacity: pressed ? 0.85 : 1 }]}>
+                  <Text style={[typeScale.settingsRow, { color: p.accentInk, fontWeight: '600' }]}>{t('New task')}</Text>
                 </Pressable>
-              ))}
-            </View>
-          ) : null}
-          {kind === 'daily' || kind === 'weekly' ? (
-            <View style={styles.row}><Text style={[typeScale.settingsRow, { color: p.ink3, flex: 1 }]}>{t('Time')}</Text>
-              <TextInput style={[typeScale.settingsRow, { color: p.ink, minWidth: 70, textAlign: 'right' }]} value={time} onChangeText={setTime} placeholder="09:00" placeholderTextColor={p.ink3} autoCapitalize="none" /></View>
-          ) : null}
-          {kind === 'every' ? (
-            <View style={{ paddingHorizontal: 16, paddingVertical: 10, gap: 8 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Text style={[typeScale.settingsRow, { color: p.ink3 }]}>{t('Every')}</Text>
-                <TextInput style={[typeScale.settingsRow, { color: p.ink, minWidth: 72, borderWidth: 1, borderColor: p.line, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, textAlign: 'center' }]} value={count} onChangeText={setCount} placeholder="1" placeholderTextColor={p.ink3} keyboardType="number-pad" />
+                {owner === '' ? null : <Text style={[typeScale.small, { color: p.ink3, marginTop: 10, textAlign: 'center' }]}>{targetName(owner)}</Text>}
               </View>
-              <Segmented value={unit} onPick={setUnit} options={UNITS.map(([id, , label]) => ({ id, label: t(label) }))} />
-            </View>
-          ) : null}
-        </Section>
-        <View style={{ paddingHorizontal: 18, marginTop: 14 }}>
-          {error !== null ? <Text style={[typeScale.caption, { color: p.danger, marginTop: 6 }]}>{error}</Text> : null}
-          <Pressable accessibilityRole="button" disabled={!title.trim() || !prompt.trim() || adding} onPress={create} style={({ pressed }) => [styles.cta, { backgroundColor: p.accent, opacity: !title.trim() || !prompt.trim() ? 0.5 : pressed ? 0.85 : 1 }]}>
-            <Text style={[typeScale.settingsRow, { color: p.accentInk, fontWeight: '600' }]}>{t('Create task')}</Text>
-          </Pressable>
-        </View>
+            )}
+          </>
+        )}
       </ScrollView>
     </Screen>
   )

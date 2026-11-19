@@ -13,6 +13,14 @@ export function demoLink() {
   const [, setTick] = useState(0)
   const stateRef = useRef(data.state)
   const chatsRef = useRef(data.chats)
+  // Scheduled tasks live beside the team state so a create or a delete shows up in
+  // the list, the way the host's own task store does.
+  const plansRef = useRef<{ id: string; botId?: string; roomId?: string; sessionId: string; title: string; prompt?: string; kind: string; time?: string; weekdays?: number[]; scheduledAt: number; status: string }[]>([
+    { id: 'sch-1', botId: 'b-chief', sessionId: 's-chief', title: 'Morning standup', prompt: 'Post the team status', kind: 'daily', time: '09:00', scheduledAt: Date.now() + 3600e3, status: 'active' },
+    { id: 'sch-2', botId: 'b-chief', sessionId: 's-chief', title: 'Weekly review', prompt: 'Summarize the week', kind: 'weekly', weekdays: [5], time: '17:00', scheduledAt: Date.now() + 86400e3, status: 'active' },
+    { id: 'sch-3', botId: 'b-writer', sessionId: 's-writer', title: 'Draft reminder', prompt: 'Start the release notes', kind: 'daily', time: '11:00', scheduledAt: Date.now() + 5400e3, status: 'active' },
+    { id: 'sch-4', roomId: 'r-launch', sessionId: 'r-launch', title: 'Ship check', prompt: 'Ask the group what is left', kind: 'weekly', weekdays: [4], time: '16:00', scheduledAt: Date.now() + 7200e3, status: 'paused' },
+  ])
   const bump = () => setTick(value => value + 1)
 
   const DEMO_IMG_1 = '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'
@@ -229,12 +237,34 @@ const call = useMemo(() => async (endpoint: string, payload: unknown = {}): Prom
         { scope: 'own', topic: null, text: 'Prefers concise status lines', added: '上周', by: null, source: 'memory panel' },
         { scope: 'team', topic: 'Team', text: 'Writer drafts docs first, Coder tests before merge', added: '本月', by: 'Chief', source: 'chat' },
       ] } }
-      case 'schedules': return { available: true, tasks: [
-        { id: 'sch-1', botId: 'b-chief', sessionId: 's-chief', title: 'Morning standup', prompt: 'Post the team status', kind: 'daily', time: '09:00', scheduledAt: Date.now() + 3600e3, status: 'active' },
-        { id: 'sch-2', botId: 'b-chief', sessionId: 's-chief', title: 'Weekly review', prompt: 'Summarize the week', kind: 'weekly', weekdays: [5], time: '17:00', scheduledAt: Date.now() + 86400e3, status: 'active' },
-        { id: 'sch-3', botId: 'b-chief', sessionId: 's-chief', title: 'Tag reminder', kind: 'at', scheduledAt: Date.now() + 7200e3, status: 'active' },
-      ] }
-      case 'schedule-create': case 'schedule-delete': return { ok: true }
+      case 'schedules': return { available: true, tasks: plansRef.current }
+      case 'schedule-create': {
+        const target = String(body.target ?? '')
+        const bot = bots.find(entry => entry.id === target)
+        const room = (state.rooms ?? []).find(entry => entry.id === target)
+        const timing = (body.when ?? {}) as { kind?: string; time?: string; at?: string; minutes?: number; weekdays?: number[] }
+        const sessionId = bot !== undefined ? bot.sessionId ?? bot.id : room?.id ?? target
+        plansRef.current = [...plansRef.current, {
+          id: `sch-${plansRef.current.length + 1}`,
+          ...(bot !== undefined ? { botId: bot.id } : {}),
+          ...(room !== undefined ? { roomId: room.id } : {}),
+          sessionId,
+          title: String(body.title ?? ''),
+          prompt: String(body.prompt ?? ''),
+          kind: timing.kind ?? 'daily',
+          time: timing.time,
+          weekdays: timing.weekdays,
+          scheduledAt: timing.at !== undefined ? Date.parse(timing.at) : Date.now() + 3600e3,
+          status: 'active',
+        }]
+        bump()
+        return { ok: true }
+      }
+      case 'schedule-delete': {
+        plansRef.current = plansRef.current.filter(task => task.id !== body.id)
+        bump()
+        return { ok: true }
+      }
       case 'folders': return { team: '/work', picker: 'browse', folders: [{ path: '/work/ds-bot', title: 'ds-bot' }, { path: '/work/docs', title: 'docs' }] }
       case 'folder-list': {
         const path = String(body.path ?? '')
