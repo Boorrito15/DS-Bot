@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { cleanSectionName, collapsedChange, folderAt, groupBySection, sectionInk, type Section } from './sections.ts'
+import { cleanSectionName, collapsedChange, folderAt, groupBySection, reordered, sectionInk, type Section } from './sections.ts'
 
 const work: Section = { id: 'sec-work', name: 'Work' }
 const home: Section = { id: 'sec-home', name: 'Home', collapsed: true, color: 'green' }
@@ -61,4 +61,20 @@ test('a drop lands on the folder header under the finger, and nowhere else', () 
 
 test('no folders means no drop target', () => {
   assert.equal(folderAt(120, []), null)
+})
+
+test('a folder moves one place and the whole order goes to the host', () => {
+  const a: Section = { id: 'a', name: 'A' }
+  const b: Section = { id: 'b', name: 'B' }
+  const c: Section = { id: 'c', name: 'C' }
+  assert.deepEqual(reordered([a, b, c], 'a', 1), ['b', 'a', 'c'])
+  assert.deepEqual(reordered([a, b, c], 'c', -1), ['a', 'c', 'b'])
+})
+
+test('a folder at an end does not move past it', () => {
+  const a: Section = { id: 'a', name: 'A' }
+  const b: Section = { id: 'b', name: 'B' }
+  assert.equal(reordered([a, b], 'a', -1), null)
+  assert.equal(reordered([a, b], 'b', 1), null)
+  assert.equal(reordered([a, b], 'gone', 1), null)
 })

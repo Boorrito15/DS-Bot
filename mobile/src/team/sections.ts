@@ -66,6 +66,18 @@ export function cleanSectionName(name: string): string {
   return name.trim().slice(0, SECTION_NAME_MAX)
 }
 
+// The host takes the whole order at once (section-order { ids }), so a folder that
+// moves up or down sends the list with itself one place nearer an end.
+export function reordered(sections: Section[], id: string, delta: -1 | 1): string[] | null {
+  const index = sections.findIndex(section => section.id === id)
+  const target = index + delta
+  if (index === -1 || target < 0 || target >= sections.length) return null
+  const ids = sections.map(section => section.id)
+  const [picked] = ids.splice(index, 1)
+  ids.splice(target, 0, picked)
+  return ids
+}
+
 // Where a dragged chat would land: the folder whose header sits under the finger.
 // Only headers take a drop, like the desktop's section blocks; letting go anywhere
 // else leaves the chat where it was.

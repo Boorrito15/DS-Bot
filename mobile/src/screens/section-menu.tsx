@@ -59,10 +59,14 @@ export function FolderPicker({ visible, title, sections, current, error, onPick,
 
 // A folder's own menu: its name, its colour, and removing it. Deleting a folder in the
 // host puts its chats back in the plain list, so the phone never moves them itself.
-export function FolderEditor({ section, error, onSave, onDelete, onClose }: {
+export function FolderEditor({ section, index, count, error, onSave, onMove, onDelete, onClose }: {
   section: Section
+  // Where this folder sits among the others, so the two move rows know their ends.
+  index: number
+  count: number
   error?: string | null
   onSave: (patch: { name?: string; color?: string | null }) => void
+  onMove: (delta: -1 | 1) => void
   onDelete: () => void
   onClose: () => void
 }) {
@@ -113,7 +117,17 @@ export function FolderEditor({ section, error, onSave, onDelete, onClose }: {
               <Text style={{ color: p.ink3, fontSize: 12 }}>—</Text>
             </Pressable>
           </View>
-          <Pressable accessibilityRole="button" onPress={onDelete} style={({ pressed }) => [styles.row, { marginTop: 10 }, pressed && { backgroundColor: p.hover }]}>
+          <View style={[styles.divider, { backgroundColor: p.line }]} />
+          <Pressable accessibilityRole="button" disabled={index <= 0} onPress={() => onMove(-1)}
+            style={({ pressed }) => [styles.row, index <= 0 && { opacity: 0.4 }, pressed && { backgroundColor: p.hover }]}>
+            <Text style={[typeScale.settingsRow, { color: p.ink, flex: 1 }]}>{t('Move up')}</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" disabled={index < 0 || index >= count - 1} onPress={() => onMove(1)}
+            style={({ pressed }) => [styles.row, (index < 0 || index >= count - 1) && { opacity: 0.4 }, pressed && { backgroundColor: p.hover }]}>
+            <Text style={[typeScale.settingsRow, { color: p.ink, flex: 1 }]}>{t('Move down')}</Text>
+          </Pressable>
+          <View style={[styles.divider, { backgroundColor: p.line }]} />
+          <Pressable accessibilityRole="button" onPress={onDelete} style={({ pressed }) => [styles.row, pressed && { backgroundColor: p.hover }]}>
             <Text style={[typeScale.settingsRow, { color: p.danger, flex: 1 }]}>{t('Remove folder')}</Text>
           </Pressable>
         </View>
@@ -139,6 +153,7 @@ const styles = StyleSheet.create({
   sheet: { borderTopLeftRadius: 16, borderTopRightRadius: 16, paddingTop: 8 },
   grab: { alignSelf: 'center', width: 36, height: 4, borderRadius: 2, marginBottom: 4 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 48, paddingHorizontal: 16 },
+  divider: { height: StyleSheet.hairlineWidth, marginHorizontal: 16 },
   icon: { width: 22, alignItems: 'center' },
   bar: { flexDirection: 'row', alignItems: 'center', minHeight: 48, paddingHorizontal: 16, gap: 8 },
   side: { minWidth: 60, justifyContent: 'center', minHeight: 44 },

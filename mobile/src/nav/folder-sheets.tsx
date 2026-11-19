@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from 'react'
-import type { Section } from '../team/sections.ts'
+import { reordered, type Section } from '../team/sections.ts'
 import { useTeam } from '../team/context.tsx'
 import { FolderEditor, FolderPicker } from '../screens/section-menu.tsx'
 import { confirmDanger } from './sheet.tsx'
@@ -62,6 +62,15 @@ export function FolderSheetsProvider({ children }: { children: ReactNode }) {
     act('section-save', { id: section.id, ...patch })
   }
 
+  // The host takes the whole order, so a folder that moves sends the list with
+  // itself one place nearer an end.
+  const move = (section: Section, delta: -1 | 1) => {
+    const ids = reordered(folders, section.id, delta)
+    if (ids === null) return
+    setEditing(null)
+    act('section-order', { ids })
+  }
+
   const remove = (section: Section) => {
     setEditing(null)
     confirmDanger(t('Remove {name}?', { name: section.name }), t('Remove'),
@@ -78,8 +87,9 @@ export function FolderSheetsProvider({ children }: { children: ReactNode }) {
         onPick={choose} onCreate={create} />
       {editing === null ? null : (
         <FolderEditor section={editing} error={error}
+          index={folders.findIndex(folder => folder.id === editing.id)} count={folders.length}
           onClose={() => { setEditing(null); setError(null) }}
-          onSave={patch => save(editing, patch)} onDelete={() => remove(editing)} />
+          onSave={patch => save(editing, patch)} onMove={delta => move(editing, delta)} onDelete={() => remove(editing)} />
       )}
     </Ctx.Provider>
   )
