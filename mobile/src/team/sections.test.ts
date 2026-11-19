@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { cleanSectionName, collapsedChange, groupBySection, sectionInk, type Section } from './sections.ts'
+import { cleanSectionName, collapsedChange, folderAt, groupBySection, sectionInk, type Section } from './sections.ts'
 
 const work: Section = { id: 'sec-work', name: 'Work' }
 const home: Section = { id: 'sec-home', name: 'Home', collapsed: true, color: 'green' }
@@ -47,4 +47,18 @@ test('a colour draws only when the host knows it, in the mode asked for', () => 
   assert.equal(sectionInk('green', true), '#059669')
   assert.equal(sectionInk(undefined, false), undefined)
   assert.equal(sectionInk('chartreuse', false), undefined)
+})
+
+test('a drop lands on the folder header under the finger, and nowhere else', () => {
+  const zones = [{ id: 'sec-work', top: 100, bottom: 144 }, { id: 'sec-home', top: 200, bottom: 244 }]
+  assert.equal(folderAt(120, zones), 'sec-work')
+  assert.equal(folderAt(144, zones), 'sec-work')
+  assert.equal(folderAt(230, zones), 'sec-home')
+  assert.equal(folderAt(60, zones), null)
+  assert.equal(folderAt(170, zones), null)
+  assert.equal(folderAt(300, zones), null)
+})
+
+test('no folders means no drop target', () => {
+  assert.equal(folderAt(120, []), null)
 })

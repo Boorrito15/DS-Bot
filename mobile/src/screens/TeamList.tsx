@@ -1,10 +1,12 @@
-import { useMemo, useState, useSyncExternalStore } from 'react'
+import { useMemo, useRef, useState, useSyncExternalStore, type ComponentRef } from 'react'
 import { Pressable, StyleSheet, Text, View, SectionList } from 'react-native'
+import { Gesture, GestureDetector } from 'react-native-gesture-handler'
+import { runOnJS } from 'react-native-reanimated'
 import type { Bot, Room } from '../connection.ts'
 import { useTeam } from '../team/context.tsx'
 import { botHasPending, roomHasPending } from '../nav/pending.ts'
 import { isUnread, seenVersion, subscribeSeen } from '../team/seen.ts'
-import { collapsedChange, groupBySection, sectionInk, type Section } from '../team/sections.ts'
+import { collapsedChange, folderAt, groupBySection, sectionInk, type DropZone, type Section } from '../team/sections.ts'
 import { confirmDanger } from '../nav/sheet.tsx'
 import { FolderEditor, FolderPicker } from './section-menu.tsx'
 import { t } from '../ui/i18n.ts'
@@ -45,6 +47,17 @@ export function TeamList({ onOpen, query = '', current }: { onOpen: (target: Cha
   const [actionError, setActionError] = useState<string | null>(null)
   const [moving, setMoving] = useState<Entry | null>(null)
   const [editing, setEditing] = useState<Section | null>(null)
+  // A held chat can be dragged onto a folder header. The same hold, let go without
+  // moving, opens the folder picker instead.
+  const [dragging, setDragging] = useState<string | null>(null)
+  const [dropTarget, setDropTarget] = useState<string | null>(null)
+  const held = useRef<string | null>(null)
+  const dragKey = useRef<string | null>(null)
+  const moved = useRef(false)
+  const startY = useRef(Number.NaN)
+  const zones = useRef<DropZone[]>([])
+  const hovered = useRef<string | null>(null)
+  const heads = useRef(new Map<string, ComponentRef<typeof View> | null>())
   const act = (endpoint: string, payload: unknown) => {
     setActionError(null)
     void call(endpoint, payload).catch((failure: Error) => setActionError(failure?.message ?? String(failure)))
@@ -65,14 +78,17 @@ export function TeamList({ onOpen, query = '', current }: { onOpen: (target: Cha
     const grouped = groupBySection(entries.map(entry => ({ ...entry, sectionId: entry.item.sectionId })), folders)
     return [
       { key: 'plain', section: undefined, total: grouped.loose.length, data: grouped.loose as Entry[] },
-      ...grouped.groups.map(group => ({
-        key: group.section.id,
-        section: group.section,
-        total: group.entries.length,
-        data: (group.section.collapsed === true ? [] : group.entries) as Entry[],
-      })),
+      ...grouped.groups
+        // While searching, a folder with nothing matching only adds noise.
+        .filter(group => needle === '' || group.entries.length > 0)
+        .map(group => ({
+          key: group.section.id,
+          section: group.section,
+          total: group.entries.length,
+          data: (group.section.collapsed === true ? [] : group.entries) as Entry[],
+        })),
     ]
-  }, [entries, folders])
+  }, [entries, folders, needle])
 
   const folderNameOf = (entry: Entry): string | undefined => folders.find(folder => folder.id === entry.item.sectionId)?.name
 
@@ -118,6 +134,64 @@ export function TeamList({ onOpen, query = '', current }: { onOpen: (target: Cha
     if (target?.collapsed === true) act('section-save', collapsedChange(target, false))
   }
 
+  const entryOf = (key: string): Entry | undefined => entries.find(entry => `${entry.kind}-${entry.item.id}` === key)
+
+  const beginDrag = (key: string) => {
+    dragKey.current = key
+    held.current = key
+    moved.current = false
+    startY.current = Number.NaN
+    hovered.current = null
+    setDragging(key)
+    setDropTarget(null)
+    // A folder takes a drop anywhere in its block, not only on its short header.
+    const measured: { id: string; top: number }[] = []
+    for (const [id, node] of heads.current) {
+      node?.measureInWindow((left, top, width, height) => {
+        measured.push({ id, top: top - 6 })
+        const sorted = [...measured].sort((a, b) => a.top - b.top)
+        zones.current = sorted.map((zone, index) => ({ id: zone.id, top: zone.top, bottom: (sorted[index + 1]?.top ?? Number.MAX_SAFE_INTEGER) }))
+      })
+    }
+  }
+
+  const trackDrag = (y: number) => {
+    // A held finger always shakes a little; only a real move counts as a drag.
+    if (Number.isNaN(startY.current)) { startY.current = y; return }
+    if (!moved.current && Math.abs(y - startY.current) < 8) return
+    moved.current = true
+    const id = folderAt(y, zones.current)
+    if (id === hovered.current) return
+    hovered.current = id
+    setDropTarget(id)
+  }
+
+  const endDrag = () => {
+    const key = dragKey.current
+    const entry = key === null ? undefined : entryOf(key)
+    const target = hovered.current
+    dragKey.current = null
+    hovered.current = null
+    setDragging(null)
+    setDropTarget(null)
+    // The row's own press must not also open the chat after the hold.
+    setTimeout(() => { if (held.current === key) held.current = null }, 400)
+    if (entry === undefined) return
+    if (target !== null) moveInto(entry, target)
+    else if (!moved.current) setMoving(entry)
+  }
+
+  const openRow = (entry: Entry) => {
+    if (held.current !== null) return
+    onOpen({ kind: entry.kind, id: entry.item.id })
+  }
+
+  const rowGesture = (key: string) => Gesture.Pan()
+    .activateAfterLongPress(300)
+    .onStart(() => { 'worklet'; runOnJS(beginDrag)(key) })
+    .onUpdate(event => { 'worklet'; runOnJS(trackDrag)(event.absoluteY) })
+    .onEnd(() => { 'worklet'; runOnJS(endDrag)() })
+
   return (
     <View style={styles.root}>
       {error ? <Text style={[typeScale.small, { color: p.danger, paddingHorizontal: 20, paddingBottom: 4 }]} accessibilityRole="alert">{error}</Text> : null}
@@ -142,7 +216,8 @@ export function TeamList({ onOpen, query = '', current }: { onOpen: (target: Cha
           const folder = section.section
           if (folder === undefined) return null
           return (
-            <FolderHead section={folder} count={section.total}
+            <FolderHead section={folder} count={section.total} highlighted={dropTarget === folder.id}
+              headRef={node => { heads.current.set(folder.id, node) }}
               onToggle={() => act('section-save', collapsedChange(folder, folder.collapsed !== true))}
               onMenu={() => setEditing(folder)} />
           )
@@ -150,10 +225,17 @@ export function TeamList({ onOpen, query = '', current }: { onOpen: (target: Cha
         renderItem={({ item: entry }) => {
           const folder = folderNameOf(entry)
           const label = folder === undefined ? undefined : `${entry.item.name}, ${folder}`
-          return entry.kind === 'bot' ? (
-            <BotRow bot={entry.item} p={p} dark={dark} mains={mains} waiting={botHasPending(team, entry.item)} workBots={workBots} preview={preview(entry.item)} selected={current === entry.item.id} unread={isUnread(hostId, entry.item.id, entry.item.lastAt, current === entry.item.id)} label={label} onPress={() => onOpen({ kind: 'bot', id: entry.item.id })} onLongPress={() => setMoving(entry)} />
-          ) : (
-            <RoomRow room={entry.item} bots={bots} p={p} dark={dark} waiting={roomHasPending(team, entry.item)} preview={roomPreview(entry.item)} selected={current === entry.item.id} unread={isUnread(hostId, entry.item.id, entry.item.lastAt, current === entry.item.id)} working={(workRooms[entry.item.id] ?? []).length > 0} label={label} onPress={() => onOpen({ kind: 'room', id: entry.item.id })} onLongPress={() => setMoving(entry)} />
+          const key = `${entry.kind}-${entry.item.id}`
+          return (
+            <GestureDetector gesture={rowGesture(key)}>
+              <View>
+                {entry.kind === 'bot' ? (
+                  <BotRow bot={entry.item} p={p} dark={dark} mains={mains} waiting={botHasPending(team, entry.item)} workBots={workBots} preview={preview(entry.item)} selected={current === entry.item.id} unread={isUnread(hostId, entry.item.id, entry.item.lastAt, current === entry.item.id)} label={label} dimmed={dragging === key} onPress={() => openRow(entry)} />
+                ) : (
+                  <RoomRow room={entry.item} bots={bots} p={p} dark={dark} waiting={roomHasPending(team, entry.item)} preview={roomPreview(entry.item)} selected={current === entry.item.id} unread={isUnread(hostId, entry.item.id, entry.item.lastAt, current === entry.item.id)} working={(workRooms[entry.item.id] ?? []).length > 0} label={label} dimmed={dragging === key} onPress={() => openRow(entry)} />
+                )}
+              </View>
+            </GestureDetector>
           )
         }}
         ListEmptyComponent={<Text style={[typeScale.small, { color: p.ink3, textAlign: 'center', marginTop: 40 }]}>{team === null ? t('Connecting…') : ''}</Text>}
@@ -183,13 +265,16 @@ export function TeamList({ onOpen, query = '', current }: { onOpen: (target: Cha
   )
 }
 
-function FolderHead({ section, count, onToggle, onMenu }: { section: Section; count: number; onToggle: () => void; onMenu: () => void }) {
+function FolderHead({ section, count, highlighted, headRef, onToggle, onMenu }: {
+  section: Section; count: number; highlighted: boolean; headRef: (node: ComponentRef<typeof View> | null) => void
+  onToggle: () => void; onMenu: () => void
+}) {
   const { p, dark } = useTheme()
   const ink = sectionInk(section.color, dark)
   return (
-    <Pressable accessibilityRole="button" accessibilityState={{ expanded: section.collapsed !== true }}
+    <Pressable ref={headRef} accessibilityRole="button" accessibilityState={{ expanded: section.collapsed !== true }}
       accessibilityLabel={section.name} onPress={onToggle} onLongPress={onMenu} delayLongPress={350}
-      style={({ pressed }) => [styles.folderHead, pressed && { backgroundColor: p.hover }]}>
+      style={({ pressed }) => [styles.folderHead, highlighted ? { backgroundColor: p.active } : pressed ? { backgroundColor: p.hover } : null]}>
       {section.collapsed === true ? <ChevronRightIcon size={16} color={p.ink3} /> : <ArrowDownIcon size={16} color={p.ink3} />}
       <FolderIcon size={17} color={ink ?? p.ink2} />
       <Text style={[typeScale.rowName, { color: p.ink, flexShrink: 1 }]} numberOfLines={1}>{section.name}</Text>
@@ -198,14 +283,14 @@ function FolderHead({ section, count, onToggle, onMenu }: { section: Section; co
   )
 }
 
-function BotRow({ bot, p, dark, mains, waiting, workBots, preview, unread, selected, label, onPress, onLongPress }: {
+function BotRow({ bot, p, dark, mains, waiting, workBots, preview, unread, selected, label, dimmed, onPress }: {
   bot: Bot; p: ReturnType<typeof useTheme>['p']; dark: boolean; mains: Set<string>
   waiting: boolean; workBots: Record<string, unknown>; preview?: string; unread?: boolean; selected?: boolean
-  label?: string; onPress: () => void; onLongPress: () => void
+  label?: string; dimmed: boolean; onPress: () => void
 }) {
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} onLongPress={onLongPress} delayLongPress={350}
-      style={({ pressed }) => [styles.row, (pressed || selected) && { backgroundColor: p.hover }]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress}
+      style={({ pressed }) => [styles.row, (pressed || selected) && { backgroundColor: p.hover }, dimmed && { opacity: 0.45 }]}>
       <Avatar bot={bot} dark={dark} size={36} ring={p.sidebar} main={mains.has(bot.id)} working={workBots[bot.id] !== undefined} waiting={waiting} />
       <View style={styles.rowBody}>
         <View style={styles.nameRow}>
@@ -219,14 +304,14 @@ function BotRow({ bot, p, dark, mains, waiting, workBots, preview, unread, selec
   )
 }
 
-function RoomRow({ room, bots, p, dark, waiting, preview, unread, working, selected, label, onPress, onLongPress }: {
+function RoomRow({ room, bots, p, dark, waiting, preview, unread, working, selected, label, dimmed, onPress }: {
   room: Room; bots: Bot[]; p: ReturnType<typeof useTheme>['p']; dark: boolean
   waiting: boolean; preview?: string; unread?: boolean; working: boolean; selected?: boolean
-  label?: string; onPress: () => void; onLongPress: () => void
+  label?: string; dimmed: boolean; onPress: () => void
 }) {
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} onLongPress={onLongPress} delayLongPress={350}
-      style={({ pressed }) => [styles.row, (pressed || selected) && { backgroundColor: p.hover }]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress}
+      style={({ pressed }) => [styles.row, (pressed || selected) && { backgroundColor: p.hover }, dimmed && { opacity: 0.45 }]}>
       <View>
         <RoomAvatar room={room} bots={bots} dark={dark} size={36} ring={p.sidebar} />
         {waiting ? <View style={[styles.waitDot, { borderColor: p.main }]}>

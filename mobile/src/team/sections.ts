@@ -65,3 +65,17 @@ export const SECTION_NAME_MAX = 32
 export function cleanSectionName(name: string): string {
   return name.trim().slice(0, SECTION_NAME_MAX)
 }
+
+// Where a dragged chat would land: the folder whose header sits under the finger.
+// Only headers take a drop, like the desktop's section blocks; letting go anywhere
+// else leaves the chat where it was.
+export interface DropZone {
+  id: string
+  top: number
+  bottom: number
+}
+
+export function folderAt(y: number, zones: DropZone[]): string | null {
+  for (const zone of zones) if (y >= zone.top && y <= zone.bottom) return zone.id
+  return null
+}
