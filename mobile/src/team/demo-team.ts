@@ -14,13 +14,13 @@ const seq = () => { let n = 0; return () => { n += 1; return n } }
 const BOTS: Bot[] = [
   { id: 'b-chief', name: 'Chief', role: 'Main Bot', capabilities: ['Run shell commands', 'Read files'], color: 'deepseek', avatar: { shape: 'whale' }, model: 'deepseek-official/deepseek-v4.1', effort: 'medium', workDir: '~/ds-bot', instructions: 'Keep the team moving, review every diff before it lands.', sessionId: 's-chief', parts: ['s-chief-0'], createdAt: T - 90 * 86400e3, lastAt: T - 600e3, preview: 'Here is the plan, in order' },
   { id: 'b-writer', name: 'Writer', role: 'Words and docs', color: 'violet', avatar: { shape: 'moon' }, model: 'deepseek-official/deepseek-flash', workDir: '~/ds-bot/docs', sessionId: 's-writer', createdAt: T - 60 * 86400e3, lastAt: T - 2400e3, preview: 'Draft is attached for review' },
-  { id: 'b-coder', name: 'Coder', role: 'Builds and fixes', color: 'cyan', avatar: { shape: 'hex' }, sessionId: 's-coder', createdAt: T - 55 * 86400e3 },
+  { id: 'b-coder', name: 'Coder', role: 'Builds and fixes', color: 'cyan', avatar: { shape: 'hex' }, sessionId: 's-coder', sectionId: 'sec-work', createdAt: T - 55 * 86400e3 },
   { id: 'b-researcher', name: 'Researcher', role: 'Reads and compares', color: 'green', avatar: { shape: 'pebbles' }, sessionId: 's-researcher', createdAt: T - 50 * 86400e3 },
   { id: 'b-designer', name: 'Designer', role: 'Interface and brand', color: 'magenta', avatar: { shape: 'star' }, sessionId: 's-designer', pinned: true, createdAt: T - 45 * 86400e3, lastAt: T - 7200e3, preview: 'New avatar set is in' },
 ]
 
 const ROOMS: Room[] = [
-  { id: 'r-launch', name: 'Launch plan', members: ['b-chief', 'b-coder', 'b-writer'], admin: 'b-chief', mode: 'admin', notice: 'Ship the release with green tests.', named: true, preview: 'Coder：Landing page draft is up', lastAt: T - 900e3, createdAt: T - 20 * 86400e3 },
+  { id: 'r-launch', name: 'Launch plan', members: ['b-chief', 'b-coder', 'b-writer'], admin: 'b-chief', mode: 'admin', notice: 'Ship the release with green tests.', named: true, preview: 'Coder：Landing page draft is up', sectionId: 'sec-launch', lastAt: T - 900e3, createdAt: T - 20 * 86400e3 },
   { id: 'r-weekly', name: 'Weekly review', members: ['b-researcher', 'b-designer'], preview: 'Researcher：Notes for Friday', lastAt: T - 86400e3, createdAt: T - 30 * 86400e3 },
 ]
 
@@ -112,6 +112,10 @@ export function demoData(): DemoData {
         ] },
       },
     },
+    sections: [
+      { id: 'sec-work', name: 'Work', color: 'blue' },
+      { id: 'sec-launch', name: 'Launch week', color: 'green' },
+    ],
     exchangeTurns: {},
     prefs: { theme: 'deepseek' },
   }

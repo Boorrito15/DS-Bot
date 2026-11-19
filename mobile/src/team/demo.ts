@@ -66,6 +66,43 @@ const call = useMemo(() => async (endpoint: string, payload: unknown = {}): Prom
       case 'state':
         if (body.since === state.revision) return { revision: state.revision, unchanged: true, work: state.work, activity: state.activity }
         return state
+      // Folder changes answer the way the computer's section endpoints do, so the
+      // demo's drawer behaves like a real one.
+      case 'section-save': {
+        const list = (state.sections ??= [])
+        const id = typeof body.id === 'string' ? body.id : ''
+        if (id !== '') {
+          const section = list.find(entry => entry.id === id)
+          if (section === undefined) throw Object.assign(new Error('Unknown section'), { code: 'bot/not-found' })
+          if (typeof body.name === 'string' && body.name.trim() !== '') section.name = body.name.trim()
+          if (typeof body.collapsed === 'boolean') { if (body.collapsed) section.collapsed = true; else delete section.collapsed }
+          if (body.color === null || body.color === '') delete section.color
+          else if (typeof body.color === 'string') section.color = body.color
+          touch()
+          return section
+        }
+        const created = { id: `sec-${list.length + 1}`, name: typeof body.name === 'string' && body.name.trim() !== '' ? body.name.trim() : `Folder ${list.length + 1}` }
+        list.push(created); touch()
+        return created
+      }
+      case 'section-delete': {
+        const id = String(body.id ?? '')
+        state.sections = (state.sections ?? []).filter(entry => entry.id !== id)
+        for (const entry of [...(state.bots ?? []), ...(state.rooms ?? [])]) if (entry.sectionId === id) delete entry.sectionId
+        touch()
+        return { ok: true }
+      }
+      case 'set-flags': {
+        const id = String(body.id ?? '')
+        const entry = [...(state.bots ?? []), ...(state.rooms ?? [])].find(candidate => candidate.id === id)
+        if (entry === undefined) throw Object.assign(new Error('Unknown chat'), { code: 'bot/not-found' })
+        if (body.sectionId === null) delete entry.sectionId
+        else if (typeof body.sectionId === 'string') entry.sectionId = body.sectionId
+        if (typeof body.pinned === 'boolean') entry.pinned = body.pinned
+        if (typeof body.hidden === 'boolean') entry.hidden = body.hidden
+        touch()
+        return entry
+      }
       case 'chat': {
         const pages = chatOf(String(body.botId ?? ''))
         if (pages === undefined || pages.length === 0) throw Object.assign(new Error('Unknown Bot'), { code: 'bot/not-found' })
