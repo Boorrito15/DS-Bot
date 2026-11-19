@@ -2,6 +2,7 @@ import { Platform } from 'react-native'
 import { RelayTransport, RpcClient, SecureTransport } from '../../link/src/index.ts'
 import type { PhoneIdentity, SavedComputer } from './store.ts'
 import type { ConnectorsView } from './team/connectors.ts'
+import type { Section } from './team/sections.ts'
 
 type BotResult<T> = { ok: true; value: T } | { ok: false; error: { code: string; message: string } }
 
@@ -29,6 +30,8 @@ export interface Bot {
   waiting?: boolean
   pinned?: boolean
   hidden?: boolean
+  // The sidebar folder the chat sits in, as the host stores it.
+  sectionId?: string
   createdAt?: number
   lastAt?: number
   preview?: string
@@ -47,6 +50,7 @@ export interface Room {
   sessionId?: string
   pinned?: boolean
   hidden?: boolean
+  sectionId?: string
   createdAt?: number
 }
 
@@ -102,6 +106,8 @@ export interface TeamState {
   liveKey?: string
   bots: Bot[]
   rooms?: Room[]
+  // The drawer's folders, in the host's order (see team/sections.ts).
+  sections?: Section[]
   mainBotId?: string | null
   mainBotIds?: string[]
   models?: { ref: string; name: string; provider?: string; providerName?: string }[]

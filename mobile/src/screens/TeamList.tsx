@@ -1,10 +1,14 @@
-import { useMemo, useSyncExternalStore } from 'react'
+import { useMemo, useState, useSyncExternalStore } from 'react'
 import { Pressable, StyleSheet, Text, View, SectionList } from 'react-native'
 import type { Bot, Room } from '../connection.ts'
 import { useTeam } from '../team/context.tsx'
 import { botHasPending, roomHasPending } from '../nav/pending.ts'
 import { isUnread, seenVersion, subscribeSeen } from '../team/seen.ts'
+import { collapsedChange, groupBySection, sectionInk, type Section } from '../team/sections.ts'
+import { confirmDanger } from '../nav/sheet.tsx'
+import { FolderEditor, FolderPicker } from './section-menu.tsx'
 import { t } from '../ui/i18n.ts'
+import { ArrowDownIcon, ChevronRightIcon, FolderIcon, PlusIcon } from '../ui/icons.tsx'
 import { radius, type as typeScale, useTheme } from '../ui/tokens.ts'
 import { Avatar, RoomAvatar } from '../ui/marks.tsx'
 import { PinMarkIcon } from '../ui/icons.tsx'
@@ -13,11 +17,14 @@ import { cleanPreview } from './chat/settled.ts'
 
 export interface ChatTarget { kind: 'bot' | 'room'; id: string }
 
+type Entry = { kind: 'bot'; item: Bot } | { kind: 'room'; item: Room }
+
 // The drawer's team list, laid out like the desktop sidebar (sidebar.js): every Main
 // Bot as a tile on top, then the other Bots and groups as rows, pinned first, then
-// by their latest message.
+// by their latest message, and each folder after the plain rows with its own chats
+// inside it.
 export function TeamList({ onOpen, query = '', current }: { onOpen: (target: ChatTarget) => void; query?: string; current?: string }) {
-  const { team, error, computer } = useTeam()
+  const { team, error, computer, call } = useTeam()
   const { p, dark } = useTheme()
   const hostId = computer?.hostDeviceId ?? ''
   useSyncExternalStore(subscribeSeen, seenVersion)
@@ -31,10 +38,21 @@ export function TeamList({ onOpen, query = '', current }: { onOpen: (target: Cha
   const waiting = team?.work?.waiting ?? {}
   const questions = team?.questions ?? {}
   const approvals = (Array.isArray(team?.work?.approvals) ? team.work.approvals : []).filter(a => a?.answerable !== false)
+  const folders: Section[] = team?.sections ?? []
 
-  const entries = useMemo(() => {
+  // A folder change is the host's to make; the phone shows what comes back and any
+  // refusal under the list, like the desktop does.
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [moving, setMoving] = useState<Entry | null>(null)
+  const [editing, setEditing] = useState<Section | null>(null)
+  const act = (endpoint: string, payload: unknown) => {
+    setActionError(null)
+    void call(endpoint, payload).catch((failure: Error) => setActionError(failure?.message ?? String(failure)))
+  }
+
+  const entries = useMemo<Entry[]>(() => {
     const rooms = Array.isArray(team?.rooms) ? team.rooms : []
-    const list = [
+    const list: Entry[] = [
       ...bots.filter(bot => !mains.has(bot.id) && bot.hidden !== true).map(bot => ({ kind: 'bot' as const, item: bot })),
       ...rooms.filter(room => room.hidden !== true).map(room => ({ kind: 'room' as const, item: room })),
     ]
@@ -42,6 +60,21 @@ export function TeamList({ onOpen, query = '', current }: { onOpen: (target: Cha
       .filter(entry => needle === '' || (entry.item.name ?? '').toLowerCase().includes(needle))
       .sort((a, b) => Number(Boolean(b.item.pinned)) - Number(Boolean(a.item.pinned)) || (b.item.lastAt ?? b.item.createdAt ?? 0) - (a.item.lastAt ?? a.item.createdAt ?? 0))
   }, [bots, team?.rooms, team?.mainBotIds, needle])
+
+  const listSections = useMemo<{ key: string; section: Section | undefined; total: number; data: Entry[] }[]>(() => {
+    const grouped = groupBySection(entries.map(entry => ({ ...entry, sectionId: entry.item.sectionId })), folders)
+    return [
+      { key: 'plain', section: undefined, total: grouped.loose.length, data: grouped.loose as Entry[] },
+      ...grouped.groups.map(group => ({
+        key: group.section.id,
+        section: group.section,
+        total: group.entries.length,
+        data: (group.section.collapsed === true ? [] : group.entries) as Entry[],
+      })),
+    ]
+  }, [entries, folders])
+
+  const folderNameOf = (entry: Entry): string | undefined => folders.find(folder => folder.id === entry.item.sectionId)?.name
 
   const preview = (bot: Bot): string | undefined => {
     const sessionId = bot.sessionId ?? bot.id
@@ -69,11 +102,28 @@ export function TeamList({ onOpen, query = '', current }: { onOpen: (target: Cha
     return room.preview
   }
 
+  const makeFolder = () => {
+    setActionError(null)
+    void call('section-save', {}).then(saved => {
+      const section = saved as Section | undefined
+      if (section?.id) { setMoving(null); setEditing(section) }
+    }, (failure: Error) => setActionError(failure?.message ?? String(failure)))
+  }
+
+  const moveInto = (entry: Entry, sectionId: string | null) => {
+    setMoving(null)
+    act('set-flags', { id: entry.item.id, sectionId })
+    // Landing in a closed folder would hide what was just moved.
+    const target = folders.find(folder => folder.id === sectionId)
+    if (target?.collapsed === true) act('section-save', collapsedChange(target, false))
+  }
+
   return (
     <View style={styles.root}>
       {error ? <Text style={[typeScale.small, { color: p.danger, paddingHorizontal: 20, paddingBottom: 4 }]} accessibilityRole="alert">{error}</Text> : null}
+      {actionError ? <Text style={[typeScale.small, { color: p.danger, paddingHorizontal: 20, paddingBottom: 4 }]} accessibilityRole="alert">{actionError}</Text> : null}
       <SectionList
-        sections={[{ data: entries }]}
+        sections={listSections}
         keyExtractor={entry => `${entry.kind}-${entry.item.id}`}
         stickySectionHeadersEnabled={false}
         ListHeaderComponent={mainList.length > 0 ? (
@@ -88,23 +138,74 @@ export function TeamList({ onOpen, query = '', current }: { onOpen: (target: Cha
             ))}
           </View>
         ) : undefined}
-        renderItem={({ item: entry }) => entry.kind === 'bot' ? (
-          <BotRow bot={entry.item} p={p} dark={dark} mains={mains} waiting={botHasPending(team, entry.item)} workBots={workBots} preview={preview(entry.item)} selected={current === entry.item.id} unread={isUnread(hostId, entry.item.id, entry.item.lastAt, current === entry.item.id)} onPress={() => onOpen({ kind: 'bot', id: entry.item.id })} />
-        ) : (
-          <RoomRow room={entry.item} bots={bots} p={p} dark={dark} waiting={roomHasPending(team, entry.item)} preview={roomPreview(entry.item)} selected={current === entry.item.id} unread={isUnread(hostId, entry.item.id, entry.item.lastAt, current === entry.item.id)} working={(workRooms[entry.item.id] ?? []).length > 0} onPress={() => onOpen({ kind: 'room', id: entry.item.id })} />
-        )}
+        renderSectionHeader={({ section }) => {
+          const folder = section.section
+          if (folder === undefined) return null
+          return (
+            <FolderHead section={folder} count={section.total}
+              onToggle={() => act('section-save', collapsedChange(folder, folder.collapsed !== true))}
+              onMenu={() => setEditing(folder)} />
+          )
+        }}
+        renderItem={({ item: entry }) => {
+          const folder = folderNameOf(entry)
+          const label = folder === undefined ? undefined : `${entry.item.name}, ${folder}`
+          return entry.kind === 'bot' ? (
+            <BotRow bot={entry.item} p={p} dark={dark} mains={mains} waiting={botHasPending(team, entry.item)} workBots={workBots} preview={preview(entry.item)} selected={current === entry.item.id} unread={isUnread(hostId, entry.item.id, entry.item.lastAt, current === entry.item.id)} label={label} onPress={() => onOpen({ kind: 'bot', id: entry.item.id })} onLongPress={() => setMoving(entry)} />
+          ) : (
+            <RoomRow room={entry.item} bots={bots} p={p} dark={dark} waiting={roomHasPending(team, entry.item)} preview={roomPreview(entry.item)} selected={current === entry.item.id} unread={isUnread(hostId, entry.item.id, entry.item.lastAt, current === entry.item.id)} working={(workRooms[entry.item.id] ?? []).length > 0} label={label} onPress={() => onOpen({ kind: 'room', id: entry.item.id })} onLongPress={() => setMoving(entry)} />
+          )
+        }}
         ListEmptyComponent={<Text style={[typeScale.small, { color: p.ink3, textAlign: 'center', marginTop: 40 }]}>{team === null ? t('Connecting…') : ''}</Text>}
+        ListFooterComponent={(
+          <Pressable accessibilityRole="button" onPress={makeFolder} style={({ pressed }) => [styles.footer, pressed && { backgroundColor: p.hover }]}>
+            <PlusIcon color={p.ink3} />
+            <Text style={[typeScale.small, { color: p.ink2 }]}>{t('New folder')}</Text>
+          </Pressable>
+        )}
       />
+      <FolderPicker visible={moving !== null} title={moving === null ? '' : t('Move {name} to', { name: moving.item.name })}
+        sections={folders} current={moving?.item.sectionId} onClose={() => setMoving(null)}
+        onPick={sectionId => moving === null ? undefined : moveInto(moving, sectionId)}
+        onCreate={makeFolder} />
+      {editing === null ? null : (
+        <FolderEditor section={editing} onClose={() => setEditing(null)}
+          onSave={patch => { act('section-save', { id: editing.id, ...patch }); setEditing(null) }}
+          onDelete={() => {
+            const target = editing
+            setEditing(null)
+            confirmDanger(t('Remove {name}?', { name: target.name }), t('Remove'),
+              () => act('section-delete', { id: target.id }),
+              t('Its chats go back to the list. Nothing is deleted.'))
+          }} />
+      )}
     </View>
   )
 }
 
-function BotRow({ bot, p, dark, mains, waiting, workBots, preview, unread, selected, onPress }: {
+function FolderHead({ section, count, onToggle, onMenu }: { section: Section; count: number; onToggle: () => void; onMenu: () => void }) {
+  const { p, dark } = useTheme()
+  const ink = sectionInk(section.color, dark)
+  return (
+    <Pressable accessibilityRole="button" accessibilityState={{ expanded: section.collapsed !== true }}
+      accessibilityLabel={section.name} onPress={onToggle} onLongPress={onMenu} delayLongPress={350}
+      style={({ pressed }) => [styles.folderHead, pressed && { backgroundColor: p.hover }]}>
+      {section.collapsed === true ? <ChevronRightIcon size={16} color={p.ink3} /> : <ArrowDownIcon size={16} color={p.ink3} />}
+      <FolderIcon size={17} color={ink ?? p.ink2} />
+      <Text style={[typeScale.rowName, { color: p.ink, flexShrink: 1 }]} numberOfLines={1}>{section.name}</Text>
+      {section.collapsed === true && count > 0 ? <Text style={[typeScale.caption, { color: p.ink3 }]}>{count}</Text> : null}
+    </Pressable>
+  )
+}
+
+function BotRow({ bot, p, dark, mains, waiting, workBots, preview, unread, selected, label, onPress, onLongPress }: {
   bot: Bot; p: ReturnType<typeof useTheme>['p']; dark: boolean; mains: Set<string>
-  waiting: boolean; workBots: Record<string, unknown>; preview?: string; unread?: boolean; selected?: boolean; onPress: () => void
+  waiting: boolean; workBots: Record<string, unknown>; preview?: string; unread?: boolean; selected?: boolean
+  label?: string; onPress: () => void; onLongPress: () => void
 }) {
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.row, (pressed || selected) && { backgroundColor: p.hover }]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} onLongPress={onLongPress} delayLongPress={350}
+      style={({ pressed }) => [styles.row, (pressed || selected) && { backgroundColor: p.hover }]}>
       <Avatar bot={bot} dark={dark} size={36} ring={p.sidebar} main={mains.has(bot.id)} working={workBots[bot.id] !== undefined} waiting={waiting} />
       <View style={styles.rowBody}>
         <View style={styles.nameRow}>
@@ -118,12 +219,14 @@ function BotRow({ bot, p, dark, mains, waiting, workBots, preview, unread, selec
   )
 }
 
-function RoomRow({ room, bots, p, dark, waiting, preview, unread, working, selected, onPress }: {
+function RoomRow({ room, bots, p, dark, waiting, preview, unread, working, selected, label, onPress, onLongPress }: {
   room: Room; bots: Bot[]; p: ReturnType<typeof useTheme>['p']; dark: boolean
-  waiting: boolean; preview?: string; unread?: boolean; working: boolean; selected?: boolean; onPress: () => void
+  waiting: boolean; preview?: string; unread?: boolean; working: boolean; selected?: boolean
+  label?: string; onPress: () => void; onLongPress: () => void
 }) {
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.row, (pressed || selected) && { backgroundColor: p.hover }]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} onLongPress={onLongPress} delayLongPress={350}
+      style={({ pressed }) => [styles.row, (pressed || selected) && { backgroundColor: p.hover }]}>
       <View>
         <RoomAvatar room={room} bots={bots} dark={dark} size={36} ring={p.sidebar} />
         {waiting ? <View style={[styles.waitDot, { borderColor: p.main }]}>
@@ -150,6 +253,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 52, paddingVertical: 6, paddingHorizontal: 10, marginHorizontal: 8, borderRadius: 10 },
   rowBody: { flex: 1, minWidth: 0 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  folderHead: { flexDirection: 'row', alignItems: 'center', gap: 7, minHeight: 44, paddingHorizontal: 10, marginHorizontal: 8, marginTop: 6, borderRadius: 10 },
+  footer: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44, paddingHorizontal: 16, marginHorizontal: 8, marginTop: 8, marginBottom: 12, borderRadius: 10 },
   waitDot: { position: 'absolute', bottom: -2, right: -2, width: 18, height: 18, borderRadius: 9, borderWidth: 3, alignItems: 'center', justifyContent: 'center' },
   waitIn: { width: 12, height: 12, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
 })
