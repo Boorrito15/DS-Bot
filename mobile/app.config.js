@@ -18,6 +18,9 @@ const appleTeamId = (process.env.DS_BOT_APPLE_TEAM_ID ?? '').trim()
 module.exports = ({ config }) => ({
   ...config,
   version,
+  // The document scanner ships its own native view; Expo needs it named here so a
+  // prebuild links it.
+  plugins: [...(config.plugins ?? []), 'react-native-document-scanner-plugin'],
   android: { ...config.android, versionCode: versionCode(version) },
   ios: {
     ...config.ios,

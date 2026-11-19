@@ -1,6 +1,9 @@
+import { MenuView } from '@react-native-menu/menu'
+import * as DocumentPicker from 'expo-document-picker'
 import * as Haptics from 'expo-haptics'
 import * as ImagePicker from 'expo-image-picker'
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator'
+import DocumentScanner from 'react-native-document-scanner-plugin'
 import { useState } from 'react'
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -15,12 +18,17 @@ export interface Photo { uri: string; mediaType: string; data: string }
 // 2048 px as JPEG, which keeps one photo well under what the link carries in a
 // message and is as much as the models look at.
 const LONG_SIDE = 2048
-async function prepare(asset: ImagePicker.ImagePickerAsset): Promise<Photo> {
+interface Picked { uri: string; width?: number; height?: number }
+async function prepare(asset: Picked): Promise<Photo> {
   const long = Math.max(asset.width ?? 0, asset.height ?? 0)
-  const resize = long > LONG_SIDE ? [{ resize: asset.width >= asset.height ? { width: LONG_SIDE } : { height: LONG_SIDE } }] : []
+  const resize = long > LONG_SIDE ? [{ resize: (asset.width ?? 0) >= (asset.height ?? 0) ? { width: LONG_SIDE } : { height: LONG_SIDE } }] : []
   const out = await manipulateAsync(asset.uri, resize, { compress: 0.82, format: SaveFormat.JPEG, base64: true })
   return { uri: out.uri, mediaType: 'image/jpeg', data: out.base64 ?? '' }
 }
+
+// The computer takes photos in a message, so a video or a PDF has no way to travel
+// yet; the menu still offers the picker and this says what happened.
+const NOT_SENDABLE = 'Only photos can be sent to the computer for now.'
 
 // The composer card: min height 44, radius 22 (18 when multi-line), level-1
 // shadow; send is a 36px accent circle. While the Bot runs and the draft is
@@ -49,17 +57,55 @@ export function Composer({ name, running, canStop, canAttach, onSend, onStop, p 
     setText(''); setPhotos([])
     void onSend(draft, sending)
   }
-  const pick = async () => {
-    setPickError(null)
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsMultipleSelection: true, selectionLimit: 0, quality: 1, orderedSelection: true })
-    if (result.canceled || result.assets.length === 0) return
+  const add = async (picked: Picked[], refused = 0) => {
+    if (picked.length === 0) {
+      if (refused > 0) setPickError(t(NOT_SENDABLE))
+      return
+    }
     setPreparing(true)
     try {
-      const ready = await Promise.all(result.assets.map(prepare))
+      const ready = await Promise.all(picked.map(prepare))
       setPhotos(prev => [...prev, ...ready.filter(photo => photo.data !== '')])
+      if (refused > 0) setPickError(t(NOT_SENDABLE))
     } catch (failure) {
       setPickError(failure instanceof Error ? failure.message : String(failure))
     } finally { setPreparing(false) }
+  }
+  // The attach button asks what to add, the way the system does: the library, the
+  // camera, a scan, or a file the phone can reach.
+  const attach = async (choice: string) => {
+    setPickError(null)
+    try {
+      if (choice === 'library') {
+        const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images', 'videos'], allowsMultipleSelection: true, selectionLimit: 0, quality: 1, orderedSelection: true })
+        if (result.canceled) return
+        const photos = result.assets.filter(asset => asset.type !== 'video')
+        await add(photos, result.assets.length - photos.length)
+        return
+      }
+      if (choice === 'camera') {
+        const granted = await ImagePicker.requestCameraPermissionsAsync()
+        if (!granted.granted) { setPickError(t('Camera access is off for DS Bot. Turn it on in Settings.')); return }
+        const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 1 })
+        if (result.canceled) return
+        await add(result.assets)
+        return
+      }
+      if (choice === 'scan') {
+        const result = await DocumentScanner.scanDocument({ maxNumDocuments: 1, croppedImageQuality: 90 })
+        if (result.status !== 'success') return
+        await add((result.scannedImages ?? []).map(uri => ({ uri })))
+        return
+      }
+      if (choice === 'file') {
+        // Only what can make the trip: an image file from Files or iCloud Drive.
+        const result = await DocumentPicker.getDocumentAsync({ type: 'image/*', multiple: true, copyToCacheDirectory: true })
+        if (result.canceled) return
+        await add(result.assets.map(asset => ({ uri: asset.uri })))
+      }
+    } catch (failure) {
+      setPickError(failure instanceof Error ? failure.message : String(failure))
+    }
   }
   const multi = text.includes('\n') || text.length > 80 || photos.length > 0
   return (
@@ -82,9 +128,16 @@ export function Composer({ name, running, canStop, canAttach, onSend, onStop, p 
         ) : null}
         <View style={styles.line}>
           {canAttach ? (
-            <Pressable accessibilityRole="button" accessibilityLabel={t('Add photos')} onPress={() => void pick()} hitSlop={6} style={styles.attach}>
-              <PlusIcon size={20} color={p.ink2} />
-            </Pressable>
+            <MenuView onPressAction={({ nativeEvent }) => void attach(nativeEvent.event)} actions={[
+              { id: 'library', title: t('Photo or Video') },
+              { id: 'camera', title: t('Take Photo') },
+              { id: 'scan', title: t('Scan Document') },
+              { id: 'file', title: t('Choose File') },
+            ]}>
+              <Pressable accessibilityRole="button" accessibilityLabel={t('Add photos')} hitSlop={6} style={styles.attach}>
+                <PlusIcon size={20} color={p.ink2} />
+              </Pressable>
+            </MenuView>
           ) : null}
           <TextInput value={text} onChangeText={setText} placeholder={t('Message {name}', { name })} placeholderTextColor={p.ink3}
             multiline style={[styles.input, { color: p.ink, paddingLeft: canAttach ? 2 : 6 }]} accessibilityLabel={t('Message {name}', { name })} />
