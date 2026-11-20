@@ -1,18 +1,29 @@
-// The `/` commands the phone offers. They are the ones DS Bot adds to the desktop's
-// menu (ds-bot/src/client/command-actions.js), not DSH's own commands: the host shields
-// those in a Bot chat and a group chat, and the plugin gives no way for the phone to run
-// them, so listing them here would promise something that cannot happen.
+// The `/` commands the phone offers, and the words the menu shows for each of them.
+//
+// Which of them a chat has is the host's answer (ds-bot/src/host/command-rows.js), so
+// the phone asks when a chat opens rather than keeping its own copy of that rule. A host
+// that predates the endpoint leaves the list undefined, and the phone falls back to the
+// kind-only rule it used before.
+//
+// These are the rows a phone can act on. DSH's own commands are not among them: the host
+// refuses them in a Bot chat and in a group chat, and nothing on the phone can run one.
 
 export interface CommandSpec { id: string; name: string; label: string; description: string }
 
 export const COMMANDS: CommandSpec[] = [
+  { id: 'file', name: 'file', label: 'File', description: 'Add a photo, a scan, or a file' },
   { id: 'scheduled-task', name: 'scheduled-task', label: 'Scheduled task', description: 'Open the scheduled tasks of this chat' },
   { id: 'goal', name: 'goal', label: 'Goal', description: 'Open the goal of this group chat' },
 ]
 
 // `/goal` belongs to a group chat, as on the desktop.
-export function commandsFor(kind: 'bot' | 'room'): CommandSpec[] {
-  return kind === 'room' ? COMMANDS : COMMANDS.filter(command => command.id !== 'goal')
+export function commandsFor(kind: 'bot' | 'room', rows?: string[]): CommandSpec[] {
+  const ids = rows ?? COMMANDS.filter(command => kind === 'room' || command.id !== 'goal').map(command => command.id)
+  // A row the host knows and the phone does not is skipped: the phone cannot run it, so
+  // listing it would only promise something that cannot happen.
+  return [...new Set(ids)]
+    .map(id => COMMANDS.find(command => command.id === id))
+    .filter(command => command !== undefined) as CommandSpec[]
 }
 
 // A draft that starts with a command word. A slash followed by anything with a space or

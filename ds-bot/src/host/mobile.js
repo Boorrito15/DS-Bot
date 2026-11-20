@@ -50,6 +50,7 @@ export const CAPABILITIES = [
   'markdown-image',
   'file-download-chunks',
   'write-state',
+  'slash-commands',
 ]
 export const NOTICE_KINDS = ['message', 'group', 'done', 'question', 'view', 'approval']
 

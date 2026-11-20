@@ -3,8 +3,18 @@ import { test } from 'node:test'
 import { commandNamed, commandsFor, matchCommands, parseCommand, unknownCommand } from './commands.ts'
 
 test('a group chat has the goal command, a Bot chat does not', () => {
-  assert.deepEqual(commandsFor('room').map(command => command.name), ['scheduled-task', 'goal'])
-  assert.deepEqual(commandsFor('bot').map(command => command.name), ['scheduled-task'])
+  assert.deepEqual(commandsFor('room').map(command => command.name), ['file', 'scheduled-task', 'goal'])
+  assert.deepEqual(commandsFor('bot').map(command => command.name), ['file', 'scheduled-task'])
+})
+
+test('the host says which rows a chat has, and its order wins', () => {
+  assert.deepEqual(commandsFor('bot', ['scheduled-task', 'file']).map(command => command.name), ['scheduled-task', 'file'])
+  // A row this phone cannot run is skipped rather than shown dead.
+  assert.deepEqual(commandsFor('bot', ['scheduled-task', 'compact']).map(command => command.name), ['scheduled-task'])
+  // A row named twice is drawn once.
+  assert.deepEqual(commandsFor('room', ['goal', 'goal']).map(command => command.name), ['goal'])
+  // A host that names no rows gets no rows, rather than the fallback list.
+  assert.deepEqual(commandsFor('room', []), [])
 })
 
 test('a slash word and its arguments are one command', () => {
@@ -23,7 +33,7 @@ test('a path is a message, not a command', () => {
 
 test('the menu lists every command for a bare slash and narrows as letters come', () => {
   const list = commandsFor('room')
-  assert.deepEqual(matchCommands('/', list).map(command => command.name), ['scheduled-task', 'goal'])
+  assert.deepEqual(matchCommands('/', list).map(command => command.name), ['file', 'scheduled-task', 'goal'])
   assert.deepEqual(matchCommands('/s', list).map(command => command.name), ['scheduled-task'])
   assert.deepEqual(matchCommands('/G', list).map(command => command.name), ['goal'])
   assert.deepEqual(matchCommands('/nope', list), [])
@@ -37,4 +47,8 @@ test('a slash word nobody knows is named back instead of sent', () => {
   assert.equal(unknownCommand('/scheduled-task', list), undefined)
   assert.equal(unknownCommand('/goal', commandsFor('bot')), 'goal')
   assert.equal(unknownCommand('/goal now', list), undefined)
+})
+
+test('the file row runs the composer, so a draft naming it is a command too', () => {
+  assert.equal(commandNamed('/file', commandsFor('bot'))?.id, 'file')
 })

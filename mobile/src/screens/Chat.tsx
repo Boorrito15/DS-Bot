@@ -109,6 +109,25 @@ export function ChatView({ bot, room, header, onMissing }: { bot?: Bot; room?: R
   const id = bot?.id ?? room?.id ?? ''
   // A `/` command opens the phone's own page for it, rather than sending text the way the
   // desktop's menu does: the plugin exposes no way to run a DSH command from here.
+  // The `/` rows this chat has, as the host answers them (ds-bot/src/host/command-rows.js).
+  // Until that answer arrives, and on a host that predates the endpoint, the phone falls
+  // back to its own kind-only rule, so the menu never comes up empty.
+  const rowsKey = `${room !== undefined ? 'room' : 'bot'}:${id}`
+  const [rowIds, setRowIds] = useState<{ key: string; ids: string[] | null }>({ key: '', ids: null })
+  const commands = commandsFor(room !== undefined ? 'room' : 'bot', rowIds.key === rowsKey ? rowIds.ids ?? undefined : undefined)
+  useEffect(() => {
+    let live = true
+    const payload = room !== undefined ? { roomId: room.id } : { botId: bot?.id }
+    void call('slash-commands', payload).then(
+      (value) => {
+        if (!live) return
+        const rows = (value as { rows?: { id?: string }[] } | null)?.rows
+        setRowIds({ key: rowsKey, ids: Array.isArray(rows) ? rows.map(row => String(row?.id ?? '')) : null })
+      },
+      () => { if (live) setRowIds({ key: rowsKey, ids: null }) },
+    )
+    return () => { live = false }
+  }, [call, rowsKey, bot?.id, room?.id])
   const runCommand = (command: CommandSpec) => {
     if (command.id === 'scheduled-task') {
       navigation.navigate('Schedules', room !== undefined ? { roomId: room.id } : { botId: bot?.id })
@@ -510,7 +529,7 @@ export function ChatView({ bot, room, header, onMissing }: { bot?: Bot; room?: R
       {fileError ? <Text style={[type.small, { color: p.danger, textAlign: 'center', marginBottom: 4 }]} accessibilityRole="alert">{fileError}</Text> : null}
       {page !== null && loadError !== null ? <Text style={[type.small, { color: p.danger, textAlign: 'center', marginBottom: 4, marginHorizontal: 16 }]} accessibilityRole="alert">{loadError}</Text> : null}
       <Composer name={bot?.name ?? room?.name ?? ''} running={running} canStop={canStop} canAttach={hello?.capabilities?.includes('send-images') === true} onSend={send} onStop={stop} p={p}
-        commands={commandsFor(room !== undefined ? 'room' : 'bot')} onCommand={runCommand} />
+        commands={commands} onCommand={runCommand} />
       <Actions visible={menuText !== null} text={menuText ?? ''} p={p}
         onClose={() => setMenuText(null)}
         onSelect={() => { setReaderTitle(null); setReaderText(menuText); setMenuText(null) }} />

@@ -6,6 +6,7 @@ import { install as installSide } from './side.js'
 import { handoffReply, questionReply, viewReply } from './parts.js'
 import { threadCurrentOfPart } from './threads.js'
 import { validateViewAnswer } from 'deep-view/core'
+import { commandRows } from './command-rows.js'
 import { COLORS, EXTRA_COLORS, ROUTE } from './constants.js'
 
 const STAGED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
@@ -339,6 +340,18 @@ export function install(rt) {
         case 'chat':
           await rt.load()
           return ok(await rt.chatPage(String(body.botId ?? ''), body.cursor ?? undefined, body.steps === true))
+        // The `/` rows a phone offers in this chat, so the phone does not keep its own
+        // copy of which rows exist (command-rows.js).
+        case 'slash-commands': {
+          await rt.load()
+          if (body.roomId !== undefined) {
+            const room = rt.roomOf(body.roomId) ?? rt.roomOf(rt.pastOwners.get(body.roomId)?.roomId)
+            if (room === undefined) return fail('Unknown group chat', 'bot/not-found')
+            return ok({ rows: commandRows('room') })
+          }
+          if (rt.botOf(String(body.botId ?? '')) === undefined) return fail('Unknown Bot', 'bot/not-found')
+          return ok({ rows: commandRows('bot') })
+        }
         // DSH's own whole-log figures for the current part of a Bot's chat, the ones its
         // status bar shows; a window without that bar shows them in the Bot's details.
         case 'run-stats': {

@@ -36,6 +36,7 @@ const MOBILE_ZH: Record<string, string> = {
   '{rate}% of the input came from cache': '输入中有 {rate}% 来自缓存', 'Nothing in this range': '这个区间没有用量',
   'The computer counts every call it makes; the phone shows what it has read.': '电脑会统计每一次调用，手机显示的是它读到的部分。',
   'Photo or Video': '照片或视频', 'Take Photo': '拍照', 'Scan Document': '扫描文稿', 'Choose File': '选取文件',
+  'Add a photo, a scan, or a file': '添加照片、扫描或文件',
   'Only photos can be sent to the computer for now.': '目前只能把照片发送到电脑。',
   'Camera access is off for DS Bot. Turn it on in Settings.': 'DS Bot 没有相机权限，请在设置里打开。',
   'Share as Template': '分享为模板', 'Copy ID': '复制 ID', 'Role': '角色',

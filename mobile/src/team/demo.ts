@@ -1,9 +1,18 @@
 import { useMemo, useRef, useState } from 'react'
 import type { TeamState } from '../connection.ts'
+import { commandsFor } from './commands.ts'
 import { demoData } from './demo-team.ts'
 import { ensureUnlock } from './gate.ts'
 import { validateViewAnswer } from 'deep-view/core'
 import type { ChatItem } from '../screens/chat/items.tsx'
+
+// What the demo team answers to `hello`: the same capabilities a real host declares,
+// so a screen that reads one (the attach sheet needs `send-images`) behaves as it does
+// against a computer.
+export const DEMO_HELLO = {
+  api: 1, min: 1, boot: 'demo', seq: 0,
+  capabilities: ['state', 'state-avatar-refs', 'avatar', 'chat', 'room-chat', 'send', 'send-images', 'feed', 'feed-room', 'notices', 'questions', 'views', 'approvals', 'stop-member-work', 'memory', 'memory-edit', 'usage-summary', 'stop-chat', 'row-meta', 'chat-steps', 'link-feed', 'images', 'write-state', 'slash-commands'],
+}
 
 // Demo mode (EXPO_PUBLIC_DSB_DEMO=1): no computer, no link. The fixture answers
 // with exactly the shapes the real host returns (channel.js `state` view + live(),
@@ -37,7 +46,7 @@ const call = useMemo(() => async (endpoint: string, payload: unknown = {}): Prom
 
     switch (endpoint) {
       case 'hello':
-        return { api: 1, min: 1, capabilities: ['state', 'state-avatar-refs', 'avatar', 'chat', 'room-chat', 'send', 'feed', 'feed-room', 'notices', 'questions', 'views', 'approvals', 'stop-member-work', 'memory', 'memory-edit', 'usage-summary', 'stop-chat', 'row-meta', 'chat-steps', 'link-feed', 'images', 'write-state'], boot: 'demo', seq: 0 }
+        return DEMO_HELLO
       case 'notices':
         return { boot: 'demo', seq: 0, notices: [], reset: false }
       case 'room-chat': {
@@ -45,6 +54,9 @@ const call = useMemo(() => async (endpoint: string, payload: unknown = {}): Prom
         const page = pages[0] ?? { items: [], cursor: null }
         return { roomId: String(body.roomId ?? ''), items: page.items, cursor: page.cursor, running: false, speaking: null }
       }
+      // The host keeps which `/` rows a chat has (ds-bot/src/host/command-rows.js).
+      case 'slash-commands':
+        return { rows: commandsFor(body.roomId === undefined ? 'bot' : 'room').map(command => ({ id: command.id, name: command.name })) }
       case 'stop-chat': {
         const id = sessionOf(String(body.botId ?? ''))
         if (state.work?.bots?.[id] !== undefined) delete state.work.bots[id]

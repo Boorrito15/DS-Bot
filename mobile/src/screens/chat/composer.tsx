@@ -1,11 +1,11 @@
-import { MenuView } from '@react-native-menu/menu'
+import { MenuView, type MenuComponentRef } from '@react-native-menu/menu'
 import * as DocumentPicker from 'expo-document-picker'
 import * as Haptics from 'expo-haptics'
 import * as ImagePicker from 'expo-image-picker'
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator'
 import DocumentScanner from 'react-native-document-scanner-plugin'
-import { useState } from 'react'
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { useRef, useState } from 'react'
+import { ActionSheetIOS, ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { t } from '../../ui/i18n.ts'
 import { commandNamed, matchCommands, parseCommand, unknownCommand, type CommandSpec } from '../../team/commands.ts'
@@ -54,23 +54,42 @@ export function Composer({ name, running, canStop, canAttach, onSend, onStop, p,
   const bottom = Math.max(insets.bottom, 10)
   const draft = text.trim()
   const ready = (draft !== '' || photos.length > 0) && !preparing
+  // `/file` opens the choices behind the "+" button, so the whole chat has one attach menu.
+  const attachMenu = useRef<MenuComponentRef>(null)
+  const choices = [
+    { id: 'library', title: t('Photo or Video') },
+    { id: 'camera', title: t('Take Photo') },
+    { id: 'scan', title: t('Scan Document') },
+    { id: 'file', title: t('Choose File') },
+  ]
+  // The button raises its menu when pressed; a row has to raise the same choices from
+  // code. On iOS only a press opens that menu, so there the row opens the system sheet,
+  // over the same four choices and the same handler.
+  const openAttach = () => {
+    if (Platform.OS !== 'ios') { attachMenu.current?.show(); return }
+    ActionSheetIOS.showActionSheetWithOptions(
+      { options: [...choices.map(choice => choice.title), t('Cancel')], cancelButtonIndex: choices.length },
+      index => { const choice = choices[index]; if (choice !== undefined) void attach(choice.id) },
+    )
+  }
+  // Without attachment rights there is no sheet to open, so the row goes away with them.
+  const offered = canAttach ? commands : commands.filter(command => command.id !== 'file')
   // The message shows in the chat at once; the composer is free for the next one.
-  const menuRows = matchCommands(text, commands)
-  const run = (command: CommandSpec) => {
+  const menuRows = matchCommands(text, offered)
+  const run = (command: CommandSpec, args: string) => {
     setText(''); setNote(null)
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-    onCommand?.(command, '')
+    if (command.id === 'file') { openAttach(); return }
+    onCommand?.(command, args)
   }
   const send = () => {
     // A command runs rather than being sent, as in the desktop's `/` menu.
-    const command = commandNamed(draft, commands)
+    const command = commandNamed(draft, offered)
     if (command !== undefined && photos.length === 0) {
-      setText(''); setNote(null)
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-      onCommand?.(command, parseCommand(draft)?.args ?? '')
+      run(command, parseCommand(draft)?.args ?? '')
       return
     }
-    const unknown = unknownCommand(draft, commands)
+    const unknown = unknownCommand(draft, offered)
     if (unknown !== undefined) { setNote(t('No command called /{name}', { name: unknown })); return }
     if (!ready) return
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
@@ -150,7 +169,7 @@ export function Composer({ name, running, canStop, canAttach, onSend, onStop, p,
         {menuRows.length > 0 ? (
           <View style={[styles.menu, { borderTopColor: p.line }]}>
             {menuRows.map(command => (
-              <Pressable key={command.id} accessibilityRole="button" accessibilityLabel={`/${command.name}`} onPress={() => run(command)}
+              <Pressable key={command.id} accessibilityRole="button" accessibilityLabel={`/${command.name}`} onPress={() => run(command, '')}
                 style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'baseline', gap: 8, paddingHorizontal: 8, paddingVertical: 7, borderRadius: 8 }, pressed && { backgroundColor: p.hover }]}>
                 <Text style={{ color: p.ink, fontSize: 13, fontWeight: '600' }}>/{command.name}</Text>
                 <Text style={{ color: p.ink3, fontSize: 12, flex: 1 }} numberOfLines={1}>{t(command.description)}</Text>
@@ -161,12 +180,7 @@ export function Composer({ name, running, canStop, canAttach, onSend, onStop, p,
         {note !== null ? <Text style={{ color: p.ink3, fontSize: 12, paddingHorizontal: 10, paddingBottom: 4 }} accessibilityRole="alert">{note}</Text> : null}
         <View style={styles.line}>
           {canAttach ? (
-            <MenuView onPressAction={({ nativeEvent }) => void attach(nativeEvent.event)} actions={[
-              { id: 'library', title: t('Photo or Video') },
-              { id: 'camera', title: t('Take Photo') },
-              { id: 'scan', title: t('Scan Document') },
-              { id: 'file', title: t('Choose File') },
-            ]}>
+            <MenuView ref={attachMenu} onPressAction={({ nativeEvent }) => void attach(nativeEvent.event)} actions={choices}>
               <Pressable accessibilityRole="button" accessibilityLabel={t('Add photos')} hitSlop={6} style={styles.attach}>
                 <PlusIcon size={20} color={p.ink2} />
               </Pressable>
