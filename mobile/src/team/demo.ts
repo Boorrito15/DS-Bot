@@ -358,7 +358,22 @@ const call = useMemo(() => async (endpoint: string, payload: unknown = {}): Prom
       }
       case 'update-check': return { update: { phase: 'current', latest: '0.1.2', available: false, checkedAt: Date.now() - 3600e3, source: 'registry' }, dsh: { phase: 'installed', installed: '0.0.1', available: false } }
       case 'update-install': case 'dsh-update-install': return { ok: true }
-      case 'diagnostics': return { size: 48200, entries: 214, last: 'Turn 96 on Coder failed once and retried.' }
+      case 'diagnostics': return {
+        size: 48200, entries: 214, total: 214, last: 'Turn 96 on Coder failed once and retried.',
+        // The report the Feedback page copies, shaped like diagnostics.js `report()`.
+        markdown: '## DS Bot diagnostics\n\nVersion 0.1.2 · api 1\n\n- Turn 96 on Coder failed once and retried.',
+        issuesUrl: 'https://github.com/Fei2411/DS-Bot/issues/new',
+      }
+      case 'local-agents':
+      case 'local-agent-refresh': return {
+        available: true,
+        detected: [
+          { route: 'claude-code', name: 'Claude Code', version: '2.1.4', path: '/opt/homebrew/bin/claude', signedIn: true },
+          { route: 'codex-cli', name: 'codex', version: '0.166.0', path: '/opt/homebrew/bin/codex', signedIn: false, signIn: 'codex login' },
+          { route: 'opencode', name: 'opencode', version: '0.4.2', path: '/opt/homebrew/bin/opencode', signedIn: false, signIn: 'opencode auth login' },
+        ],
+        custom: [{ id: 'la-1', name: 'My agent', command: 'my-agent', args: ['acp'] }],
+      }
       case 'diagnostics-log': return { lines: ['12:00 Chief ran 3 tools', '12:01 Coder failed once and retried', '12:02 Writer posted a draft', '12:03 Researcher finished a compare'] }
       case 'diagnostics-clear': return { ok: true }
       case 'avatar-library': return { entries: [], done: true }

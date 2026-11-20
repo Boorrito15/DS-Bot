@@ -103,12 +103,14 @@ export function Settings({ navigation }: { navigation?: any }) {
       {/* The desktop settings pages, in the desktop's order. */}
       <Section label={t('Team')}>
         <Row label={t('Models')} onPress={() => navigation?.navigate('Providers')} />
+        <Row label={t('Local agents')} onPress={() => navigation?.navigate('LocalAgents')} />
         <Row label={t('Connectors')} onPress={() => navigation?.navigate('Connectors')} />
         <Row label={t('Capabilities')} onPress={() => navigation?.navigate('Capabilities')} />
         <Row label={t('Usage')} onPress={() => navigation?.navigate('TeamUsage')} />
         <Row label={t('Secrets')} onPress={() => navigation?.navigate('Secrets')} />
         <Row label={t('Location')} onPress={() => navigation?.navigate('Location')} />
         <Row label={t('Updates & diagnostics')} onPress={() => navigation?.navigate('Updates')} />
+        <Row label={t('Feedback')} onPress={() => navigation?.navigate('Feedback')} />
         <Row label={t('About DS Bot')} onPress={() => navigation?.navigate('About')} />
       </Section>
     </ScrollView>

@@ -17,7 +17,7 @@ import { Settings } from '../screens/Settings.tsx'
 import { TeamList, type ChatTarget } from '../screens/TeamList.tsx'
 import { TEAM_SEARCH_INSET, TeamSearchBar } from '../screens/team-search.tsx'
 import { BotDetails, BotEdit, NewBot, NewGroup, GroupDetails, GroupSettings, Memory, Schedules, Folder, Usage, Computers, Secrets } from '../screens/manage.tsx'
-import { Providers, Connectors, Capabilities, TeamUsage, Location, Updates, About } from '../screens/settings-pages.tsx'
+import { Providers, Connectors, Capabilities, TeamUsage, Location, Updates, About, Feedback, LocalAgents } from '../screens/settings-pages.tsx'
 import { Side } from '../screens/side.tsx'
 import { BotBrowser } from '../screens/manage.tsx'
 import type { Bot, Room } from '../connection.ts'
@@ -215,6 +215,8 @@ function SettingsSheet() {
         <SettingsStack.Screen name="Location" component={Location} />
         <SettingsStack.Screen name="Updates" component={Updates} />
         <SettingsStack.Screen name="About" component={About} />
+        <SettingsStack.Screen name="Feedback" component={Feedback} />
+        <SettingsStack.Screen name="LocalAgents" component={LocalAgents} />
         <SettingsStack.Screen name="Folder" component={Folder} />
       </SettingsStack.Navigator>
     </Sheet>

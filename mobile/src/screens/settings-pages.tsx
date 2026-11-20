@@ -896,6 +896,100 @@ export function About({ navigation }: any) {
   )
 }
 
+// Settings → Feedback: the diagnostics report the desktop attaches to a GitHub issue,
+// laid out to copy and paste, and the issue page itself.
+export function Feedback({ navigation }: any) {
+  const { p } = useTheme()
+  const { call } = useTeam()
+  const [report, setReport] = useState<{ markdown?: string; issuesUrl?: string; total?: number } | null>(null)
+  const [note, setNote] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  useEffect(() => {
+    void call('diagnostics').then(value => setReport(value as never), (failure: Error) => setError(failure?.message ?? String(failure)))
+  }, [call])
+  const copy = () => {
+    const text = report?.markdown
+    if (text === undefined) return
+    void Clipboard.setStringAsync(text).then(() => setNote(t('Copied')), () => setNote(t('Could not copy.')))
+  }
+  const open = () => { if (report?.issuesUrl !== undefined) void Linking.openURL(report.issuesUrl) }
+  const clear = () => {
+    void call('diagnostics-clear').then(() => setNote(t('Cleared')), (failure: Error) => setError(failure?.message ?? String(failure)))
+  }
+  return (
+    <Screen><Back title={t('Feedback')} onBack={() => navigation.goBack()} />
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+        {error !== null ? <Text style={[typeScale.small, { color: p.danger, margin: 18 }]}>{error}</Text> : null}
+        <Section label={t('Feedback')}>
+          <Row label={t('Report a problem')} hint={report?.total !== undefined ? t('{count} errors recorded', { count: report.total }) : t('Opens the issue page in your browser')} onPress={open} />
+          <Row label={t('Copy report')} value={note ?? undefined} onPress={copy} />
+          <Row label={t('Clear diagnostics')} onPress={() => confirmDanger(t('Clear diagnostics?'), t('Clear'), clear)} />
+        </Section>
+      </ScrollView>
+    </Screen>
+  )
+}
+
+interface LocalAgentRow { route?: string; name?: string; version?: string; path?: string; signedIn?: boolean; signIn?: string; id?: string; command?: string; args?: string[] }
+interface LocalAgentsView { available?: boolean; detected?: LocalAgentRow[]; custom?: LocalAgentRow[] }
+
+// Settings → Local agents: the agent CLIs this computer has, and the custom ACP
+// agents the user added on the desktop. Read only for now: a Bot still picks its
+// route on the desktop or in BotEdit.
+export function LocalAgents({ navigation }: any) {
+  const { p } = useTheme()
+  const { call } = useTeam()
+  const [view, setView] = useState<LocalAgentsView | null>(null)
+  const [note, setNote] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const load = (endpoint: string) => {
+    setBusy(true)
+    setError(null)
+    return call(endpoint).then(value => setView(value as LocalAgentsView), (failure: Error) => setError(failure?.message ?? String(failure))).finally(() => setBusy(false))
+  }
+  useEffect(() => { void load('local-agents') }, [call])
+  const copyCommand = (agent: LocalAgentRow) => {
+    if (agent.signIn === undefined) return
+    void Clipboard.setStringAsync(agent.signIn).then(() => setNote(t('Copies the sign-in command')), () => setNote(t('Could not copy.')))
+  }
+  const found = view?.detected ?? []
+  const custom = view?.custom ?? []
+  return (
+    <Screen><Back title={t('Local agents')} onBack={() => navigation.goBack()} />
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+        {error !== null ? <Text style={[typeScale.small, { color: p.danger, margin: 18 }]}>{error}</Text> : null}
+        {view?.available === false ? (
+          <Text style={[typeScale.small, { color: p.ink3, margin: 18 }]}>{t('This DSH cannot register local agent routes.')}</Text>
+        ) : null}
+        <Section label={t('Detected agents')}>
+          {found.length === 0 ? <Row label={t('No agent CLIs found')} /> : null}
+          {found.map(agent => (
+            <Row key={agent.route ?? agent.name}
+              label={agent.name ?? agent.route ?? ''}
+              hint={[agent.version, agent.path].filter(Boolean).join(' · ') || undefined}
+              value={agent.signedIn === true ? t('Signed in') : agent.signedIn === false ? t('Not signed in') : undefined}
+              end={agent.signIn !== undefined && agent.signedIn !== true
+                ? <Pressable accessibilityRole="button" onPress={() => copyCommand(agent)}><Text style={[typeScale.small, { color: p.accent, fontWeight: '600' }]}>{t('Sign in')}</Text></Pressable>
+                : undefined} />
+          ))}
+          <Pressable accessibilityRole="button" disabled={busy} onPress={() => void load('local-agent-refresh')} style={({ pressed }) => [styles.row, pressed && { backgroundColor: p.hover }]}>
+            <Text style={[typeScale.settingsRow, { color: busy ? p.ink3 : p.accent }]}>{busy ? t('Refreshing…') : t('Refresh')}</Text>
+          </Pressable>
+        </Section>
+        {custom.length > 0 ? (
+          <Section label={t('Custom agents')}>
+            {custom.map(agent => (
+              <Row key={agent.id ?? agent.name} label={agent.name ?? ''} hint={[agent.command, ...(agent.args ?? [])].filter(Boolean).join(' ')} />
+            ))}
+          </Section>
+        ) : null}
+        {note !== null ? <Text style={[typeScale.small, { color: p.ink3, margin: 18 }]}>{note}</Text> : null}
+      </ScrollView>
+    </Screen>
+  )
+}
+
 const styles = StyleSheet.create({
   backRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 8 },
   backBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
