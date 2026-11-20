@@ -10,7 +10,7 @@ import { ErrorBoundary } from '../ui/error-boundary.tsx'
 import { t } from '../ui/i18n.ts'
 import { shadow, type as typeScale, useTheme } from '../ui/tokens.ts'
 import { Avatar, RoomAvatar } from '../ui/marks.tsx'
-import { ChevronLeftIcon, PeopleIcon, PlusIcon, SideIcon } from '../ui/icons.tsx'
+import { ChevronLeftIcon, InboxIcon, PeopleIcon, PlusIcon, SideIcon } from '../ui/icons.tsx'
 import { ChatView } from '../screens/Chat.tsx'
 import { NeedsYou } from '../screens/NeedsYou.tsx'
 import { Settings } from '../screens/Settings.tsx'
@@ -52,20 +52,23 @@ function TeamScreen({ navigation }: any) {
   }
   return (
     <View style={{ flex: 1, backgroundColor: p.sidebar }}>
-      {/* The desktop sidebar's head: the product name, search and New. */}
+      {/* Needs you sits in the corner as an inbox, the way a mail app wears its unread
+          count, so the team list starts right under the top edge. */}
       <View style={[styles.drawerHead, { paddingTop: insets.top + 6 }]}>
-        <Text style={{ color: p.ink, fontSize: 17, fontWeight: '600', flex: 1 }}>DS Bot</Text>
+        <Pressable accessibilityRole="button" accessibilityLabel={pending > 0 ? `${t('Needs you')} (${pending})` : t('Needs you')} onPress={() => open({ kind: 'needs' })} hitSlop={8}
+          style={({ pressed }) => [styles.inbox, pressed && { opacity: 0.45 }]}>
+          <InboxIcon size={23} color={pending > 0 ? p.ink : p.ink2} />
+          {pending > 0 ? (
+            <View style={[styles.inboxBadge, { backgroundColor: p.accent }]}>
+              <Text style={{ color: p.accentInk, fontSize: 11, fontWeight: '600' }}>{pending}</Text>
+            </View>
+          ) : null}
+        </Pressable>
+        <View style={{ flex: 1 }} />
         <Pressable accessibilityRole="button" accessibilityLabel={t('New')} onPress={() => setNewOpen(true)} hitSlop={4} style={[styles.round, { borderColor: p.line, backgroundColor: p.card }]}>
           <PlusIcon size={16} color={p.ink2} />
         </Pressable>
       </View>
-      {pending > 0 ? (
-        <Pressable accessibilityRole="button" onPress={() => open({ kind: 'needs' })}
-          style={({ pressed }) => [styles.needsRow, { backgroundColor: pressed ? p.hover : 'transparent' }]}>
-          <Text style={[typeScale.rowName, { color: p.accent, flex: 1 }]}>{t('Needs you')}</Text>
-          <View style={[styles.badge, { backgroundColor: p.accent }]}><Text style={{ color: p.accentInk, fontSize: 12, fontWeight: '600' }}>{pending}</Text></View>
-        </Pressable>
-      ) : null}
       {/* The list scrolls clear of the search bar rather than behind it. */}
       <View style={{ flex: 1, marginBottom: TEAM_SEARCH_INSET }}>
         <TeamList onOpen={open} onEdit={botId => navigation.navigate('BotEdit', { botId })} query={query} current={current} />
@@ -305,8 +308,8 @@ export default function ShellB() {
 }
 
 const styles = StyleSheet.create({
-  needsRow: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 12, marginBottom: 4, borderRadius: 10, paddingHorizontal: 12, height: 44 },
-  badge: { minWidth: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
+  inbox: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  inboxBadge: { position: 'absolute', top: -3, right: -6, minWidth: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5 },
   drawerHead: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingBottom: 10 },
   round: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth },
   you: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 4, height: 44 },

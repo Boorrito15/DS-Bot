@@ -106,6 +106,13 @@ export function FolderIcon({ size = 20, color }: IconProps) {
   return h(Svg, { width: size, height: size, viewBox: '0 0 20 20', fill: 'none', stroke: use(color, p.ink2), strokeWidth: 1.6, strokeLinecap: 'round', strokeLinejoin: 'round' },
     h(Path, { d: 'M3 6A1.5 1.5 0 0 1 4.5 4.5h3.2l1.8 2h6A1.5 1.5 0 0 1 17 8v6.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 3 14.5z' }))
 }
+export function InboxIcon({ size = 20, color }: IconProps) {
+  const { p } = useTheme()
+  const c = use(color, p.ink2)
+  return h(Svg, { width: size, height: size, viewBox: '0 0 20 20', fill: 'none', stroke: c, strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round' },
+    h(Path, { d: 'M3.4 11.2V6.4a2.2 2.2 0 0 1 2.2-2.2h8.8a2.2 2.2 0 0 1 2.2 2.2v4.8' }),
+    h(Path, { d: 'M3.4 11.2h3.4l1.2 2h4l1.2-2h3.4v2.4a2.2 2.2 0 0 1-2.2 2.2H5.6a2.2 2.2 0 0 1-2.2-2.2z' }))
+}
 export function SideIcon({ size = 20, color }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 20 20" fill="none" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
