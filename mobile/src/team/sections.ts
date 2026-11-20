@@ -32,6 +32,15 @@ export interface SectionGroup<T> {
   entries: T[]
 }
 
+// The list order the desktop sidebar keeps (sidebar.js `order`): pinned first, then
+// by the newest thing said in it. A chat with no transcript yet sorts by when it was
+// created, so a fresh Bot still lands where it was made. `lastAt` comes from the host
+// with `state`; until its first page has been read the row falls back to `createdAt`.
+export function byRecency(a: { pinned?: boolean; lastAt?: number; createdAt?: number }, b: { pinned?: boolean; lastAt?: number; createdAt?: number }): number {
+  return Number(Boolean(b.pinned)) - Number(Boolean(a.pinned))
+    || (b.lastAt ?? b.createdAt ?? 0) - (a.lastAt ?? a.createdAt ?? 0)
+}
+
 export interface Grouped<T> {
   // Entries in no folder, or in one the host no longer has.
   loose: T[]

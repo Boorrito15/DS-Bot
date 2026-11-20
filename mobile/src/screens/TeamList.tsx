@@ -8,7 +8,7 @@ import { clearSeen, isUnread, seenVersion, subscribeSeen } from '../team/seen.ts
 import { MOVE_NEW, pickedFolder, rowMenuActions, templateText, type RowTarget } from '../team/menus.ts'
 import { confirmDanger } from '../nav/sheet.tsx'
 import * as Clipboard from 'expo-clipboard'
-import { collapsedChange, groupBySection, sectionInk, type Section } from '../team/sections.ts'
+import { byRecency, collapsedChange, groupBySection, sectionInk, type Section } from '../team/sections.ts'
 import { useFolderSheets } from '../nav/folder-sheets.tsx'
 import { t } from '../ui/i18n.ts'
 import { ArrowDownIcon, ChevronRightIcon, FolderIcon, PlusIcon } from '../ui/icons.tsx'
@@ -35,7 +35,11 @@ export function TeamList({ onOpen, onEdit, query = '', current }: { onOpen: (tar
   const bots = Array.isArray(team?.bots) ? team.bots : []
   const mains = new Set(team?.mainBotIds ?? [])
   const needle = query.trim().toLowerCase()
-  const mainList = bots.filter(bot => mains.has(bot.id) && bot.hidden !== true && (needle === '' || (bot.name ?? '').toLowerCase().includes(needle)))
+  const mainList = useMemo(() => bots
+    .filter(bot => mains.has(bot.id) && bot.hidden !== true && (needle === '' || (bot.name ?? '').toLowerCase().includes(needle)))
+    // The desktop keeps its Main Bot in one fixed place; the phone shows them as
+    // tiles, so they follow the same recency order as the rows below.
+    .sort(byRecency), [bots, team?.mainBotIds, needle])
   const workBots = team?.work?.bots ?? {}
   const workRooms = team?.work?.rooms ?? {}
   const waiting = team?.work?.waiting ?? {}
@@ -60,7 +64,7 @@ export function TeamList({ onOpen, onEdit, query = '', current }: { onOpen: (tar
     ]
     return list
       .filter(entry => needle === '' || (entry.item.name ?? '').toLowerCase().includes(needle))
-      .sort((a, b) => Number(Boolean(b.item.pinned)) - Number(Boolean(a.item.pinned)) || (b.item.lastAt ?? b.item.createdAt ?? 0) - (a.item.lastAt ?? a.item.createdAt ?? 0))
+      .sort((a, b) => byRecency(a.item, b.item))
   }, [bots, team?.rooms, team?.mainBotIds, needle])
 
   const listSections = useMemo<{ key: string; section: Section | undefined; total: number; data: Entry[] }[]>(() => {

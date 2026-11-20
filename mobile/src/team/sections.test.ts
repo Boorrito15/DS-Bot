@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { cleanSectionName, collapsedChange, folderAt, groupBySection, reordered, sectionInk, type Section } from './sections.ts'
+import { byRecency, cleanSectionName, collapsedChange, folderAt, groupBySection, reordered, sectionInk, type Section } from './sections.ts'
 
 const work: Section = { id: 'sec-work', name: 'Work' }
 const home: Section = { id: 'sec-home', name: 'Home', collapsed: true, color: 'green' }
@@ -77,4 +77,18 @@ test('a folder at an end does not move past it', () => {
   assert.equal(reordered([a, b], 'a', -1), null)
   assert.equal(reordered([a, b], 'b', 1), null)
   assert.equal(reordered([a, b], 'gone', 1), null)
+})
+
+test('rows follow the newest message in them, pinned first', () => {
+  const rows = [
+    { id: 'old', lastAt: 100 },
+    { id: 'pinned-quiet', pinned: true, lastAt: 50 },
+    { id: 'new', lastAt: 300 },
+  ]
+  assert.deepEqual(rows.sort(byRecency).map(row => row.id), ['pinned-quiet', 'new', 'old'])
+})
+
+test('a chat with no message yet falls back to when it was made', () => {
+  const rows = [{ id: 'made-later', createdAt: 200 }, { id: 'spoke-at', lastAt: 150 }]
+  assert.deepEqual(rows.sort(byRecency).map(row => row.id), ['made-later', 'spoke-at'])
 })
