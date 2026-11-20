@@ -19,6 +19,7 @@ import { workPhrase } from '../ui/phrases.ts'
 import { ActionRow, Dock } from './chat/dock.tsx'
 import { Composer, type Photo } from './chat/composer.tsx'
 import { commandsFor, type CommandSpec } from '../team/commands.ts'
+import { mentionRows } from '../team/mentions.ts'
 import { Actions, Item, keysOf, PhotoViewer, PhotoViewerCtx, type ChatItem, type FileRef, type ImageRef } from './chat/items.tsx'
 import { bumpMarkdownImageCache } from './chat/markdown.tsx'
 
@@ -128,6 +129,16 @@ export function ChatView({ bot, room, header, onMissing }: { bot?: Bot; room?: R
     )
     return () => { live = false }
   }, [call, rowsKey, bot?.id, room?.id])
+  // Who "@" can call here: a group's own members and its word for everyone, or in a
+  // Bot's chat every other Bot (ds-bot/src/client/at-menu.js draws the same rows).
+  const mentions = useMemo(() => {
+    const all = (team?.bots ?? []).map(entry => ({ id: entry.id, name: entry.name }))
+    if (room !== undefined) {
+      const members = new Set(room.members ?? [])
+      return mentionRows({ bots: all.filter(entry => members.has(entry.id)), room: true })
+    }
+    return mentionRows({ bots: all, selfId: bot?.id })
+  }, [team, room, bot?.id])
   const runCommand = (command: CommandSpec) => {
     if (command.id === 'scheduled-task') {
       navigation.navigate('Schedules', room !== undefined ? { roomId: room.id } : { botId: bot?.id })
@@ -529,7 +540,7 @@ export function ChatView({ bot, room, header, onMissing }: { bot?: Bot; room?: R
       {fileError ? <Text style={[type.small, { color: p.danger, textAlign: 'center', marginBottom: 4 }]} accessibilityRole="alert">{fileError}</Text> : null}
       {page !== null && loadError !== null ? <Text style={[type.small, { color: p.danger, textAlign: 'center', marginBottom: 4, marginHorizontal: 16 }]} accessibilityRole="alert">{loadError}</Text> : null}
       <Composer name={bot?.name ?? room?.name ?? ''} running={running} canStop={canStop} canAttach={hello?.capabilities?.includes('send-images') === true} onSend={send} onStop={stop} p={p}
-        commands={commands} onCommand={runCommand} />
+        commands={commands} onCommand={runCommand} mentions={mentions} />
       <Actions visible={menuText !== null} text={menuText ?? ''} p={p}
         onClose={() => setMenuText(null)}
         onSelect={() => { setReaderTitle(null); setReaderText(menuText); setMenuText(null) }} />

@@ -9,6 +9,7 @@ import { ActionSheetIOS, ActivityIndicator, Image, Platform, Pressable, ScrollVi
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { t } from '../../ui/i18n.ts'
 import { commandNamed, matchCommands, parseCommand, unknownCommand, type CommandSpec } from '../../team/commands.ts'
+import { insertMention, mentionDraft, narrowMentions, type MentionRow } from '../../team/mentions.ts'
 import { ArrowUpIcon, CloseIcon, PlusIcon, StopIcon } from '../../ui/icons.tsx'
 import { radius, shadow, type as typeScale, type Palette } from '../../ui/tokens.ts'
 
@@ -35,11 +36,13 @@ const NOT_SENDABLE = 'Only photos can be sent to the computer for now.'
 // shadow; send is a 36px accent circle. While the Bot runs and the draft is
 // empty a stop button shows instead of send. "+" adds photos when the
 // computer takes them.
-export function Composer({ name, running, canStop, canAttach, onSend, onStop, p, commands = [], onCommand }: {
+export function Composer({ name, running, canStop, canAttach, onSend, onStop, p, commands = [], onCommand, mentions = [] }: {
   name: string; running: boolean; canStop: boolean; canAttach: boolean
   onSend: (text: string, photos: Photo[]) => Promise<void>; onStop: () => void; p: Palette
   // The `/` commands of this chat (team/commands.ts), with what a pick should do.
   commands?: CommandSpec[]; onCommand?: (command: CommandSpec, args: string) => void
+  // Who this chat can call with "@" (team/mentions.ts); picking a row types the word.
+  mentions?: MentionRow[]
 }) {
   const [text, setText] = useState('')
   const [photos, setPhotos] = useState<Photo[]>([])
@@ -76,6 +79,14 @@ export function Composer({ name, running, canStop, canAttach, onSend, onStop, p,
   const offered = canAttach ? commands : commands.filter(command => command.id !== 'file')
   // The message shows in the chat at once; the composer is free for the next one.
   const menuRows = matchCommands(text, offered)
+  // An "@" at the end of the draft offers the names this chat can call. The name is only
+  // typed into the message: the host reads it from the text, as it does a typed one.
+  const at = mentionDraft(text)
+  const mentionChoices = at === undefined ? [] : narrowMentions(mentions, at.query)
+  const pickMention = (row: MentionRow) => {
+    setText(insertMention(text, at!, row.insert)); setNote(null)
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+  }
   const run = (command: CommandSpec, args: string) => {
     setText(''); setNote(null)
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
@@ -173,6 +184,16 @@ export function Composer({ name, running, canStop, canAttach, onSend, onStop, p,
                 style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'baseline', gap: 8, paddingHorizontal: 8, paddingVertical: 7, borderRadius: 8 }, pressed && { backgroundColor: p.hover }]}>
                 <Text style={{ color: p.ink, fontSize: 13, fontWeight: '600' }}>/{command.name}</Text>
                 <Text style={{ color: p.ink3, fontSize: 12, flex: 1 }} numberOfLines={1}>{t(command.description)}</Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+        {menuRows.length === 0 && mentionChoices.length > 0 ? (
+          <View style={[styles.menu, { borderTopColor: p.line }]}>
+            {mentionChoices.map(row => (
+              <Pressable key={row.id} accessibilityRole="button" accessibilityLabel={row.label} onPress={() => pickMention(row)}
+                style={({ pressed }) => [{ paddingHorizontal: 8, paddingVertical: 7, borderRadius: 8 }, pressed && { backgroundColor: p.hover }]}>
+                <Text style={{ color: p.ink, fontSize: 13, fontWeight: '600' }}>{row.label}</Text>
               </Pressable>
             ))}
           </View>

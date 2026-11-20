@@ -362,6 +362,8 @@ const autospaced = (text: string) =>
 let langOverride: 'system' | 'zh' | 'en' = 'system'
 export function setLang(lang: 'system' | 'zh' | 'en'): void { langOverride = lang }
 export function getLang(): 'system' | 'zh' | 'en' { return langOverride }
+// Whether the phone is showing Chinese right now, for copy that is not a plain lookup.
+export const isChinese = (): boolean => isZh()
 
 export function t(key: string, params?: Record<string, string | number>): string {
   let text = key
