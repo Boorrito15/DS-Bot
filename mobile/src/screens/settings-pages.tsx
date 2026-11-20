@@ -1,4 +1,4 @@
-import { Children, Fragment, useEffect, useRef, useState } from 'react'
+import { Children, Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useIsFocused } from '@react-navigation/native'
 import { Linking, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -11,7 +11,11 @@ import { useTeam } from '../team/context.tsx'
 import { RANGES, compact, dayKey, percent, summarize, type Range, type Totals, type UsageView } from '../team/usage.ts'
 import { dayLabel } from '../ui/i18n.ts'
 import { t } from '../ui/i18n.ts'
-import { ChevronLeftIcon, ChevronRightIcon } from '../ui/icons.tsx'
+import { CheckIcon, ChevronLeftIcon, ChevronRightIcon } from '../ui/icons.tsx'
+import { Avatar } from '../ui/marks.tsx'
+import { byRecency } from '../team/sections.ts'
+import { modelRefOf, runModelChange, runsOnLocalAgent, summarizeModelChange } from '../team/models.ts'
+import { ModelPicker } from './model-menu.tsx'
 import { radius, shadow, type as typeScale, useTheme } from '../ui/tokens.ts'
 
 function Screen({ children }: { children: React.ReactNode }) {
@@ -896,6 +900,89 @@ export function About({ navigation }: any) {
   )
 }
 
+interface BatchResult { id: string; name?: string; status: 'updated' | 'unchanged' | 'skipped' | 'failed'; reason?: string; message?: string }
+
+// Settings → Bot models (the desktop's bot-models-page.js): every Bot with its model,
+// and one pick that moves the selected Bots together. A Bot on a local agent keeps its
+// route, so it is listed but cannot be selected.
+export function BotModels({ navigation }: any) {
+  const { p, dark } = useTheme()
+  const { team, call } = useTeam()
+  const bots = useMemo(() => (team?.bots ?? []).filter(bot => bot.hidden !== true).sort(byRecency), [team?.bots])
+  const models = team?.models ?? []
+  const served = models.map(model => model.ref)
+  const nameOf = (ref: string | undefined) => models.find(model => model.ref === ref)?.name ?? ref ?? t('No model picked yet')
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [busy, setBusy] = useState(false)
+  const [results, setResults] = useState<BatchResult[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const toggle = (id: string) => setSelected(prev => {
+    const next = new Set(prev)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    return next
+  })
+  const apply = async (ref: string) => {
+    const chosen = bots.filter(bot => selected.has(bot.id))
+    if (chosen.length === 0) return
+    setBusy(true)
+    setError(null)
+    const list = await runModelChange({ bots: chosen, ref, served, updateBot: (id, model) => call('update-bot', { id, model }) })
+    setResults(list)
+    setSelected(new Set())
+    setBusy(false)
+  }
+  const summary = results === null ? null : summarizeModelChange(results)
+  return (
+    <Screen><Back title={t('Bot models')} onBack={() => navigation.goBack()} />
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+        {error !== null ? <Text style={[typeScale.small, { color: p.danger, margin: 18 }]}>{error}</Text> : null}
+        {summary !== null ? (
+          <Text style={[typeScale.small, { color: p.ink2, marginHorizontal: 18, marginTop: 14 }]}>
+            {t('Changed {count} of {total} Bots.', { count: summary.updated, total: summary.total })}
+            {summary.skipped > 0 ? ` · ${t('Skipped: {count}', { count: summary.skipped })}` : ''}
+            {summary.failed > 0 ? ` · ${t('Failed: {count}', { count: summary.failed })}` : ''}
+          </Text>
+        ) : null}
+        <Section label={t('Bots')}>
+          {bots.map(bot => {
+            const ref = modelRefOf(bot)
+            const local = runsOnLocalAgent(ref)
+            const on = selected.has(bot.id)
+            return (
+              <Pressable key={bot.id} accessibilityRole={local ? undefined : 'checkbox'} accessibilityState={local ? undefined : { checked: on }}
+                disabled={local} onPress={() => toggle(bot.id)}
+                style={({ pressed }) => [styles.row, pressed && !local && { backgroundColor: p.hover }]}>
+                <Avatar bot={bot} dark={dark} size={30} ring={p.card} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={[typeScale.settingsRow, { color: p.ink }]} numberOfLines={1}>{bot.name}</Text>
+                  <Text style={[typeScale.small, { color: p.ink3, marginTop: 2 }]} numberOfLines={1}>
+                    {local ? t('Runs on a local agent') : nameOf(ref)}
+                  </Text>
+                </View>
+                {local ? null : (
+                  <View style={[styles.tick, { borderColor: on ? p.accent : p.line2, backgroundColor: on ? p.accent : 'transparent' }]}>
+                    {on ? <CheckIcon size={12} color={p.accentInk} /> : null}
+                  </View>
+                )}
+              </Pressable>
+            )
+          })}
+        </Section>
+      </ScrollView>
+      {selected.size > 0 ? (
+        <View style={[styles.footer, { borderTopColor: p.line, backgroundColor: p.card, paddingBottom: 12 }]}>
+          <Text style={[typeScale.small, { color: p.ink2 }]}>{t('{count} selected', { count: selected.size })}</Text>
+          <View style={{ flex: 1 }} />
+          <View style={{ width: 210, opacity: busy ? 0.5 : 1 }}>
+            <ModelPicker current={undefined} placeholder={t('Change model')} onPick={ref => { if (!busy) void apply(ref) }} />
+          </View>
+        </View>
+      ) : null}
+    </Screen>
+  )
+}
+
 // Settings → Feedback: the diagnostics report the desktop attaches to a GitHub issue,
 // laid out to copy and paste, and the issue page itself.
 export function Feedback({ navigation }: any) {
@@ -996,6 +1083,8 @@ const styles = StyleSheet.create({
   card: { marginHorizontal: 14, borderRadius: radius.card, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden', ...shadow(1) },
   divider: { height: StyleSheet.hairlineWidth, marginLeft: 16 },
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, minHeight: 50, gap: 10 },
+  tick: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  footer: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth },
   mark: { width: 30, height: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth },
   smallBtn: { borderRadius: 10, paddingHorizontal: 12, minHeight: 36, paddingVertical: 6, alignItems: 'center', justifyContent: 'center' },
   segRow: { flexDirection: 'row', borderWidth: 1, borderRadius: radius.pill, overflow: 'hidden' },

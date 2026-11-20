@@ -165,7 +165,7 @@ function ModelGroups({ models, current, fallback, onPick }: { models: Model[]; c
 
 // A model picker for a Bot that does not exist yet (Create new Bot): the same trigger
 // and sheet as a Bot's model menu, without the thinking level.
-export function ModelPicker({ current, onPick }: { current?: string; onPick: (ref: string) => void }) {
+export function ModelPicker({ current, onPick, placeholder }: { current?: string; onPick: (ref: string) => void; placeholder?: string }) {
   const { p } = useTheme()
   const { team } = useTeam()
   const [open, setOpen] = useState(false)
@@ -177,7 +177,7 @@ export function ModelPicker({ current, onPick }: { current?: string; onPick: (re
       <Pressable accessibilityRole="button" accessibilityLabel={t('Model')} onPress={() => setOpen(true)}
         style={[styles.trigger, { backgroundColor: p.card, borderColor: p.line }]}>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={[typeScale.settingsRow, { color: p.ink, fontWeight: '500' }]} numberOfLines={1}>{model?.name ?? t('Choose a model')}</Text>
+          <Text style={[typeScale.settingsRow, { color: p.ink, fontWeight: '500' }]} numberOfLines={1}>{model?.name ?? placeholder ?? t('Choose a model')}</Text>
           {model ? <Text style={[typeScale.caption, { color: p.ink3 }]} numberOfLines={1}>{model.providerName ?? model.ref.split('/')[0]}</Text> : null}
         </View>
         <Text style={{ color: p.ink3, fontSize: 12 }}>⌄</Text>

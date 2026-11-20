@@ -104,6 +104,7 @@ export function Settings({ navigation }: { navigation?: any }) {
       <Section label={t('Team')}>
         <Row label={t('Models')} onPress={() => navigation?.navigate('Providers')} />
         <Row label={t('Local agents')} onPress={() => navigation?.navigate('LocalAgents')} />
+        <Row label={t('Bot models')} onPress={() => navigation?.navigate('BotModels')} />
         <Row label={t('Connectors')} onPress={() => navigation?.navigate('Connectors')} />
         <Row label={t('Capabilities')} onPress={() => navigation?.navigate('Capabilities')} />
         <Row label={t('Usage')} onPress={() => navigation?.navigate('TeamUsage')} />
