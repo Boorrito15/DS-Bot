@@ -14,7 +14,7 @@ export function openChat(navigation: { dispatch: (action: NavigationAction) => v
     navigation.dispatch(StackActions.popTo('Chat', target, target === undefined ? { merge: true } : undefined))
     return
   }
-  navigation.dispatch(CommonActions.navigate({ name: 'Chat', params: target }))
+  navigation.dispatch(CommonActions.navigate('Chat', target))
 }
 
 // Which chat is visible on top of the stack, if any. The list is the screen below a
