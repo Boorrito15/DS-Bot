@@ -67,6 +67,18 @@ export const CATALOG = [
     remote: { url: 'https://mcp.amap.com/mcp' },
     auth: { kind: 'key', query: 'key', keyUrl: 'https://lbs.amap.com/api/mcp-server/create' },
   },
+  {
+    id: 'gmail', name: 'Gmail', category: 'mail',
+    about: "Gmail through Google's MCP server; needs your own Google OAuth client",
+    remote: { url: 'https://gmailmcp.googleapis.com/mcp/v1' },
+    auth: { kind: 'oauth' },
+  },
+  {
+    id: 'googledrive', name: 'Google Drive', category: 'docs',
+    about: "Files and folders in Drive through Google's MCP server; needs your own Google OAuth client",
+    remote: { url: 'https://drivemcp.googleapis.com/mcp/v1' },
+    auth: { kind: 'oauth' },
+  },
   { id: 'mail', name: 'Mailbox', category: 'mail', about: 'Read and send email over IMAP and SMTP', auth: { kind: 'none' } },
 ]
 

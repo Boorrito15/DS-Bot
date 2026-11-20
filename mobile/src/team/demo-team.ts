@@ -78,6 +78,8 @@ export function demoData(): DemoData {
         { id: 'github', name: 'GitHub', state: 'ready', account: 'you' },
         { id: 'linear', name: 'Linear', state: 'off', account: null },
         { id: 'notion', name: 'Notion', state: 'error', account: null, error: 'Token expired' },
+        { id: 'gmail', name: 'Gmail', state: 'off', account: null, about: "Gmail through Google's MCP server; needs your own Google OAuth client" },
+        { id: 'googledrive', name: 'Google Drive', state: 'off', account: null, about: "Files and folders in Drive through Google's MCP server; needs your own Google OAuth client" },
       ],
       mail: { accounts: [], google: false },
     },
