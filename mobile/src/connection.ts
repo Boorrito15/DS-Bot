@@ -134,6 +134,9 @@ export interface TeamState {
     turns?: Record<string, number>
   }
   activity?: Record<string, { tool?: string; said?: string; note?: string; target?: string; switching?: boolean }>
+  // Computer use (ds-bot/src/host/computer/index.js `computerView`): the switch, where
+  // the provider stands, and each Bot's level and app grants.
+  computer?: ComputerView
   exchangeTurns?: Record<string, number[]>
   prefs?: { theme?: string; accent?: string; layout?: string; width?: number; flatWidth?: number }
 }
@@ -142,6 +145,14 @@ function phoneName(): string {
   const constants = Platform.constants as { Manufacturer?: string; Model?: string; interfaceIdiom?: string }
   if (Platform.OS === 'android') return [constants.Manufacturer, constants.Model].filter(Boolean).join(' ') || 'Android phone'
   return constants.interfaceIdiom === 'pad' ? 'iPad' : 'iPhone'
+}
+
+/** The computer-use view the host sends with `state`. */
+export interface ComputerView {
+  enabled?: boolean
+  provider?: { state?: string; name?: string; message?: string }
+  macos?: boolean
+  bots?: Record<string, { level?: string; apps?: unknown[] }>
 }
 
 /** A card as the computer keeps it: `view` is the root node of the blueprint. */

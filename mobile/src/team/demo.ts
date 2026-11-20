@@ -358,6 +358,17 @@ const call = useMemo(() => async (endpoint: string, payload: unknown = {}): Prom
       }
       case 'update-check': return { update: { phase: 'current', latest: '0.1.2', available: false, checkedAt: Date.now() - 3600e3, source: 'registry' }, dsh: { phase: 'installed', installed: '0.0.1', available: false } }
       case 'update-install': case 'dsh-update-install': return { ok: true }
+      // Computer use: the switch and each Bot's level, as computer/index.js keeps them.
+      case 'computer-set-enabled':
+        state.computer = { ...state.computer, enabled: body.enabled === true }
+        touch()
+        return true
+      case 'computer-set-level': {
+        const computer = (state.computer ??= {})
+        computer.bots = { ...computer.bots, [String(body.botId ?? '')]: { ...computer.bots?.[String(body.botId ?? '')], level: String(body.level ?? 'off') } }
+        touch()
+        return true
+      }
       case 'diagnostics': return {
         size: 48200, entries: 214, total: 214, last: 'Turn 96 on Coder failed once and retried.',
         // The report the Feedback page copies, shaped like diagnostics.js `report()`.

@@ -983,6 +983,74 @@ export function BotModels({ navigation }: any) {
   )
 }
 
+const COMPUTER_LEVELS = [['off', 'Off'], ['view', 'View only'], ['background', 'Background'], ['foreground', 'Foreground']] as const
+
+const providerText = (provider: { state?: string; message?: string } | undefined): string => {
+  switch (provider?.state) {
+    case 'ready': return t('Ready')
+    case 'loading': return t('Loading the provider…')
+    case 'error': return t('Could not load the provider')
+    case 'missing': return t('The provider package is not installed')
+    case 'occupied': return t('Another computer-use provider is running')
+    case 'unsupported': return t('Computer use is not available on this platform')
+    default: return provider?.message ?? t('Off')
+  }
+}
+
+// Settings → Computer use (the desktop's computer.js page): the switch, where the
+// provider stands, and each Bot's level. Permissions and app grants stay on the
+// computer, since they are macOS dialogs and per-app cards.
+export function ComputerUse({ navigation }: any) {
+  const { p, dark } = useTheme()
+  const { team, call } = useTeam()
+  const computer = team?.computer
+  const bots = useMemo(() => (team?.bots ?? []).filter(bot => bot.hidden !== true).sort(byRecency), [team?.bots])
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const setEnabled = (enabled: boolean) => {
+    setBusy(true)
+    void call('computer-set-enabled', { enabled }).then(() => setError(null), (failure: Error) => setError(failure?.message ?? String(failure))).finally(() => setBusy(false))
+  }
+  const setLevel = (botId: string, level: string) => {
+    void call('computer-set-level', { botId, level }).then(() => setError(null), (failure: Error) => setError(failure?.message ?? String(failure)))
+  }
+  return (
+    <Screen><Back title={t('Computer use')} onBack={() => navigation.goBack()} />
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+        {error !== null ? <Text style={[typeScale.small, { color: p.danger, margin: 18 }]}>{error}</Text> : null}
+        <Section label={t('Computer use')}>
+          <Row label={t('Let Bots use this computer')} hint={providerText(computer?.provider)}
+            end={<Switch value={computer?.enabled === true} disabled={busy} onValueChange={setEnabled} trackColor={{ false: p.line2, true: p.accent }} thumbColor={p.knob} />} />
+        </Section>
+        <Section label={t('Each Bot')}>
+          {bots.map(bot => {
+            const level = computer?.bots?.[bot.id]?.level ?? 'off'
+            return (
+              <View key={bot.id} style={{ paddingHorizontal: 16, paddingVertical: 10, gap: 8 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <Avatar bot={bot} dark={dark} size={26} ring={p.card} />
+                  <Text style={[typeScale.settingsRow, { color: p.ink, flex: 1 }]} numberOfLines={1}>{bot.name}</Text>
+                </View>
+                <View style={[styles.segRow, { borderColor: p.line, backgroundColor: p.hover }]}>
+                  {COMPUTER_LEVELS.map(([id, label]) => {
+                    const on = level === id
+                    return (
+                      <Pressable key={id} accessibilityRole="button" accessibilityState={{ selected: on }} disabled={computer?.enabled !== true}
+                        onPress={() => setLevel(bot.id, id)} style={[styles.seg, on && { backgroundColor: p.card }]}>
+                        <Text style={{ fontSize: 11.5, color: on ? p.ink : p.ink3, fontWeight: on ? '600' : '400' }} numberOfLines={1}>{t(label)}</Text>
+                      </Pressable>
+                    )
+                  })}
+                </View>
+              </View>
+            )
+          })}
+        </Section>
+      </ScrollView>
+    </Screen>
+  )
+}
+
 // Settings → Feedback: the diagnostics report the desktop attaches to a GitHub issue,
 // laid out to copy and paste, and the issue page itself.
 export function Feedback({ navigation }: any) {

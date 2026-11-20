@@ -118,6 +118,17 @@ export function demoData(): DemoData {
     ],
     exchangeTurns: {},
     prefs: { theme: 'deepseek' },
+    // Computer use, shaped like the host's `computerView`.
+    computer: {
+      enabled: true,
+      provider: { state: 'ready', name: 'Cua' },
+      macos: true,
+      bots: {
+        'b-chief': { level: 'background' },
+        'b-writer': { level: 'view' },
+        'b-coder': { level: 'off' },
+      },
+    },
   }
 
   const md = [
