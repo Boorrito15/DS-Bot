@@ -262,6 +262,8 @@ export function teamActions({ call, after, partFor, roster, ui, live, cards, hel
     earlier: (sessionId, cursor) => call('earlier', { sessionId, cursor: cursor ?? null }),
     // Hours come back in this browser's time zone, so days start at local midnight.
     usage: () => call('usage', { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
+    // Plan usage of the signed-in accounts, for the rings on the Usage page.
+    subscriptions: () => call('subscriptions'),
     // The details panel's status line: turns, speed, cache hits and context for one Bot.
     runStats: botId => call('run-stats', { botId }),
     // `summarize` starts a summary when the entries changed; `regenerate` always does.

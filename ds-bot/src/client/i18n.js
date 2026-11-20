@@ -11,6 +11,14 @@ import { DSH_DE, HOST_ERRORS_DE, DE } from './locales/de.js'
 export const NAMESPACE = 'ds-bot'
 
 const ZH = {
+  'Plan usage': '套餐用量',
+  'No signed-in account to read': '没有已登录的账号可读取',
+  'Not signed in on this computer': '这台电脑上没有登录',
+  'Signed in, but the answer was not a shape DS Bot knows': '已登录，但返回的数据格式无法识别',
+  'Could not read it': '无法读取',
+  'The accounts you signed in to, not this computer’s tools.': '你登录的账号，而不是这台电脑上的工具。',
+  'now': '现在',
+  'resets in {time}': '{time} 后重置',
   // Shared
   'Main Bot': '主 Bot',
   Working: '进行中',

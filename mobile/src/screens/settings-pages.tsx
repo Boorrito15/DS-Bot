@@ -16,6 +16,8 @@ import { Avatar } from '../ui/marks.tsx'
 import { byRecency } from '../team/sections.ts'
 import { modelRefOf, runModelChange, runsOnLocalAgent, summarizeModelChange } from '../team/models.ts'
 import { ModelPicker } from './model-menu.tsx'
+import { PlanRings } from '../ui/plan-rings.tsx'
+import type { PlanView } from '../team/plans.ts'
 import { addGrant, BROWSER_ACTIONS, BROWSER_DURATIONS, grantExpired, removeGrant, siteValue, untilOf, type BrowserDuration } from '../team/browser.ts'
 import { radius, shadow, type as typeScale, useTheme } from '../ui/tokens.ts'
 
@@ -680,9 +682,13 @@ export function TeamUsage({ navigation }: any) {
   // The computer's usage view (usage.js): hourly rows of
   // [hour, owner, model, kind, input, cacheRead, cacheWrite, output, calls].
   const [view, setView] = useState<UsageView | null>(null)
+  // Plan usage of the signed-in accounts, on its own call so a slow provider never
+  // holds the token numbers back.
+  const [plans, setPlans] = useState<PlanView | null>(null)
   const [rangeId, setRangeId] = useState<Range['id']>('7d')
   useEffect(() => {
     void call('usage', { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }).then(v => setView(v as UsageView)).catch(() => {})
+    void call('subscriptions').then(v => setPlans(v as PlanView)).catch(() => {})
   }, [])
   const range = RANGES.find(entry => entry.id === rangeId) ?? RANGES[1]
   const summary = view === null ? null : summarize(view, range)
@@ -711,6 +717,7 @@ export function TeamUsage({ navigation }: any) {
   return (
     <Screen><Back title={t('Usage')} onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+        <PlanRings view={plans} />
         <View style={{ flexDirection: 'row', gap: 6, paddingHorizontal: 14, marginTop: 12 }}>
           {RANGES.map(entry => {
             const on = entry.id === rangeId

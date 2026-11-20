@@ -6,6 +6,7 @@ import { CalendarIcon, ChatsIcon, ChevronLeftIcon, ChevronRightIcon } from './ic
 import { reducedMotion, useGlide } from './motion.js'
 import { dateLocale, t } from './i18n.js'
 import { DAY_MS, HOUR, HOUR_MS, MODEL, OWNER, RANGES, compact, dayKey, hourMs, mondayOf, percent, spanRange, summarize, tokensOf } from './usage-data.js'
+import { PlanRings } from './plan-rings.js'
 
 // Usage page: the host's ledger as hourly rows, summed here by hour, day, week, or
 // month, over a preset range or days picked on a calendar. The overview stacks the
@@ -401,6 +402,15 @@ export function UsagePage({ roster, actions, focusId }) {
   const [span, setSpan] = useState(null)
   const [picking, setPicking] = useState(false)
   const [by, setBy] = useState('bot')
+  // Plan usage of the signed-in accounts: its own call, so a slow provider never holds
+  // the token numbers back.
+  const [plans, setPlans] = useState(null)
+  const [planError, setPlanError] = useState('')
+  useEffect(() => {
+    let stopped = false
+    void Promise.resolve(actions.subscriptions?.()).then(value => { if (!stopped) setPlans(value) }, (failure) => { if (!stopped) setPlanError(failure?.message ?? String(failure)) })
+    return () => { stopped = true }
+  }, [])
   const tabs = useRef(null)
   const focus = focusOf(focusId)
   useEffect(() => {
@@ -588,6 +598,7 @@ export function UsagePage({ roster, actions, focusId }) {
       view.scanning ? h('span', { className: 'bt-us-note', role: 'status' }, t('Still reading older chats; totals may grow.')) : null,
       picking ? h(SpanPicker, { span, today, oldest, active: activeDays, near: tabs, onPick: pickSpan, onClose: () => setPicking(false) }) : null),
     error ? h('div', { className: 'bt-error', role: 'alert', style: { padding: 0 } }, error) : null,
+    h(PlanRings, { view: plans, error: planError }),
     body)
 }
 

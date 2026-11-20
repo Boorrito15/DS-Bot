@@ -1,6 +1,14 @@
 // Spanish (es) localization for DS Bot client and DSH settings namespaces.
 
 export const ES = {
+  "Plan usage": "Uso del plan",
+  "No signed-in account to read": "No hay ninguna cuenta con sesión que leer",
+  "Not signed in on this computer": "Sin sesión en este ordenador",
+  "Signed in, but the answer was not a shape DS Bot knows": "Con sesión, pero la respuesta tiene una forma desconocida",
+  "Could not read it": "No se pudo leer",
+  "The accounts you signed in to, not this computer’s tools.": "Las cuentas en las que iniciaste sesión, no las herramientas de este ordenador.",
+  "resets in {time}": "se reinicia en {time}",
+  "now": "ahora",
   'A new reply is waiting': "Tienes una nueva respuesta",
   'Opening…': 'Abriendo…',
   'Still opening…': 'Sigue abriendo…',

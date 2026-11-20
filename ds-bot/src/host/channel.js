@@ -192,7 +192,7 @@ export function install(rt) {
   }
   // What a host that only reads the team may still answer.
   // Updates change the dsh profile, not the team, so a reading host may run them too.
-  const READS = new Set(['secret-store', 'secret-unlock', 'state', 'models', 'efforts', 'providers', 'provider-models', 'earlier', 'chat', 'run-stats', 'room-progress', 'group-rows', 'exchange', 'exchange-text', 'file-text', 'usage', 'schedules', 'memory-view', 'browser-wait', 'browser-result', 'diagnostics', 'diagnostics-log', 'diagnostics-clear', 'update-check', 'update-install', 'dsh-update-install', 'repo-stars', 'approval-answer', 'thinking', 'avatar-library', 'computer-system-status', 'computer-shot', 'local-agents', 'local-agent-models', 'browser-frame', 'hello', 'notices', 'avatar', 'room-chat', 'usage-summary', 'image', 'markdown-image', 'file-download', 'changes-check', 'changes-summary', 'changes-diff'])
+  const READS = new Set(['secret-store', 'secret-unlock', 'state', 'models', 'efforts', 'providers', 'provider-models', 'earlier', 'chat', 'run-stats', 'room-progress', 'group-rows', 'exchange', 'exchange-text', 'file-text', 'usage', 'schedules', 'memory-view', 'browser-wait', 'browser-result', 'diagnostics', 'diagnostics-log', 'diagnostics-clear', 'subscriptions', 'update-check', 'update-install', 'dsh-update-install', 'repo-stars', 'approval-answer', 'thinking', 'avatar-library', 'computer-system-status', 'computer-shot', 'local-agents', 'local-agent-models', 'browser-frame', 'hello', 'notices', 'avatar', 'room-chat', 'usage-summary', 'image', 'markdown-image', 'file-download', 'changes-check', 'changes-summary', 'changes-diff'])
 
   async function setPrefs(body) {
     if (body.theme !== undefined) {
@@ -868,6 +868,10 @@ export function install(rt) {
           if (bot === undefined) return fail('Unknown Bot', 'bot/not-found')
           return ok(await rt.switchPart(bot.id, String(body.sessionId ?? '')))
         }
+        // Plan usage of the signed-in accounts, for the rings on the Usage page.
+        case 'subscriptions':
+          if (rt.subscriptionsView === undefined) return ok({ at: Date.now(), sources: [] })
+          return ok(await rt.subscriptionsView())
         case 'diagnostics':
           await rt.load()
           return ok(await rt.diagnostics.report(body))

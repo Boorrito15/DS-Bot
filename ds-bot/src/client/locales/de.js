@@ -1,6 +1,14 @@
 // German (de) localization for DS Bot client and DSH settings namespaces.
 
 export const DE = {
+  "Plan usage": "Tarifnutzung",
+  "No signed-in account to read": "Kein angemeldetes Konto zu lesen",
+  "Not signed in on this computer": "Auf diesem Computer nicht angemeldet",
+  "Signed in, but the answer was not a shape DS Bot knows": "Angemeldet, aber die Antwort hat eine unbekannte Form",
+  "Could not read it": "Konnte nicht gelesen werden",
+  "The accounts you signed in to, not this computer’s tools.": "Die Konten, bei denen du angemeldet bist, nicht die Werkzeuge dieses Computers.",
+  "resets in {time}": "{time} bis zum Zurücksetzen",
+  "now": "jetzt",
   'A new reply is waiting': "Eine neue Antwort wartet auf dich",
   'Opening…': 'Wird geöffnet…',
   'Still opening…': 'Wird noch geöffnet…',

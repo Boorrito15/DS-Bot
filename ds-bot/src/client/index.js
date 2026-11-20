@@ -45,6 +45,7 @@ import { AVATAR_LIBRARY_CSS } from './avatar-library.js'
 import { GROUP_SETTINGS_CSS } from './group-settings.js'
 import { FOLDER_CSS } from './folder-menu.js'
 import { USAGE_CSS } from './usage-page.js'
+import { PLAN_RINGS_CSS } from './plan-rings.js'
 import { SCHEDULE_CSS } from './schedules.js'
 import { STORAGE, migrateStorage } from './storage.js'
 import { noteLeft, setUnread, sharedMap, toggleReaction } from './shared-map.js'
@@ -1176,7 +1177,7 @@ export function apply(ctx) {
     [SECRET_CSS + CONNECTOR_CSS + CONNECTORS_PAGE_CSS, 'secrets'],
     [LEARNING_CSS, 'learning'],
     [MODEL_CSS + FOLDER_CSS + BOT_SETTINGS_CSS + BOT_MODELS_CSS + AGENT_CARDS_CSS + GROUP_SETTINGS_CSS + AVATAR_LIBRARY_CSS, 'models'],
-    [USAGE_CSS, 'usage'],
+    [USAGE_CSS + PLAN_RINGS_CSS, 'usage'],
     [SCHEDULE_CSS, 'schedules'],
     [FEEDBACK_CSS, 'feedback'],
     [ABOUT_CSS, 'about'],

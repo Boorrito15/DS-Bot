@@ -371,6 +371,18 @@ const call = useMemo(() => async (endpoint: string, payload: unknown = {}): Prom
         touch()
         return true
       }
+      // Plan usage of the signed-in accounts, as subscriptions.js answers: a Claude plan
+      // with its session and week, and a Codex account that is not signed in.
+      case 'subscriptions': return {
+        at: Date.now(),
+        sources: [
+          { id: 'anthropic', name: 'Claude', state: 'ready', plan: 'max', windows: [
+            { id: 'session', label: '5 hours', used: 0.42, resetsAt: Date.now() + 2.4 * 3600e3 },
+            { id: 'week', label: '1 week', used: 0.18, resetsAt: Date.now() + 3.2 * 86400e3 },
+          ] },
+          { id: 'codex', name: 'Codex', state: 'signed-out' },
+        ],
+      }
       // Computer use: the switch and each Bot's level, as computer/index.js keeps them.
       case 'computer-set-enabled':
         state.computer = { ...state.computer, enabled: body.enabled === true }

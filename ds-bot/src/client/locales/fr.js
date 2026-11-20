@@ -1,6 +1,14 @@
 // French (fr) localization for DS Bot client and DSH settings namespaces.
 
 export const FR = {
+  "Plan usage": "Utilisation du forfait",
+  "No signed-in account to read": "Aucun compte connecté à lire",
+  "Not signed in on this computer": "Pas connecté sur cet ordinateur",
+  "Signed in, but the answer was not a shape DS Bot knows": "Connecté, mais la réponse a une forme inconnue",
+  "Could not read it": "Impossible de le lire",
+  "The accounts you signed in to, not this computer’s tools.": "Les comptes connectés, pas les outils de cet ordinateur.",
+  "resets in {time}": "réinitialisation dans {time}",
+  "now": "maintenant",
   'A new reply is waiting': "Une nouvelle réponse vous attend",
   "Opening…": "Ouverture…",
   "Still opening…": "Toujours en cours d’ouverture…",

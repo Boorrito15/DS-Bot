@@ -1,6 +1,14 @@
 // Japanese (ja) localization for DS Bot client and DSH settings namespaces.
 
 export const JA = {
+  "Plan usage": "プランの使用量",
+  "No signed-in account to read": "読み取れるサインイン済みのアカウントがありません",
+  "Not signed in on this computer": "このコンピューターではサインインしていません",
+  "Signed in, but the answer was not a shape DS Bot knows": "サインイン済みですが、応答の形式が不明です",
+  "Could not read it": "読み取れませんでした",
+  "The accounts you signed in to, not this computer’s tools.": "サインインしたアカウントの値です（このコンピューターのツールではありません）。",
+  "resets in {time}": "{time} 後にリセット",
+  "now": "まもなく",
   'A new reply is waiting': "新しい返信があります",
   "Opening…": "開いています…",
   "Still opening…": "まだ開いています…",

@@ -1,6 +1,14 @@
 // Korean (ko) localization for DS Bot client and DSH settings namespaces.
 
 export const KO = {
+  "Plan usage": "요금제 사용량",
+  "No signed-in account to read": "읽을 수 있는 로그인 계정이 없습니다",
+  "Not signed in on this computer": "이 컴퓨터에서 로그인하지 않았습니다",
+  "Signed in, but the answer was not a shape DS Bot knows": "로그인했지만 응답 형식을 알 수 없습니다",
+  "Could not read it": "읽을 수 없습니다",
+  "The accounts you signed in to, not this computer’s tools.": "로그인한 계정 기준이며, 이 컴퓨터의 도구가 아닙니다.",
+  "resets in {time}": "{time} 후 재설정",
+  "now": "곧",
   'A new reply is waiting': "새 답변이 도착했습니다",
   'Opening…': '여는 중…',
   'Still opening…': '아직 여는 중…',
