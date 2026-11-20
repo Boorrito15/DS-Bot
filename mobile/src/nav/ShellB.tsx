@@ -17,7 +17,7 @@ import { Settings } from '../screens/Settings.tsx'
 import { TeamList, type ChatTarget } from '../screens/TeamList.tsx'
 import { TEAM_SEARCH_INSET, TeamSearchBar } from '../screens/team-search.tsx'
 import { BotDetails, BotEdit, NewBot, NewGroup, GroupDetails, GroupSettings, Memory, Schedules, Folder, Usage, Computers, Secrets } from '../screens/manage.tsx'
-import { Providers, Connectors, Capabilities, TeamUsage, Location, Updates, About, Feedback, LocalAgents, BotModels, ComputerUse } from '../screens/settings-pages.tsx'
+import { Providers, Connectors, Capabilities, TeamUsage, Location, Updates, About, Feedback, LocalAgents, BotModels, ComputerUse, BrowserAccess, IMConnections } from '../screens/settings-pages.tsx'
 import { Side } from '../screens/side.tsx'
 import { BotBrowser } from '../screens/manage.tsx'
 import type { Bot, Room } from '../connection.ts'
@@ -219,6 +219,8 @@ function SettingsSheet() {
         <SettingsStack.Screen name="LocalAgents" component={LocalAgents} />
         <SettingsStack.Screen name="BotModels" component={BotModels} />
         <SettingsStack.Screen name="ComputerUse" component={ComputerUse} />
+        <SettingsStack.Screen name="BrowserAccess" component={BrowserAccess} />
+        <SettingsStack.Screen name="IM" component={IMConnections} />
         <SettingsStack.Screen name="Folder" component={Folder} />
       </SettingsStack.Navigator>
     </Sheet>

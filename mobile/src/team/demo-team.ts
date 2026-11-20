@@ -13,9 +13,10 @@ const seq = () => { let n = 0; return () => { n += 1; return n } }
 
 const BOTS: Bot[] = [
   { id: 'b-chief', name: 'Chief', role: 'Main Bot', capabilities: ['Run shell commands', 'Read files'], color: 'deepseek', avatar: { shape: 'whale' }, model: 'deepseek-official/deepseek-v4.1', effort: 'medium', workDir: '~/ds-bot', instructions: 'Keep the team moving, review every diff before it lands.', sessionId: 's-chief', parts: ['s-chief-0'], createdAt: T - 90 * 86400e3, lastAt: T - 600e3, preview: 'Here is the plan, in order' },
-  { id: 'b-writer', name: 'Writer', role: 'Words and docs', color: 'violet', avatar: { shape: 'moon' }, model: 'deepseek-official/deepseek-flash', workDir: '~/ds-bot/docs', sessionId: 's-writer', createdAt: T - 60 * 86400e3, lastAt: T - 2400e3, preview: 'Draft is attached for review' },
-  { id: 'b-coder', name: 'Coder', role: 'Builds and fixes', color: 'cyan', avatar: { shape: 'hex' }, sessionId: 's-coder', sectionId: 'sec-work', createdAt: T - 55 * 86400e3 },
+  { id: 'b-writer', name: 'Writer', role: 'Words and docs', color: 'violet', avatar: { shape: 'moon' }, model: 'deepseek-official/deepseek-flash', workDir: '~/ds-bot/docs', sessionId: 's-writer', createdAt: T - 60 * 86400e3, lastAt: T - 2400e3, preview: 'Draft is attached for review', browserGrants: [{ site: 'medium.com', kinds: ['post', 'upload'], until: Date.now() + 3600e3 }] },
+  { id: 'b-coder', name: 'Coder', role: 'Builds and fixes', color: 'cyan', avatar: { shape: 'hex' }, sessionId: 's-coder', sectionId: 'sec-work', createdAt: T - 55 * 86400e3, browserGrants: [{ site: '*', kinds: ['*'] }] },
   { id: 'b-researcher', name: 'Researcher', role: 'Reads and compares', color: 'green', avatar: { shape: 'pebbles' }, sessionId: 's-researcher', createdAt: T - 50 * 86400e3 },
+  // Browser grants, shaped like the host stores them (browser-settings.js).
   { id: 'b-designer', name: 'Designer', role: 'Interface and brand', color: 'magenta', avatar: { shape: 'star' }, sessionId: 's-designer', pinned: true, createdAt: T - 45 * 86400e3, lastAt: T - 7200e3, preview: 'New avatar set is in' },
 ]
 
@@ -118,6 +119,16 @@ export function demoData(): DemoData {
     ],
     exchangeTurns: {},
     prefs: { theme: 'deepseek' },
+    // IM connections, shaped like the host's `imView` and `imStatusView`.
+    im: {
+      platforms: ['telegram', 'discord', 'slack'],
+      connections: [
+        { id: 'im-telegram', platform: 'telegram', account: '@dsbot_tools', botId: 'b-chief', enabled: true },
+        { id: 'im-discord', platform: 'discord', account: 'ds-bot#4412', botId: 'b-coder', enabled: true },
+        { id: 'im-slack', platform: 'slack', account: 'acme.slack.com', botId: 'b-writer', enabled: false },
+      ],
+    },
+    imStatus: { 'im-telegram': { state: 'connected' }, 'im-discord': { state: 'error', error: 'Token rejected by Discord (401)' } },
     // Computer use, shaped like the host's `computerView`.
     computer: {
       enabled: true,

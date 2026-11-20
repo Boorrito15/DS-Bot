@@ -16,6 +16,7 @@ import { Avatar } from '../ui/marks.tsx'
 import { byRecency } from '../team/sections.ts'
 import { modelRefOf, runModelChange, runsOnLocalAgent, summarizeModelChange } from '../team/models.ts'
 import { ModelPicker } from './model-menu.tsx'
+import { addGrant, BROWSER_ACTIONS, BROWSER_DURATIONS, grantExpired, removeGrant, siteValue, untilOf, type BrowserDuration } from '../team/browser.ts'
 import { radius, shadow, type as typeScale, useTheme } from '../ui/tokens.ts'
 
 function Screen({ children }: { children: React.ReactNode }) {
@@ -1042,6 +1043,178 @@ export function ComputerUse({ navigation }: any) {
                     )
                   })}
                 </View>
+              </View>
+            )
+          })}
+        </Section>
+      </ScrollView>
+    </Screen>
+  )
+}
+
+// Settings → Browser (the desktop's browser-settings.js): what a Bot may do on a site
+// without asking each time. Reading the page you have open needs no grant; posting,
+// uploading, downloading and deleting do.
+export function BrowserAccess({ navigation }: any) {
+  const { p, dark } = useTheme()
+  const { team, call } = useTeam()
+  const bots = useMemo(() => (team?.bots ?? []).filter(bot => bot.hidden !== true).sort(byRecency), [team?.bots])
+  const [botId, setBotId] = useState(() => bots[0]?.id ?? '')
+  const [site, setSite] = useState('')
+  const [kinds, setKinds] = useState<string[]>(['post'])
+  const [duration, setDuration] = useState<BrowserDuration>('hour')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const chosen = bots.find(bot => bot.id === botId) ?? bots[0]
+  const grants = bots.flatMap(bot => (bot.browserGrants ?? []).map((grant, index) => ({ bot, grant, index, expired: grantExpired(grant) })))
+  const save = (botIdToChange: string, browserGrants: { site?: string; kinds?: string[]; until?: number }[] | null) => {
+    void call('update-bot', { id: botIdToChange, browserGrants }).then(() => setError(null), (failure: Error) => setError(failure?.message ?? String(failure)))
+  }
+  const add = () => {
+    if (chosen === undefined || kinds.length === 0) return
+    setBusy(true)
+    const grant = { site: siteValue(site), kinds: [...kinds], ...(() => { const until = untilOf(duration); return until === undefined ? {} : { until } })() }
+    void call('update-bot', { id: chosen.id, browserGrants: addGrant(chosen.browserGrants ?? [], grant) })
+      .then(() => { setError(null); setSite('') }, (failure: Error) => setError(failure?.message ?? String(failure)))
+      .finally(() => setBusy(false))
+  }
+  const kindLabel = (kind: string) => { const found = BROWSER_ACTIONS.find(([id]) => id === kind); return found === undefined ? kind : t(found[1]) }
+  const timeText = (grant: { until?: number }) => {
+    if (!Number.isFinite(grant.until)) return t('Permanent')
+    if (grantExpired(grant)) return t('Expired')
+    return t('Until {time}', { time: new Date(grant.until!).toLocaleString() })
+  }
+  return (
+    <Screen><Back title={t('Browser')} onBack={() => navigation.goBack()} />
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+        {error !== null ? <Text style={[typeScale.small, { color: p.danger, margin: 18 }]}>{error}</Text> : null}
+        <Section label={t('Browser access')}>
+          <Row label={t('Reading is always allowed')} hint={t('A Bot can read the page you have open: its title, address and visible text. It cannot click, type or scroll without an interactive plugin.')} />
+        </Section>
+        <Section label={t('Allowed actions')}>
+          {grants.length === 0 ? <Row label={t('Nothing allowed yet.')} /> : grants.map(({ bot, grant, index, expired }) => (
+            <View key={`${bot.id}:${index}`} style={{ paddingHorizontal: 16, paddingVertical: 10, gap: 6, opacity: expired ? 0.55 : 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Avatar bot={bot} dark={dark} size={26} ring={p.card} />
+                <Text style={[typeScale.settingsRow, { color: p.ink, flex: 1 }]} numberOfLines={1}>{bot.name}</Text>
+                <Pressable accessibilityRole="button" accessibilityLabel={t('Remove grant')} onPress={() => save(bot.id, removeGrant(bot.browserGrants ?? [], index))}>
+                  <Text style={[typeScale.small, { color: p.danger }]}>{t('Remove')}</Text>
+                </Pressable>
+              </View>
+              <Text style={[typeScale.small, { color: p.ink2 }]} numberOfLines={1}>{grant.site === '*' ? t('All sites') : grant.site}</Text>
+              <Text style={[typeScale.small, { color: p.ink3 }]} numberOfLines={2}>
+                {(grant.kinds ?? []).includes('*') ? t('All four') : (grant.kinds ?? []).map(kindLabel).join(' · ')} · {timeText(grant)}
+              </Text>
+            </View>
+          ))}
+        </Section>
+        <Section label={t('Allow an action')}>
+          <View style={{ paddingHorizontal: 16, paddingVertical: 10, gap: 4 }}>
+            <Text style={[typeScale.small, { color: p.ink3 }]}>{t('Bot')}</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
+              {bots.map(bot => {
+                const on = bot.id === chosen?.id
+                return (
+                  <Pressable key={bot.id} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => setBotId(bot.id)}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.pill, borderWidth: StyleSheet.hairlineWidth, borderColor: on ? p.accent : p.line, backgroundColor: on ? p.hover : 'transparent' }}>
+                    <Avatar bot={bot} dark={dark} size={20} ring={p.card} />
+                    <Text style={[typeScale.small, { color: p.ink }]}>{bot.name}</Text>
+                  </Pressable>
+                )
+              })}
+            </ScrollView>
+          </View>
+          <View style={{ paddingHorizontal: 16, paddingBottom: 10 }}>
+            <TextInput style={[typeScale.settingsRow, styles.field, { color: p.ink, borderColor: p.line }]} value={site} onChangeText={setSite}
+              placeholder={t('example.com — leave empty for all sites')} placeholderTextColor={p.ink3} autoCapitalize="none" autoCorrect={false} />
+          </View>
+          <View style={{ paddingHorizontal: 16, paddingBottom: 10, gap: 6 }}>
+            <Text style={[typeScale.small, { color: p.ink3 }]}>{t('Actions')}</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {BROWSER_ACTIONS.map(([kind, label]) => {
+                const on = kinds.includes(kind)
+                return (
+                  <Pressable key={kind} accessibilityRole="button" accessibilityState={{ selected: on }}
+                    onPress={() => setKinds(current => on ? current.filter(value => value !== kind) : [...current, kind])}
+                    style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, borderWidth: StyleSheet.hairlineWidth, borderColor: on ? p.accent : p.line, backgroundColor: on ? p.hover : 'transparent' }}>
+                    <Text style={[typeScale.small, { color: on ? p.ink : p.ink3, fontWeight: on ? '600' : '400' }]}>{t(label)}</Text>
+                  </Pressable>
+                )
+              })}
+            </View>
+          </View>
+          <View style={{ paddingHorizontal: 16, paddingBottom: 10, gap: 6 }}>
+            <Text style={[typeScale.small, { color: p.ink3 }]}>{t('Duration')}</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {BROWSER_DURATIONS.map(([id, label]) => {
+                const on = duration === id
+                return (
+                  <Pressable key={id} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => setDuration(id)}
+                    style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.pill, borderWidth: StyleSheet.hairlineWidth, borderColor: on ? p.accent : p.line, backgroundColor: on ? p.hover : 'transparent' }}>
+                    <Text style={[typeScale.small, { color: on ? p.ink : p.ink3, fontWeight: on ? '600' : '400' }]}>{t(label)}</Text>
+                  </Pressable>
+                )
+              })}
+            </View>
+          </View>
+          <Pressable accessibilityRole="button" disabled={busy || chosen === undefined || kinds.length === 0} onPress={add}
+            style={({ pressed }) => [styles.row, pressed && { backgroundColor: p.hover }]}>
+            <Text style={[typeScale.settingsRow, { color: busy || chosen === undefined || kinds.length === 0 ? p.ink3 : p.accent, fontWeight: '600' }]}>{busy ? t('Saving…') : t('Add')}</Text>
+          </Pressable>
+        </Section>
+      </ScrollView>
+    </Screen>
+  )
+}
+
+const IM_NAMES: Record<string, string> = {
+  telegram: 'Telegram', discord: 'Discord', slack: 'Slack', qq: 'QQ',
+  weixin: 'WeChat', wecom: 'WeCom', feishu: 'Feishu', dingtalk: 'DingTalk',
+}
+
+const IM_STATE: Record<string, string> = {
+  connected: 'Connected', connecting: 'Connecting…', error: 'Could not connect',
+  stopped: 'Off', idle: 'Waiting to connect',
+}
+
+// Settings → IM: the chat-app connections this computer runs, where each one stands,
+// and the switch that turns one off. Adding a connection stays on the desktop: every
+// platform signs in with its own token or a scanned code.
+export function IMConnections({ navigation }: any) {
+  const { p } = useTheme()
+  const { team, call } = useTeam()
+  const connections = team?.im?.connections ?? []
+  const bots = team?.bots ?? []
+  const statuses = team?.imStatus ?? {}
+  const [error, setError] = useState<string | null>(null)
+  const run = (task: Promise<unknown>) => void task.then(() => setError(null), (failure: Error) => setError(failure?.message ?? String(failure)))
+  return (
+    <Screen><Back title={t('IM')} onBack={() => navigation.goBack()} />
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+        {error !== null ? <Text style={[typeScale.small, { color: p.danger, margin: 18 }]}>{error}</Text> : null}
+        <Section label={t('Connected chat apps')}>
+          {connections.length === 0 ? <Row label={t('No chat apps connected')} hint={t('Add one on the computer: each platform signs in with its own token or a scanned code.')} /> : null}
+          {connections.map(connection => {
+            const status = statuses[connection.id]
+            const bot = bots.find(entry => entry.id === connection.botId)
+            const state = connection.enabled === false ? t('Off') : (status?.state !== undefined ? t(IM_STATE[status.state] ?? status.state) : t('On'))
+            return (
+              <View key={connection.id} style={{ paddingHorizontal: 16, paddingVertical: 10, gap: 4 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={[typeScale.settingsRow, { color: p.ink }]} numberOfLines={1}>{IM_NAMES[connection.platform] ?? connection.platform}</Text>
+                    <Text style={[typeScale.small, { color: status?.state === 'error' ? p.danger : p.ink3, marginTop: 2 }]} numberOfLines={1}>
+                      {[connection.account ?? undefined, t(state)].filter(Boolean).join(' · ')}
+                    </Text>
+                  </View>
+                  <Switch value={connection.enabled !== false} trackColor={{ false: p.line2, true: p.accent }} thumbColor={p.knob}
+                    onValueChange={enabled => run(call('im-update', { id: connection.id, enabled }))} />
+                </View>
+                {bot !== undefined ? <Text style={[typeScale.small, { color: p.ink3 }]} numberOfLines={1}>{t('Answers as {name}', { name: bot.name })}</Text> : null}
+                {status?.error !== undefined ? <Text style={[typeScale.small, { color: p.danger }]} numberOfLines={2}>{status.error}</Text> : null}
+                <Pressable accessibilityRole="button" onPress={() => confirmDanger(t('Remove this chat app?'), t('Remove'), () => run(call('im-remove', { id: connection.id })))}>
+                  <Text style={[typeScale.small, { color: p.danger }]}>{t('Remove')}</Text>
+                </Pressable>
               </View>
             )
           })}

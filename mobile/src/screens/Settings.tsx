@@ -106,8 +106,10 @@ export function Settings({ navigation }: { navigation?: any }) {
         <Row label={t('Local agents')} onPress={() => navigation?.navigate('LocalAgents')} />
         <Row label={t('Bot models')} onPress={() => navigation?.navigate('BotModels')} />
         <Row label={t('Connectors')} onPress={() => navigation?.navigate('Connectors')} />
+        <Row label={t('IM')} onPress={() => navigation?.navigate('IM')} />
         <Row label={t('Capabilities')} onPress={() => navigation?.navigate('Capabilities')} />
         <Row label={t('Computer use')} onPress={() => navigation?.navigate('ComputerUse')} />
+        <Row label={t('Browser')} onPress={() => navigation?.navigate('BrowserAccess')} />
         <Row label={t('Usage')} onPress={() => navigation?.navigate('TeamUsage')} />
         <Row label={t('Secrets')} onPress={() => navigation?.navigate('Secrets')} />
         <Row label={t('Location')} onPress={() => navigation?.navigate('Location')} />

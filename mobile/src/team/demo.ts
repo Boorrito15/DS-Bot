@@ -358,6 +358,19 @@ const call = useMemo(() => async (endpoint: string, payload: unknown = {}): Prom
       }
       case 'update-check': return { update: { phase: 'current', latest: '0.1.2', available: false, checkedAt: Date.now() - 3600e3, source: 'registry' }, dsh: { phase: 'installed', installed: '0.0.1', available: false } }
       case 'update-install': case 'dsh-update-install': return { ok: true }
+      case 'im-update': {
+        const connection = state.im?.connections?.find(entry => entry.id === String(body.id ?? ''))
+        if (connection === undefined) throw Object.assign(new Error('No such IM bot'), { code: 'bot/not-found' })
+        if (body.enabled !== undefined) connection.enabled = body.enabled === true
+        if (body.botId !== undefined) connection.botId = String(body.botId)
+        touch()
+        return true
+      }
+      case 'im-remove': {
+        if (state.im !== undefined) state.im.connections = (state.im.connections ?? []).filter(entry => entry.id !== String(body.id ?? ''))
+        touch()
+        return true
+      }
       // Computer use: the switch and each Bot's level, as computer/index.js keeps them.
       case 'computer-set-enabled':
         state.computer = { ...state.computer, enabled: body.enabled === true }

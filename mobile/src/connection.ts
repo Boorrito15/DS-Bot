@@ -20,6 +20,8 @@ export interface Bot {
   appliedModel?: string
   capabilities?: string[]
   browser?: boolean
+  // What a Bot may do on a site without asking each time (team/browser.ts).
+  browserGrants?: { site?: string; kinds?: string[]; until?: number }[]
   effort?: string
   workDir?: string
   main?: boolean
@@ -137,6 +139,10 @@ export interface TeamState {
   // Computer use (ds-bot/src/host/computer/index.js `computerView`): the switch, where
   // the provider stands, and each Bot's level and app grants.
   computer?: ComputerView
+  // IM connections (ds-bot/src/host/im/index.js `imView`): the chat-app bots this
+  // computer runs, and where each one stands right now (`imStatus`).
+  im?: { connections?: ImConnection[]; platforms?: string[] }
+  imStatus?: Record<string, { state?: string; error?: string; at?: number }>
   exchangeTurns?: Record<string, number[]>
   prefs?: { theme?: string; accent?: string; layout?: string; width?: number; flatWidth?: number }
 }
@@ -145,6 +151,18 @@ function phoneName(): string {
   const constants = Platform.constants as { Manufacturer?: string; Model?: string; interfaceIdiom?: string }
   if (Platform.OS === 'android') return [constants.Manufacturer, constants.Model].filter(Boolean).join(' ') || 'Android phone'
   return constants.interfaceIdiom === 'pad' ? 'iPad' : 'iPhone'
+}
+
+/** One chat-app connection, as the host lists it. */
+export interface ImConnection {
+  id: string
+  platform: string
+  account?: string | null
+  botId?: string | null
+  enabled?: boolean
+  paired?: string[]
+  requests?: string[]
+  createdAt?: number
 }
 
 /** The computer-use view the host sends with `state`. */
