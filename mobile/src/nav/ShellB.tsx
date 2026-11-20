@@ -10,7 +10,7 @@ import { ErrorBoundary } from '../ui/error-boundary.tsx'
 import { t } from '../ui/i18n.ts'
 import { shadow, type as typeScale, useTheme } from '../ui/tokens.ts'
 import { Avatar, RoomAvatar } from '../ui/marks.tsx'
-import { ChevronLeftIcon, InboxIcon, PeopleIcon, PlusIcon, SideIcon } from '../ui/icons.tsx'
+import { ChevronLeftIcon, ClockIcon, InboxIcon, PeopleIcon, PlusIcon, SideIcon } from '../ui/icons.tsx'
 import { ChatView } from '../screens/Chat.tsx'
 import { NeedsYou } from '../screens/NeedsYou.tsx'
 import { Settings } from '../screens/Settings.tsx'
@@ -85,6 +85,13 @@ function TeamScreen({ navigation }: any) {
             <Pressable accessibilityRole="button" onPress={() => create('NewGroup')} style={({ pressed }) => [styles.newRow, pressed && { backgroundColor: p.hover }]}>
               <View style={[styles.newIcon, { backgroundColor: p.hover }]}><PeopleIcon size={18} color={p.ink} /></View>
               <Text style={[typeScale.settingsRow, { color: p.ink }]}>{t('Create group chat')}</Text>
+            </Pressable>
+            <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: p.line, marginLeft: 64 }} />
+            {/* A task is something you start on a Bot or a group, so it is made here
+                beside them rather than buried in Settings. */}
+            <Pressable accessibilityRole="button" onPress={() => { setNewOpen(false); navigation.navigate('Schedules') }} style={({ pressed }) => [styles.newRow, pressed && { backgroundColor: p.hover }]}>
+              <View style={[styles.newIcon, { backgroundColor: p.hover }]}><ClockIcon size={18} color={p.ink} /></View>
+              <Text style={[typeScale.settingsRow, { color: p.ink }]}>{t('Scheduled tasks')}</Text>
             </Pressable>
           </View>
         </Pressable>

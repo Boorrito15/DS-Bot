@@ -105,7 +105,6 @@ export function Settings({ navigation }: { navigation?: any }) {
         <Row label={t('Models')} onPress={() => navigation?.navigate('Providers')} />
         <Row label={t('Connectors')} onPress={() => navigation?.navigate('Connectors')} />
         <Row label={t('Capabilities')} onPress={() => navigation?.navigate('Capabilities')} />
-        <Row label={t('Scheduled tasks')} onPress={() => navigation?.navigate('Schedules')} />
         <Row label={t('Usage')} onPress={() => navigation?.navigate('TeamUsage')} />
         <Row label={t('Secrets')} onPress={() => navigation?.navigate('Secrets')} />
         <Row label={t('Location')} onPress={() => navigation?.navigate('Location')} />
