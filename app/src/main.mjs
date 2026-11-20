@@ -19,6 +19,7 @@ import { canonicalExecPath } from './canonical-path.mjs'
 import { disk } from './copy-tree.mjs'
 import { configureIdentity } from './legacy.mjs'
 import { hostPort } from './host-port.mjs'
+import { remoteUrlOf } from './remote-url.mjs'
 import { captureStdio, LogFile } from './logs.mjs'
 import { Pickers } from './picker-host.mjs'
 import { currentRootOf, driveOf, formatBytes, freeSpace, isEmptyTree, pickFrom, placeOf, rootOf, runningLow } from './place.mjs'
@@ -64,6 +65,9 @@ const UPDATE_DOWNLOAD_WAIT_MS = 15 * 60_000
 const SHORT_DRIVE_BYTES = 5e9
 
 const here = dirname(fileURLToPath(import.meta.url))
+// A computer already running DS Bot to show instead of starting a Host of our own
+// (src/remote-url.mjs). Undefined on a normal start, which then behaves as it always has.
+const remoteUrl = remoteUrlOf(process.argv.slice(1))
 const assets = join(here, '..', 'assets')
 // Drawn by scripts/icon.mjs. Windows takes the .ico for its several sizes.
 const iconFile = join(assets, process.platform === 'win32' ? 'icon.ico' : 'icon.png')
@@ -278,10 +282,13 @@ async function start() {
 async function prepare() {
   // Before the windows: the team window's page is told the Host's origin.
   if (port === undefined) {
-    port = await hostPort(join(app.getPath('userData'), 'host-port.json'))
-    origin = `http://127.0.0.1:${String(port)}`
+    if (remoteUrl !== undefined) origin = new URL(remoteUrl).origin
+    else {
+      port = await hostPort(join(app.getPath('userData'), 'host-port.json'))
+      origin = `http://127.0.0.1:${String(port)}`
+    }
   }
-  startWindow.open(startKind())
+  startWindow.open(remoteUrl !== undefined ? 'later' : startKind())
   if (browserGuests === undefined) {
     await loadModules()
     handleIpc()
@@ -403,6 +410,7 @@ async function until(check, signal) {
 // The data folder (with the first run's question on a first start), the engine, then the team
 // view in the hidden team window.
 async function boot(mine) {
+  if (remoteUrl !== undefined) return bootRemote(mine)
   if (places === undefined) {
     const first = startWindow.kind === 'first'
     if (first) {
@@ -437,6 +445,25 @@ async function boot(mine) {
     if (mine === attempt) hostReady = true
     return true
   }).catch(() => false)
+}
+
+// The page of another computer: no data folder of ours, no Host, nothing to import. The
+// address it was given can trade its own sign-in, so the window loads it the way the
+// local one is loaded.
+async function bootRemote(mine) {
+  startWindow.done('data')
+  startWindow.done('engine')
+  await mainCreated
+  if (mine !== attempt || mainWindow === undefined) return
+  startWindow.teamLoading()
+  launchUrl = remoteUrl
+  tokenSpent = true
+  hostReady = false
+  bootstrap = mainWindow.loadURL(remoteUrl).then(() => {
+    if (mine === attempt) hostReady = true
+    return true
+  }).catch(() => false)
+  await bootstrap
 }
 
 function setPlaces(next) {
