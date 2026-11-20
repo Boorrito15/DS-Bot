@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { t } from '../../ui/i18n.ts'
+import { commandNamed, matchCommands, parseCommand, unknownCommand, type CommandSpec } from '../../team/commands.ts'
 import { ArrowUpIcon, CloseIcon, PlusIcon, StopIcon } from '../../ui/icons.tsx'
 import { radius, shadow, type as typeScale, type Palette } from '../../ui/tokens.ts'
 
@@ -34,14 +35,18 @@ const NOT_SENDABLE = 'Only photos can be sent to the computer for now.'
 // shadow; send is a 36px accent circle. While the Bot runs and the draft is
 // empty a stop button shows instead of send. "+" adds photos when the
 // computer takes them.
-export function Composer({ name, running, canStop, canAttach, onSend, onStop, p }: {
+export function Composer({ name, running, canStop, canAttach, onSend, onStop, p, commands = [], onCommand }: {
   name: string; running: boolean; canStop: boolean; canAttach: boolean
   onSend: (text: string, photos: Photo[]) => Promise<void>; onStop: () => void; p: Palette
+  // The `/` commands of this chat (team/commands.ts), with what a pick should do.
+  commands?: CommandSpec[]; onCommand?: (command: CommandSpec, args: string) => void
 }) {
   const [text, setText] = useState('')
   const [photos, setPhotos] = useState<Photo[]>([])
   const [preparing, setPreparing] = useState(false)
   const [pickError, setPickError] = useState<string | null>(null)
+  // A slash word nobody knows: said here rather than sent to the Bot.
+  const [note, setNote] = useState<string | null>(null)
   // Float above the home indicator (iOS) or the gesture bar (Android, drawn edge to
   // edge). The matching negative keyboardVerticalOffset in ChatView keeps the card
   // hugging the keyboard.
@@ -50,7 +55,23 @@ export function Composer({ name, running, canStop, canAttach, onSend, onStop, p 
   const draft = text.trim()
   const ready = (draft !== '' || photos.length > 0) && !preparing
   // The message shows in the chat at once; the composer is free for the next one.
+  const menuRows = matchCommands(text, commands)
+  const run = (command: CommandSpec) => {
+    setText(''); setNote(null)
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    onCommand?.(command, '')
+  }
   const send = () => {
+    // A command runs rather than being sent, as in the desktop's `/` menu.
+    const command = commandNamed(draft, commands)
+    if (command !== undefined && photos.length === 0) {
+      setText(''); setNote(null)
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+      onCommand?.(command, parseCommand(draft)?.args ?? '')
+      return
+    }
+    const unknown = unknownCommand(draft, commands)
+    if (unknown !== undefined) { setNote(t('No command called /{name}', { name: unknown })); return }
     if (!ready) return
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
     const sending = photos
@@ -126,6 +147,18 @@ export function Composer({ name, running, canStop, canAttach, onSend, onStop, p 
             {preparing ? <View style={[styles.photo, { backgroundColor: p.hover, alignItems: 'center', justifyContent: 'center' }]}><ActivityIndicator color={p.ink3} /></View> : null}
           </ScrollView>
         ) : null}
+        {menuRows.length > 0 ? (
+          <View style={[styles.menu, { borderTopColor: p.line }]}>
+            {menuRows.map(command => (
+              <Pressable key={command.id} accessibilityRole="button" accessibilityLabel={`/${command.name}`} onPress={() => run(command)}
+                style={({ pressed }) => [{ flexDirection: 'row', alignItems: 'baseline', gap: 8, paddingHorizontal: 8, paddingVertical: 7, borderRadius: 8 }, pressed && { backgroundColor: p.hover }]}>
+                <Text style={{ color: p.ink, fontSize: 13, fontWeight: '600' }}>/{command.name}</Text>
+                <Text style={{ color: p.ink3, fontSize: 12, flex: 1 }} numberOfLines={1}>{t(command.description)}</Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
+        {note !== null ? <Text style={{ color: p.ink3, fontSize: 12, paddingHorizontal: 10, paddingBottom: 4 }} accessibilityRole="alert">{note}</Text> : null}
         <View style={styles.line}>
           {canAttach ? (
             <MenuView onPressAction={({ nativeEvent }) => void attach(nativeEvent.event)} actions={[
@@ -139,7 +172,7 @@ export function Composer({ name, running, canStop, canAttach, onSend, onStop, p 
               </Pressable>
             </MenuView>
           ) : null}
-          <TextInput value={text} onChangeText={setText} placeholder={t('Message {name}', { name })} placeholderTextColor={p.ink3}
+          <TextInput value={text} onChangeText={next => { setText(next); setNote(null) }} placeholder={t('Message {name}', { name })} placeholderTextColor={p.ink3}
             multiline style={[styles.input, { color: p.ink, paddingLeft: canAttach ? 2 : 6 }]} accessibilityLabel={t('Message {name}', { name })} />
           {running && canStop && !ready
             ? <Pressable accessibilityRole="button" accessibilityLabel={t('Stop')} onPress={onStop} hitSlop={6}
@@ -163,6 +196,7 @@ const styles = StyleSheet.create({
   photo: { width: 64, height: 64, borderRadius: 12 },
   unpick: { position: 'absolute', top: -5, right: -5, width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   attach: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  menu: { borderTopWidth: StyleSheet.hairlineWidth, paddingVertical: 4 },
   input: { flex: 1, fontSize: 16, lineHeight: 22, paddingTop: 7, paddingBottom: 7, paddingRight: 6, maxHeight: 130 },
   send: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
 })

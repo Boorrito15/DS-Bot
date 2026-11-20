@@ -870,14 +870,16 @@ export function Schedules({ route, navigation }: any) {
   const { run, error } = useWrite(navigation)
   // Opened from a Bot, the page is that Bot's tasks; opened from Settings it is the
   // whole team's, grouped by the chat each task speaks in.
+  // Opened with a Bot's id or a room's, the page is that chat's tasks.
   const owner = String(route.params?.botId ?? '')
+  const roomOwner = String(route.params?.roomId ?? '')
   const bots = (team?.bots ?? []).filter(bot => bot.hidden !== true)
   const rooms = (team?.rooms ?? []).filter(room => room.hidden !== true)
   const [tasks, setTasks] = useState<Task[]>([])
   const [available, setAvailable] = useState(true)
   const [title, setTitle] = useState('')
   const [prompt, setPrompt] = useState('')
-  const [target, setTarget] = useState(owner !== '' ? owner : '')
+  const [target, setTarget] = useState(owner !== '' ? owner : roomOwner)
   const [kind, setKind] = useState('daily')
   const [time, setTime] = useState('09:00')
   const [atDate, setAtDate] = useState(todayString)
@@ -889,9 +891,9 @@ export function Schedules({ route, navigation }: any) {
   const load = () => void call('schedules').then(v => {
     const view = v as { available?: boolean; tasks?: Task[] }
     setAvailable(view?.available !== false)
-    setTasks((view?.tasks ?? []).filter(task => owner === '' || task.botId === owner))
+    setTasks((view?.tasks ?? []).filter(task => roomOwner !== '' ? task.roomId === roomOwner : owner === '' || task.botId === owner))
   }).catch(() => {})
-  useEffect(() => { load() }, [owner])
+  useEffect(() => { load() }, [owner, roomOwner])
   // The chat a task speaks in, as the host stores it: a Bot's id, or a room's.
   const chatOf = (task: Task) => task.roomId !== undefined ? rooms.find(room => room.id === task.roomId) : bots.find(bot => bot.id === task.botId)
   const when = () => {
@@ -906,10 +908,11 @@ export function Schedules({ route, navigation }: any) {
   }
   const remove = (task: Task) => confirmDanger(t('Delete {name}?', { name: task.title }), t('Delete'),
     () => void run('schedule-delete', { sessionId: task.sessionId, id: task.id }, load))
-  const groups = owner === '' ? [
+  const chatOwner = owner !== '' ? owner : roomOwner
+  const groups = chatOwner === '' ? [
     ...bots.map(bot => ({ id: bot.id, tasks: tasks.filter(task => task.botId === bot.id) })),
     ...rooms.map(room => ({ id: room.id, tasks: tasks.filter(task => task.botId === undefined && task.roomId === room.id) })),
-  ].filter(group => group.tasks.length > 0) : [{ id: owner, tasks }]
+  ].filter(group => group.tasks.length > 0) : [{ id: chatOwner, tasks }]
   const targetName = (id: string) => bots.find(bot => bot.id === id)?.name ?? rooms.find(room => room.id === id)?.name ?? ''
   return (
     <Screen title="">
@@ -932,7 +935,7 @@ export function Schedules({ route, navigation }: any) {
             {groups.map(group => {
               const chat = chatOf(group.tasks[0]) ?? bots.find(bot => bot.id === group.id) ?? rooms.find(room => room.id === group.id)
               return (
-                <Section key={group.id} label={owner === '' ? (chat?.name ?? '') : t('Tasks')}>
+                <Section key={group.id} label={chatOwner === '' ? (chat?.name ?? '') : t('Tasks')}>
                   {group.tasks.map(task => (
                     <View key={task.id} style={styles.row}>
                       {owner === '' && chat !== undefined ? (
