@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { confirmDanger, Sheet, SheetHeader, useInSheet } from '../nav/sheet.tsx'
 import * as Clipboard from 'expo-clipboard'
 import { connectorActionOf, connectorRows, type ConnectorPending, type ConnectorRow } from '../team/connectors.ts'
+import { ConnectorMark } from '../ui/connector-marks.tsx'
 import { capabilityStatusFor, capabilityStatusText, unapprovedCapabilitiesFor } from '../team/capabilities.ts'
 import { useTeam } from '../team/context.tsx'
 import { RANGES, compact, dayKey, percent, summarize, type Range, type Totals, type UsageView } from '../team/usage.ts'
@@ -362,6 +363,10 @@ export function Connectors({ navigation, route }: any) {
             return (
               <View key={item.id} style={item.id === focusId ? { backgroundColor: p.hover } : undefined}>
                 <View style={styles.row}>
+                  {/* The service's own mark, as the desktop's connector list shows it. */}
+                  <View style={[styles.mark, { backgroundColor: p.card, borderColor: p.line }]}>
+                    <ConnectorMark id={item.id} name={item.name} size={19} />
+                  </View>
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={[typeScale.settingsRow, { color: p.ink }]}>{item.name}</Text>
                     <Text style={[typeScale.small, { color: item.state === 'error' ? p.danger : p.ink3, marginTop: 2 }]}>{connectorStatus(item)}</Text>
@@ -897,6 +902,7 @@ const styles = StyleSheet.create({
   card: { marginHorizontal: 14, borderRadius: radius.card, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden', ...shadow(1) },
   divider: { height: StyleSheet.hairlineWidth, marginLeft: 16 },
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, minHeight: 50, gap: 10 },
+  mark: { width: 30, height: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth },
   smallBtn: { borderRadius: 10, paddingHorizontal: 12, minHeight: 36, paddingVertical: 6, alignItems: 'center', justifyContent: 'center' },
   segRow: { flexDirection: 'row', borderWidth: 1, borderRadius: radius.pill, overflow: 'hidden' },
   seg: { flex: 1, minHeight: 38, paddingVertical: 6, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
