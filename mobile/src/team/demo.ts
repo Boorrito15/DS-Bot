@@ -383,6 +383,14 @@ const call = useMemo(() => async (endpoint: string, payload: unknown = {}): Prom
           { id: 'codex', name: 'Codex', state: 'signed-out' },
         ],
       }
+      case 'set-prefs': {
+        const prefs = (state.prefs ??= {})
+        if (typeof body.defaultBotModel === 'string') { prefs.defaultBotModel = body.defaultBotModel; state.defaultModel = body.defaultBotModel }
+        if (typeof body.theme === 'string') prefs.theme = body.theme
+        if (typeof body.accent === 'string' || body.accent === null) prefs.accent = body.accent as string | undefined
+        touch()
+        return true
+      }
       // Computer use: the switch and each Bot's level, as computer/index.js keeps them.
       case 'computer-set-enabled':
         state.computer = { ...state.computer, enabled: body.enabled === true }

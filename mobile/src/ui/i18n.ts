@@ -263,6 +263,8 @@ const MOBILE_ZH: Record<string, string> = {
   'Refreshing…': '正在刷新…',
   'Bot models': '智能体模型',
   'Change model': '更改模型',
+  'New Bots': '新的智能体',
+  'Default model': '默认模型',
   'Plan usage': '套餐用量',
   'Not signed in on this computer': '这台电脑上没有登录',
   'Signed in, but the answer was not a shape DS Bot knows': '已登录，但返回的数据格式无法识别',

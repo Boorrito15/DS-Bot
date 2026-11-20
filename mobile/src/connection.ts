@@ -144,7 +144,7 @@ export interface TeamState {
   im?: { connections?: ImConnection[]; platforms?: string[] }
   imStatus?: Record<string, { state?: string; error?: string; at?: number }>
   exchangeTurns?: Record<string, number[]>
-  prefs?: { theme?: string; accent?: string; layout?: string; width?: number; flatWidth?: number }
+  prefs?: { theme?: string; accent?: string; layout?: string; width?: number; flatWidth?: number; defaultBotModel?: string }
 }
 
 function phoneName(): string {

@@ -952,6 +952,13 @@ export function BotModels({ navigation }: any) {
             {summary.failed > 0 ? ` · ${t('Failed: {count}', { count: summary.failed })}` : ''}
           </Text>
         ) : null}
+        {/* The model a Bot starts on, which the desktop keeps on its General page. */}
+        <Section label={t('New Bots')}>
+          <View style={{ paddingHorizontal: 16, paddingVertical: 12, gap: 6 }}>
+            <Text style={[typeScale.small, { color: p.ink3 }]}>{t('Default model')}</Text>
+            <ModelPicker current={team?.defaultModel} onPick={ref => void call('set-prefs', { defaultBotModel: ref }).catch((failure: Error) => setError(failure?.message ?? String(failure)))} />
+          </View>
+        </Section>
         <Section label={t('Bots')}>
           {bots.map(bot => {
             const ref = modelRefOf(bot)
