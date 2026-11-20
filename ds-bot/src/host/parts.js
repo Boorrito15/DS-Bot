@@ -1987,7 +1987,15 @@ export function install(rt) {
         }, AbortSignal.timeout(HISTORY_TIMEOUT_MS))
         const events = page.records.map(record => record.event)
         const last = [...displayItems(sessionId, events)].reverse().find(item => PREVIEWABLE.has(item.kind))
-        if (last !== undefined) { applyTail(sessionId, last); return }
+        if (last !== undefined) {
+          applyTail(sessionId, last)
+          // The first answer for a chat carries no tail, so the list puts that row
+          // where its creation date says. A read that fills a tail changes the view
+          // the clients hold, and nothing else counts as a change, so say so: the
+          // next poll then orders the row by its newest message.
+          if (rt.state !== undefined) rt.state.revision += 1
+          return
+        }
         if (!page.hasMore || events.length === 0) break
         beforeSeq = events[0]?.seq
       }
