@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { setLang } from '../ui/i18n.ts'
-import { insertMention, mentionDraft, mentionRows, narrowMentions } from './mentions.ts'
+import { afterDelete, draftMentions, insertMention, mentionDraft, mentionRows, narrowMentions } from './mentions.ts'
 
 setLang('en')
 
@@ -45,4 +45,25 @@ test('picking a row replaces the word typed so far and keeps the rest', () => {
   const draft = mentionDraft('see @bo')!
   assert.equal(insertMention('see @bo', draft, '@Bo Lin '), 'see @Bo Lin ')
   assert.equal(insertMention('@', mentionDraft('@')!, '@Everyone '), '@Everyone ')
+})
+
+test('a draft marks the mentions the host will read', () => {
+  const words = draftMentions('ask @Bo Lin and @Ada about it', bots)
+  assert.deepEqual(words.map(word => word.id), ['b', 'a'])
+  assert.equal('ask @Bo Lin and @Ada about it'.slice(words[0].start, words[0].end), '@Bo Lin')
+  // A name that is not one of the chats, and an address, stay ordinary text.
+  assert.deepEqual(draftMentions('ask @Nobody at a@b.com', bots), [])
+  assert.deepEqual(draftMentions('@everyone', bots).map(word => word.id), ['everyone'])
+})
+
+test('deleting into a mention takes the whole word', () => {
+  const text = 'ask @Bo Lin about it'
+  const words = draftMentions(text, bots)
+  // One backspace at the end of the name, and one in the middle of it.
+  assert.equal(afterDelete(text, 'ask @Bo Lin about i', words), 'ask @Bo Lin about i')
+  assert.equal(afterDelete(text, 'ask @Bo Li about it', words), 'ask about it')
+  assert.equal(afterDelete('ask @Bo Lin', 'ask @Bo Li', draftMentions('ask @Bo Lin', bots)), 'ask ')
+  // Ordinary letters still go one at a time, and typing over a mention is left alone.
+  assert.equal(afterDelete(text, 'ask @Bo Lin about i', []), 'ask @Bo Lin about i')
+  assert.equal(afterDelete(text, 'ask @Bo Lin abouX it', words), 'ask @Bo Lin abouX it')
 })

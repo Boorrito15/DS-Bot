@@ -4,12 +4,12 @@ import * as Haptics from 'expo-haptics'
 import * as ImagePicker from 'expo-image-picker'
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator'
 import DocumentScanner from 'react-native-document-scanner-plugin'
-import { useRef, useState } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { ActionSheetIOS, ActivityIndicator, Image, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { t } from '../../ui/i18n.ts'
 import { commandNamed, matchCommands, parseCommand, unknownCommand, type CommandSpec } from '../../team/commands.ts'
-import { insertMention, mentionDraft, narrowMentions, type MentionRow } from '../../team/mentions.ts'
+import { afterDelete, draftMentions, insertMention, mentionDraft, narrowMentions, type MentionRow } from '../../team/mentions.ts'
 import { ArrowUpIcon, CloseIcon, PlusIcon, StopIcon } from '../../ui/icons.tsx'
 import { radius, shadow, type as typeScale, type Palette } from '../../ui/tokens.ts'
 
@@ -83,6 +83,23 @@ export function Composer({ name, running, canStop, canAttach, onSend, onStop, p,
   // typed into the message: the host reads it from the text, as it does a typed one.
   const at = mentionDraft(text)
   const mentionChoices = at === undefined ? [] : narrowMentions(mentions, at.query)
+  // The mentions standing in the draft, marked in the Bot's own colour so a pick looks
+  // picked. The marking is drawn over the field, which stays the thing being edited; it
+  // stops short of a draft long enough to scroll, where the two would drift apart.
+  const bots = mentions.map(row => ({ id: row.id, name: row.label }))
+  const words = text === '' ? [] : draftMentions(text, bots)
+  const colourOf = (id: string) => mentions.find(row => row.id === id)?.colour ?? p.accent
+  const marked: ReactNode[] = []
+  if (words.length > 0 && text.length <= 140) {
+    let at = 0
+    words.forEach((word, index) => {
+      if (word.start > at) marked.push(text.slice(at, word.start))
+      marked.push(<Text key={`m${index}`} style={{ fontWeight: '700', color: colourOf(word.id) }}>{text.slice(word.start, word.end)}</Text>)
+      at = word.end
+    })
+    if (at < text.length) marked.push(text.slice(at))
+  }
+  const showing = marked.length > 0
   const pickMention = (row: MentionRow) => {
     setText(insertMention(text, at!, row.insert)); setNote(null)
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
@@ -207,8 +224,15 @@ export function Composer({ name, running, canStop, canAttach, onSend, onStop, p,
               </Pressable>
             </MenuView>
           ) : null}
-          <TextInput value={text} onChangeText={next => { setText(next); setNote(null) }} placeholder={t('Message {name}', { name })} placeholderTextColor={p.ink3}
-            multiline style={[styles.input, { color: p.ink, paddingLeft: canAttach ? 2 : 6 }]} accessibilityLabel={t('Message {name}', { name })} />
+          <View style={styles.field}>
+            {showing ? (
+              <View pointerEvents="none" style={styles.over}>
+                <Text style={[styles.marked, { color: p.ink, paddingLeft: canAttach ? 2 : 6 }]} accessibilityElementsHidden>{marked}</Text>
+              </View>
+            ) : null}
+            <TextInput value={text} onChangeText={next => { setText(afterDelete(text, next, words)); setNote(null) }} placeholder={t('Message {name}', { name })} placeholderTextColor={p.ink3}
+              multiline style={[styles.input, { color: showing ? 'transparent' : p.ink, paddingLeft: canAttach ? 2 : 6 }]} accessibilityLabel={t('Message {name}', { name })} />
+          </View>
           {running && canStop && !ready
             ? <Pressable accessibilityRole="button" accessibilityLabel={t('Stop')} onPress={onStop} hitSlop={6}
                 style={[styles.send, { backgroundColor: p.accent }]}>
@@ -232,6 +256,11 @@ const styles = StyleSheet.create({
   unpick: { position: 'absolute', top: -5, right: -5, width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   attach: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   menu: { borderTopWidth: StyleSheet.hairlineWidth, paddingVertical: 4 },
-  input: { flex: 1, fontSize: 16, lineHeight: 22, paddingTop: 7, paddingBottom: 7, paddingRight: 6, maxHeight: 130 },
+  field: { flex: 1 },
+  // The marking sits exactly where the field draws its text: same font, same line height,
+  // same padding, and the field's own text is turned transparent while it is shown.
+  over: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, overflow: 'hidden' },
+  marked: { fontSize: 16, lineHeight: 22, paddingTop: 7, paddingBottom: 7, paddingRight: 6 },
+  input: { fontSize: 16, lineHeight: 22, paddingTop: 7, paddingBottom: 7, paddingRight: 6, maxHeight: 130 },
   send: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
 })

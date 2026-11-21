@@ -17,6 +17,17 @@ export const COLOR_PAINT: Record<string, string> = {
   aurora: '#5cc8a0',
 }
 
+// A Bot's colour as the paint for text, by the desktop's rule (inks.js inkText): a hex
+// colour is used as it is, black reads as gray, a renamed ink still maps, and an unknown
+// one falls back to gray.
+const LEGACY_INKS: Record<string, string> = { kimi: 'charcoal', zai: 'graphite', minimax: 'rose', stepfun: 'sky', mimo: 'tangerine', qwen: 'cobalt' }
+export function inkText(color: string | undefined, dark: boolean): string {
+  if (typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color)) return color
+  const inks = INKS as Record<string, string[]>
+  const named = color === 'black' ? 'gray' : color === undefined ? 'gray' : (inks[color] ? color : LEGACY_INKS[color] ?? 'gray')
+  return (inks[named] ?? inks.gray)[dark ? 1 : 0]
+}
+
 export function botSvg(bot: unknown, dark: boolean): string {
   const look = lookOf(bot)
   const box = shapeOf(look.shape).size

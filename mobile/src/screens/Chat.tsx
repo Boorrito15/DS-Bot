@@ -13,7 +13,7 @@ import { markSeen } from '../team/seen.ts'
 import { messageClock, t } from '../ui/i18n.ts'
 import { ErrorBoundary } from '../ui/error-boundary.tsx'
 import { shadow, useTheme } from '../ui/tokens.ts'
-import { Avatar, RoomAvatar } from '../ui/marks.tsx'
+import { Avatar, inkText, RoomAvatar } from '../ui/marks.tsx'
 import { ArrowDownIcon } from '../ui/icons.tsx'
 import { workPhrase } from '../ui/phrases.ts'
 import { ActionRow, Dock } from './chat/dock.tsx'
@@ -132,13 +132,13 @@ export function ChatView({ bot, room, header, onMissing }: { bot?: Bot; room?: R
   // Who "@" can call here: a group's own members and its word for everyone, or in a
   // Bot's chat every other Bot (ds-bot/src/client/at-menu.js draws the same rows).
   const mentions = useMemo(() => {
-    const all = (team?.bots ?? []).map(entry => ({ id: entry.id, name: entry.name }))
+    const all = (team?.bots ?? []).map(entry => ({ id: entry.id, name: entry.name, colour: inkText(entry.color, dark) }))
     if (room !== undefined) {
       const members = new Set(room.members ?? [])
       return mentionRows({ bots: all.filter(entry => members.has(entry.id)), room: true })
     }
     return mentionRows({ bots: all, selfId: bot?.id })
-  }, [team, room, bot?.id])
+  }, [team, room, bot?.id, dark])
   const runCommand = (command: CommandSpec) => {
     if (command.id === 'scheduled-task') {
       navigation.navigate('Schedules', room !== undefined ? { roomId: room.id } : { botId: bot?.id })
