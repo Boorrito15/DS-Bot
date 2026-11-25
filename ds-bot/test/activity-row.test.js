@@ -101,13 +101,13 @@ test('a missing chat flow is reported once per page, not on every retry', () => 
   assert.match(entries.at(-1).text, /activity row:/)
 })
 
-// The row hides while a reply streams — but a turn that streams first and runs a
-// tool after keeps the row once the tool starts.
-test('the row shows while a turn runs, also when text streamed before a tool', () => {
+// The row stays for the whole turn, streaming included, so the one thing it can always
+// answer is whether the turn is still going.
+test('the row shows while a turn runs, streaming text or not', () => {
   const bot = {}
   const cases = [
     [{ running: true, streaming: false, tools: [], relaying: false, bot }, true],
-    [{ running: true, streaming: true, tools: [], relaying: false, bot }, false],
+    [{ running: true, streaming: true, tools: [], relaying: false, bot }, true],
     [{ running: true, streaming: true, tools: [{ label: 'x' }], relaying: false, bot }, true],
     [{ running: true, streaming: false, tools: [{ label: 'x' }], relaying: false, bot }, true],
     [{ running: false, streaming: false, tools: [{ label: 'x' }], relaying: false, bot }, false],

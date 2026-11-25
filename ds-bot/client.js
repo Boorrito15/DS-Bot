@@ -29359,9 +29359,10 @@ function ToolCell({ node, sessionId, useRoster, useUi, useWork, useHeldCards, us
 var import_react35 = require("react");
 var import_react_dom5 = require("react-dom");
 var PHRASE_HOLD_MS = 800;
+var DONE_HOLD_MS = 3e3;
 var STEPS_SHOWN = 4;
 var drawPhrase = (pool) => t(pool[Math.min(pool.length - 1, Math.floor(Math.random() * pool.length))]);
-var rowVisible = ({ running, streaming, tools, relaying, bot, room: room2 }) => running && (!streaming || tools.length > 0) && !relaying && (bot !== void 0 || room2 !== void 0);
+var rowVisible = ({ running, relaying, bot, room: room2 }) => running && !relaying && (bot !== void 0 || room2 !== void 0);
 var freshInputAt = (submissions, steeredAt) => Math.max(
   0,
   steeredAt ?? 0,
@@ -29472,12 +29473,26 @@ function ActivityIndicator({ sessionId, useRoster, useSessionStatus, useLive, us
   const streaming = entries2.some((entry) => entry.text);
   const tools = entries2.filter((entry) => !entry.text).sort((a, b) => a.at - b.at);
   const relaying = tools.some((entry) => entry.relay);
-  const visible = moveAt !== 0 || rowVisible({ running, streaming, tools, relaying, bot, room: room2 });
+  const [doneAt, setDoneAt] = (0, import_react35.useState)(0);
+  const wasRunning = (0, import_react35.useRef)(false);
+  (0, import_react35.useEffect)(() => {
+    if (running) {
+      wasRunning.current = true;
+      return void 0;
+    }
+    if (!wasRunning.current) return void 0;
+    wasRunning.current = false;
+    setDoneAt(Date.now());
+    const timer = setTimeout(() => setDoneAt(0), DONE_HOLD_MS);
+    return () => clearTimeout(timer);
+  }, [running]);
+  const done = doneAt !== 0 && !running;
+  const visible = done || moveAt !== 0 || rowVisible({ running, streaming, tools, relaying, bot, room: room2 });
   const tool = tools.at(-1);
   const inputRef = (0, import_react35.useRef)(0);
   const inputAt = Math.max(inputRef.current, pendingInput);
   inputRef.current = inputAt;
-  const want = !visible ? null : moveAt !== 0 ? { key: "move", label: t("Switching working folder"), state: "thinking" } : inputAt > (tool?.at ?? 0) ? { key: `input:${inputAt}`, pool: PHRASES2.thinking, state: "thinking" } : tool ? { key: tool.label ? `tool:${tool.label}` : "working", label: tool.label, pool: PHRASES2.working, state: tool.state ?? "working" } : { key: "thinking", pool: PHRASES2.thinking, state: "thinking" };
+  const want = !visible ? null : done ? { key: "done", label: t("Done"), state: "idle" } : moveAt !== 0 ? { key: "move", label: t("Switching working folder"), state: "thinking" } : inputAt > (tool?.at ?? 0) ? { key: `input:${inputAt}`, pool: PHRASES2.thinking, state: "thinking" } : tool ? { key: tool.label ? `tool:${tool.label}` : "working", label: tool.label, pool: PHRASES2.working, state: tool.state ?? "working" } : { key: "thinking", pool: PHRASES2.thinking, state: "thinking" };
   const [shown, setShown] = (0, import_react35.useState)(null);
   const wantKey = want?.key ?? null;
   const markState = (0, import_react35.useRef)("thinking");
