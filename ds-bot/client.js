@@ -17199,6 +17199,7 @@ body[data-bt-goal] [class*="_scroll"]:has(> [class*="_column"]){padding-top:calc
 .bt-step[data-done]>*{opacity:.55}
 .bt-step-more{opacity:.7}
 .bt-step-time{flex-shrink:0;font-variant-numeric:tabular-nums;opacity:.8}
+.bt-new-version{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483000;appearance:none;border:0;border-radius:999px;padding:8px 14px;font:inherit;font-size:12px;line-height:16px;color:var(--bt-paper);background:var(--bt-ink-1);box-shadow:var(--bt-card-shadow);cursor:pointer}
 .bt-turn-plan{display:flex;flex-direction:column;gap:2px;margin:6px 0 0;padding:0;font-size:12px;line-height:17px;color:var(--bt-ink-3)}
 .bt-turn-plan-count{font-variant-numeric:tabular-nums;color:var(--bt-ink-2)}
 .bt-turn-plan-list{display:flex;flex-direction:column;gap:1px;margin:0;padding:0;list-style:none}
@@ -45904,6 +45905,46 @@ function apply(ctx) {
     }
     return true;
   };
+  const bundleRev = (text) => text?.match(/ds-bot\/client\.js[^"']*?rev=([0-9a-f]+)/)?.[1];
+  const offerReload = () => {
+    if (document.querySelector(".bt-new-version") !== null) return;
+    const pill = document.createElement("button");
+    pill.type = "button";
+    pill.className = "bt-new-version";
+    pill.textContent = `${t("New version")} · ${t("Reload the page")}`;
+    pill.addEventListener("click", () => {
+      location.reload();
+    });
+    document.body.append(pill);
+  };
+  const watchBundle = (loadedRev2) => {
+    if (loadedRev2 === void 0) return;
+    let busy = false;
+    const check = async () => {
+      if (busy || document.querySelector(".bt-new-version") !== null) return;
+      busy = true;
+      try {
+        const html = await (await fetch(location.pathname, { cache: "no-store" })).text();
+        const now = bundleRev(html);
+        if (now !== void 0 && now !== loadedRev2) offerReload();
+      } catch {
+      } finally {
+        busy = false;
+      }
+    };
+    const soon = setTimeout(() => {
+      void check();
+    }, 15e3);
+    const timer = setInterval(() => {
+      void check();
+    }, 6e4);
+    ctx.effect(() => () => {
+      clearTimeout(soon);
+      clearInterval(timer);
+    });
+  };
+  const loadedRev = [...document.querySelectorAll("link[href], script[src]")].map((node) => node.getAttribute("href") ?? node.getAttribute("src") ?? "").find((url) => url.includes("ds-bot/client.js"))?.match(/rev=([0-9a-f]+)/)?.[1];
+  watchBundle(loadedRev);
   ctx.effect(() => {
     let stopped = false;
     let running = false;

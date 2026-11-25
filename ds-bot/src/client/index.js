@@ -260,6 +260,41 @@ export function apply(ctx) {
     return true
   }
 
+  // An open page keeps the bundle it loaded. The host serves a changed one under a new
+  // revision, so a window can sit on old code for hours and nobody can see it. Watch for a
+  // newer revision and offer the reload rather than leaving the page quietly out of date.
+  const bundleRev = text => text?.match(/ds-bot\/client\.js[^"']*?rev=([0-9a-f]+)/)?.[1]
+  const offerReload = () => {
+    if (document.querySelector('.bt-new-version') !== null) return
+    const pill = document.createElement('button')
+    pill.type = 'button'
+    pill.className = 'bt-new-version'
+    pill.textContent = `${t('New version')} · ${t('Reload the page')}`
+    pill.addEventListener('click', () => { location.reload() })
+    document.body.append(pill)
+  }
+  const watchBundle = (loadedRev) => {
+    if (loadedRev === undefined) return
+    let busy = false
+    const check = async () => {
+      if (busy || document.querySelector('.bt-new-version') !== null) return
+      busy = true
+      try {
+        const html = await (await fetch(location.pathname, { cache: 'no-store' })).text()
+        const now = bundleRev(html)
+        if (now !== undefined && now !== loadedRev) offerReload()
+      } catch { /* offline: the next check tries again */ } finally { busy = false }
+    }
+    const soon = setTimeout(() => { void check() }, 15000)
+    const timer = setInterval(() => { void check() }, 60000)
+    ctx.effect(() => () => { clearTimeout(soon); clearInterval(timer) })
+  }
+  const loadedRev = [...document.querySelectorAll('link[href], script[src]')]
+    .map(node => node.getAttribute('href') ?? node.getAttribute('src') ?? '')
+    .find(url => url.includes('ds-bot/client.js'))
+    ?.match(/rev=([0-9a-f]+)/)?.[1]
+  watchBundle(loadedRev)
+
   ctx.effect(() => {
     let stopped = false
     let running = false

@@ -1275,6 +1275,7 @@ body[data-bt-goal] [class*="_scroll"]:has(> [class*="_column"]){padding-top:calc
 .bt-step[data-done]>*{opacity:.55}
 .bt-step-more{opacity:.7}
 .bt-step-time{flex-shrink:0;font-variant-numeric:tabular-nums;opacity:.8}
+.bt-new-version{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483000;appearance:none;border:0;border-radius:999px;padding:8px 14px;font:inherit;font-size:12px;line-height:16px;color:var(--bt-paper);background:var(--bt-ink-1);box-shadow:var(--bt-card-shadow);cursor:pointer}
 .bt-turn-plan{display:flex;flex-direction:column;gap:2px;margin:6px 0 0;padding:0;font-size:12px;line-height:17px;color:var(--bt-ink-3)}
 .bt-turn-plan-count{font-variant-numeric:tabular-nums;color:var(--bt-ink-2)}
 .bt-turn-plan-list{display:flex;flex-direction:column;gap:1px;margin:0;padding:0;list-style:none}
