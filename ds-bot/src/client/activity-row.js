@@ -129,6 +129,11 @@ export function ActivityIndicator({ sessionId, useRoster, useSessionStatus, useL
   const room = roster.roomsById[sessionId]
   // What this turn has done so far, from the host (a Bot's own chat only: a group's
   // members keep their own rows).
+  // The server says which Bots are working; the session flag is a second opinion that can
+  // lag behind it. The sidebar reads the server, so the chat must too, or one shows a Bot
+  // working while the other shows nothing.
+  const workKey = useWork?.(work => JSON.stringify(work.bots?.[bot?.id] ?? null)) ?? 'null'
+  const working = running || workKey !== 'null'
   const steps = useWork?.(work => (bot === undefined ? undefined : work.bots?.[bot.id]?.steps)) ?? []
   // The one switch the row names: a working-folder move jumps the chat to a fresh
   // part while a turn is not running, so without it the conversation just empties.
@@ -147,15 +152,15 @@ export function ActivityIndicator({ sessionId, useRoster, useSessionStatus, useL
   const [doneAt, setDoneAt] = useState(0)
   const wasRunning = useRef(false)
   useEffect(() => {
-    if (running) { wasRunning.current = true; return undefined }
+    if (working) { wasRunning.current = true; return undefined }
     if (!wasRunning.current) return undefined
     wasRunning.current = false
     setDoneAt(Date.now())
     const timer = setTimeout(() => setDoneAt(0), DONE_HOLD_MS)
     return () => clearTimeout(timer)
-  }, [running])
-  const done = doneAt !== 0 && !running
-  const visible = done || moveAt !== 0 || rowVisible({ running, streaming, tools, relaying, bot, room })
+  }, [working])
+  const done = doneAt !== 0 && !working
+  const visible = done || moveAt !== 0 || rowVisible({ running: working, streaming, tools, relaying, bot, room })
   const tool = tools.at(-1)
   const inputRef = useRef(0)
   // A steer keeps the run going, so nothing else resets the row: fresh input is
@@ -212,7 +217,7 @@ export function ActivityIndicator({ sessionId, useRoster, useSessionStatus, useL
   useEffect(() => { if (!running) actions.clearLive(sessionId) }, [running, sessionId])
   // Only rows that take the activity row's place grow out of it.
   useRowEntrances(() => leaving.current || Date.now() - endedAt.current < 300)
-  const host = useRunningHost(running || moveAt !== 0)
+  const host = useRunningHost(working || moveAt !== 0)
   if (!host || phase === null || !shown) return null
   // The newest few steps, oldest first, so the row says what the Bot is doing rather than
   // only that it is busy. A finished step keeps its tick; a long turn keeps the tail.

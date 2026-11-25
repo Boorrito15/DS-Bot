@@ -29514,6 +29514,8 @@ function ActivityIndicator({ sessionId, useRoster, useSessionStatus, useLive, us
   const pendingInput = useSession((snapshot) => freshInputAt(snapshot?.pendingSubmissions, steeredAt));
   const bot = roster.byId[sessionId];
   const room2 = roster.roomsById[sessionId];
+  const workKey = useWork?.((work) => JSON.stringify(work.bots?.[bot?.id] ?? null)) ?? "null";
+  const working = running || workKey !== "null";
   const steps = useWork?.((work) => bot === void 0 ? void 0 : work.bots?.[bot.id]?.steps) ?? [];
   const moveAt = useWork?.((work) => {
     const entry = bot !== void 0 ? work.bots?.[bot.id] : room2 !== void 0 ? work.rooms?.[room2.id]?.find((item) => item.self === true) : void 0;
@@ -29526,7 +29528,7 @@ function ActivityIndicator({ sessionId, useRoster, useSessionStatus, useLive, us
   const [doneAt, setDoneAt] = (0, import_react35.useState)(0);
   const wasRunning = (0, import_react35.useRef)(false);
   (0, import_react35.useEffect)(() => {
-    if (running) {
+    if (working) {
       wasRunning.current = true;
       return void 0;
     }
@@ -29535,9 +29537,9 @@ function ActivityIndicator({ sessionId, useRoster, useSessionStatus, useLive, us
     setDoneAt(Date.now());
     const timer = setTimeout(() => setDoneAt(0), DONE_HOLD_MS);
     return () => clearTimeout(timer);
-  }, [running]);
-  const done = doneAt !== 0 && !running;
-  const visible = done || moveAt !== 0 || rowVisible({ running, streaming, tools, relaying, bot, room: room2 });
+  }, [working]);
+  const done = doneAt !== 0 && !working;
+  const visible = done || moveAt !== 0 || rowVisible({ running: working, streaming, tools, relaying, bot, room: room2 });
   const tool = tools.at(-1);
   const inputRef = (0, import_react35.useRef)(0);
   const inputAt = Math.max(inputRef.current, pendingInput);
@@ -29590,7 +29592,7 @@ function ActivityIndicator({ sessionId, useRoster, useSessionStatus, useLive, us
     if (!running) actions.clearLive(sessionId);
   }, [running, sessionId]);
   useRowEntrances(() => leaving.current || Date.now() - endedAt.current < 300);
-  const host = useRunningHost(running || moveAt !== 0);
+  const host = useRunningHost(working || moveAt !== 0);
   if (!host || phase === null || !shown) return null;
   const newestStep = steps.at(-1);
   const stepKey = newestStep === void 0 || newestStep.done === true ? null : `${steps.length}:${newestStep.name}:${newestStep.target ?? ""}`;
