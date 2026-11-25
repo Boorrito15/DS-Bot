@@ -585,6 +585,18 @@ export function apply(ctx) {
   }
   const actions = {
     ...teamActions({ call, after, partFor, roster, ui, live, cards, heldCards, turnClock, panelFolded }),
+    // How far the list the Bot wrote for this piece of work has got, for the row that says
+    // what it is doing. The list is the Bot's own plan for the turn, so it is the one honest
+    // answer to "how much is left"; a turn without one has no count at all.
+    planOf: (sessionId) => {
+      try {
+        const todos = ctx.sessions.binding(sessionId)?.session?.projections?.faceOf('todos')?.getSnapshot()
+        if (!Array.isArray(todos) || todos.length === 0) return null
+        return { done: todos.filter(item => item?.status === 'completed').length, total: todos.length }
+      } catch {
+        return null
+      }
+    },
     // The files a group row names open DSH's own review tab for that turn. The tab reads
     // the changes of the Session the shell shows, so that Session is opened first; the same
     // call then retries until its right column is mounted. This jump is the one place a

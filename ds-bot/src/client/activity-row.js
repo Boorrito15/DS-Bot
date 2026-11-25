@@ -200,8 +200,12 @@ export function ActivityIndicator({ sessionId, useRoster, useSessionStatus, useL
   // The newest few steps, oldest first, so the row says what the Bot is doing rather than
   // only that it is busy. A finished step keeps its tick; a long turn keeps the tail.
   const shownSteps = steps.slice(-STEPS_SHOWN)
-  const stepList = shownSteps.length > 0
+  // How far the list the Bot wrote for this work has got. A turn without one has no count:
+  // the number of steps still to come is not something anyone can know in advance.
+  const plan = actions?.planOf?.(sessionId) ?? null
+  const stepList = shownSteps.length > 0 || plan !== null
     ? h('ol', { className: 'bt-steps', role: 'list' },
+      plan === null ? null : h('li', { className: 'bt-step bt-step-plan' }, `${plan.done}/${plan.total}`),
       steps.length > STEPS_SHOWN ? h('li', { className: 'bt-step bt-step-more' }, `+${steps.length - STEPS_SHOWN}`) : null,
       shownSteps.map((step, index) => h('li', { key: `${step.callId ?? step.name}:${index}`, className: 'bt-step', 'data-done': step.done === true ? '' : undefined },
         h('span', { className: 'bt-step-words' }, stepWords(step.name)),

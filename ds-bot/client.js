@@ -17198,6 +17198,7 @@ body[data-bt-goal] [class*="_scroll"]:has(> [class*="_column"]){padding-top:calc
 .bt-step-target{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--bt-ink-3);opacity:.75}
 .bt-step[data-done]>*{opacity:.55}
 .bt-step-more{opacity:.7}
+.bt-step-plan{flex-shrink:0;font-variant-numeric:tabular-nums;color:var(--bt-ink-2);letter-spacing:.02em}
 @keyframes bt-typing-in{from{opacity:0;transform:scale(.9)}}
 @keyframes bt-typing-out{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(.92);filter:var(--bt-fx-blur-3,blur(3px))}}
 @keyframes bt-typing-label{from{opacity:0;filter:var(--bt-fx-blur-5,blur(5px));transform:translateY(3px)}}
@@ -29526,9 +29527,11 @@ function ActivityIndicator({ sessionId, useRoster, useSessionStatus, useLive, us
   const host = useRunningHost(running || moveAt !== 0);
   if (!host || phase === null || !shown) return null;
   const shownSteps = steps.slice(-STEPS_SHOWN);
-  const stepList = shownSteps.length > 0 ? (0, import_react35.createElement)(
+  const plan = actions?.planOf?.(sessionId) ?? null;
+  const stepList = shownSteps.length > 0 || plan !== null ? (0, import_react35.createElement)(
     "ol",
     { className: "bt-steps", role: "list" },
+    plan === null ? null : (0, import_react35.createElement)("li", { className: "bt-step bt-step-plan" }, `${plan.done}/${plan.total}`),
     steps.length > STEPS_SHOWN ? (0, import_react35.createElement)("li", { className: "bt-step bt-step-more" }, `+${steps.length - STEPS_SHOWN}`) : null,
     shownSteps.map((step, index) => (0, import_react35.createElement)(
       "li",
@@ -46115,6 +46118,18 @@ function apply(ctx) {
   };
   const actions = {
     ...teamActions({ call, after, partFor, roster, ui: ui2, live, cards, heldCards, turnClock, panelFolded }),
+    // How far the list the Bot wrote for this piece of work has got, for the row that says
+    // what it is doing. The list is the Bot's own plan for the turn, so it is the one honest
+    // answer to "how much is left"; a turn without one has no count at all.
+    planOf: (sessionId) => {
+      try {
+        const todos = ctx.sessions.binding(sessionId)?.session?.projections?.faceOf("todos")?.getSnapshot();
+        if (!Array.isArray(todos) || todos.length === 0) return null;
+        return { done: todos.filter((item) => item?.status === "completed").length, total: todos.length };
+      } catch {
+        return null;
+      }
+    },
     // The files a group row names open DSH's own review tab for that turn. The tab reads
     // the changes of the Session the shell shows, so that Session is opened first; the same
     // call then retries until its right column is mounted. This jump is the one place a
