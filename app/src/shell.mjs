@@ -8,6 +8,7 @@ import { createTray } from './tray.mjs'
 export const SHELL_TEXT = {
   en: {
     tooltip: 'DS Bot',
+    servers: 'Servers…',
     open: 'Open DS Bot',
     quit: 'Quit DS Bot',
     notice: 'DS Bot keeps running in the system tray. Its Bots go on working while the window is closed.',
@@ -18,6 +19,7 @@ export const SHELL_TEXT = {
   },
   zh: {
     tooltip: 'DS Bot',
+    servers: '服务器…',
     open: '打开 DS Bot',
     quit: '退出 DS Bot',
     notice: 'DS Bot 会留在系统托盘里继续运行，关掉窗口时 Bot 们照常工作。',
@@ -28,6 +30,7 @@ export const SHELL_TEXT = {
   },
   'zh-TW': {
     tooltip: 'DS Bot',
+    servers: '伺服器…',
     open: '打開 DS Bot',
     quit: '結束 DS Bot',
     notice: 'DS Bot 會留在系統匣裡繼續運行，關掉視窗時 Bot 們照常工作。',
@@ -38,6 +41,7 @@ export const SHELL_TEXT = {
   },
   ja: {
     tooltip: 'DS Bot',
+    servers: 'サーバー…',
     open: 'DS Bot を開く',
     quit: 'DS Bot を終了',
     notice: 'DS Bot はシステムトレイで動作し続けます。ウィンドウを閉じても Bot は作業を続けます。',
@@ -48,6 +52,7 @@ export const SHELL_TEXT = {
   },
   ko: {
     tooltip: 'DS Bot',
+    servers: '서버…',
     open: 'DS Bot 열기',
     quit: 'DS Bot 종료',
     notice: 'DS Bot은 시스템 트레이에서 계속 실행됩니다. 창을 닫아도 Bot은 계속 작업합니다.',
@@ -58,6 +63,7 @@ export const SHELL_TEXT = {
   },
   es: {
     tooltip: 'DS Bot',
+    servers: 'Servidores…',
     open: 'Abrir DS Bot',
     quit: 'Salir de DS Bot',
     notice: 'DS Bot sigue ejecutándose en la bandeja del sistema. Sus Bots continúan trabajando mientras la ventana está cerrada.',
@@ -68,6 +74,7 @@ export const SHELL_TEXT = {
   },
   fr: {
     tooltip: 'DS Bot',
+    servers: 'Serveurs…',
     open: 'Ouvrir DS Bot',
     quit: 'Quitter DS Bot',
     notice: 'DS Bot continue de fonctionner dans la barre d’état système. Ses Bots continuent de travailler lorsque la fenêtre est fermée.',
@@ -78,6 +85,7 @@ export const SHELL_TEXT = {
   },
   de: {
     tooltip: 'DS Bot',
+    servers: 'Server…',
     open: 'DS Bot öffnen',
     quit: 'DS Bot beenden',
     notice: 'DS Bot läuft im Systembereich weiter. Seine Bots arbeiten weiter, während das Fenster geschlossen ist.',

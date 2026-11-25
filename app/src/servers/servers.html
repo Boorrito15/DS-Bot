@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; object-src 'none'">
+<meta name="color-scheme" content="light dark">
+<meta name="viewport" content="width=device-width">
+<title>DS Bot</title>
+<link rel="stylesheet" href="servers.css">
+<script type="module" src="servers.js"></script>
+</head>
+<body>
+<main>
+<h1 id="title">Servers</h1>
+<p class="lead" id="lead"></p>
+<ul class="list" id="list"></ul>
+<p class="empty" id="empty" hidden></p>
+<form id="add">
+  <label><span id="address-label"></span>
+    <input id="url" type="text" inputmode="url" spellcheck="false" autocomplete="off" placeholder="http://192.168.1.20:8080">
+  </label>
+  <label><span id="name-label"></span>
+    <input id="name" type="text" spellcheck="false" autocomplete="off">
+  </label>
+  <p class="error" id="error" role="alert" hidden></p>
+  <button type="submit" class="btn primary" id="add-button"></button>
+</form>
+<button type="button" class="btn local" id="local" hidden></button>
+<p class="note" id="note"></p>
+</main>
+</body>
+</html>

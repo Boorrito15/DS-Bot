@@ -24,6 +24,8 @@ import { captureStdio, LogFile } from './logs.mjs'
 import { Pickers } from './picker-host.mjs'
 import { currentRootOf, driveOf, formatBytes, freeSpace, isEmptyTree, pickFrom, placeOf, rootOf, runningLow } from './place.mjs'
 import { createShell, SHELL_TEXT } from './shell.mjs'
+import { openServersWindow } from './servers-window.mjs'
+import { serversFile, touchServer } from './servers.mjs'
 import { readStartFrame, writeStartFrame } from './start-frame.mjs'
 import { explainOf, StartWindow } from './start-window.mjs'
 import { langOf } from './start/text.mjs'
@@ -268,6 +270,40 @@ function stopHost() {
 
 // A throwaway run (DS_BOT_HOME) asks nothing and shows what a later start shows.
 const startKind = () => (process.env.DS_BOT_HOME || existsSync(join(app.getPath('userData'), 'locations.json')) ? 'later' : 'first')
+
+// The Servers window (src/servers-window.mjs): the computers this app can open. Picking one
+// relaunches into it rather than switching in place, because whether a launch starts a Host of
+// its own or loads someone else's page is decided once, at launch (remote-url.mjs).
+let serversWindow
+function relaunchAt(url) {
+  const args = process.argv.slice(1).filter(value => value !== '--remote' && !value.startsWith('--remote='))
+  if (url !== undefined) {
+    touchServer(serversFile(app.getPath('userData')), url)
+    args.push('--remote', url)
+  }
+  app.relaunch({ execPath: process.execPath, args })
+  app.quit()
+}
+
+function openServers() {
+  if (serversWindow !== undefined && !serversWindow.isDestroyed()) {
+    serversWindow.focus()
+    return
+  }
+  serversWindow = openServersWindow({
+    electron: { BrowserWindow, ipcMain, nativeTheme },
+    page: join(here, 'servers', 'servers.html'),
+    preload: join(here, 'servers-preload.cjs'),
+    userData: app.getPath('userData'),
+    icon: iconFile,
+    currentUrl: remoteUrl,
+    lang: langOf(app.getLocale()),
+    onConnect: url => relaunchAt(url),
+    onLocal: () => relaunchAt(undefined),
+  })
+  serversWindow.once('closed', () => { serversWindow = undefined })
+}
+
 
 async function start() {
   setMenu()
@@ -1495,6 +1531,8 @@ function setMenu() {
   // be ended.
   const items = [
     { role: 'about' },
+    { type: 'separator' },
+    { label: t.servers, click: () => { openServers() } },
     { type: 'separator' },
     { role: 'services' },
     { type: 'separator' },
