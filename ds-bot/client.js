@@ -17229,6 +17229,12 @@ body[data-bt-goal] [class*="_scroll"]:has(> [class*="_column"]){padding-top:calc
 .bt-step[data-done]>*{opacity:.55}
 .bt-step-more{opacity:.7}
 .bt-step-time{flex-shrink:0;font-variant-numeric:tabular-nums;opacity:.8}
+.bt-running-bar{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);z-index:2147482000;display:flex;align-items:center;gap:8px;max-width:min(560px,92vw);padding:7px 14px;border-radius:999px;font-size:12px;line-height:16px;color:var(--bt-ink-2);background:var(--bt-card);box-shadow:var(--bt-card-shadow);pointer-events:none}
+.bt-running-dot{width:7px;height:7px;border-radius:999px;background:var(--bt-accent);animation:bt-typing-label 1.4s ease-in-out infinite}
+.bt-running-name{flex-shrink:0;color:var(--bt-ink-1);font-weight:560}
+.bt-running-doing{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bt-running-plan{flex-shrink:0;font-variant-numeric:tabular-nums;color:var(--bt-ink-2)}
+.bt-running-time{flex-shrink:0;color:var(--bt-ink-3)}
 .bt-new-version{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483000;appearance:none;border:0;border-radius:999px;padding:8px 14px;font:inherit;font-size:12px;line-height:16px;color:var(--bt-paper);background:var(--bt-ink-1);box-shadow:var(--bt-card-shadow);cursor:pointer}
 .bt-turn-plan{display:flex;flex-direction:column;gap:2px;margin:6px 0 0;padding:0;font-size:12px;line-height:17px;color:var(--bt-ink-3)}
 .bt-turn-plan-count{font-variant-numeric:tabular-nums;color:var(--bt-ink-2)}
@@ -30695,8 +30701,29 @@ function TeamSidebar(props) {
     import_react36.Fragment,
     null,
     (0, import_react36.createElement)(TitleToggle, { hidden: mode === "hidden", onToggle }),
+    (0, import_react36.createElement)(RunningBar, { roster, useSessions, useWork: props.useWork, planOf: actions.planOf }),
     shown === "hidden" ? null : (0, import_react36.createElement)(LeftColumn, { mode: shown, width: ourWidth, onGrip: startDrag, leaving }, content)
   );
+}
+function RunningBar({ roster, useSessions, useWork, planOf }) {
+  const sessionId = useSessions((list) => Object.values(list.byId ?? {}).find((session) => (session?.retainedBy?.mainView ?? 0) > 0)?.id ?? "");
+  const bot = sessionId === "" ? void 0 : roster.byId[sessionId];
+  const raw = useWork ? useWork((work) => JSON.stringify(work.bots?.[bot?.id] ?? null)) : "null";
+  const entry = (0, import_react36.useMemo)(() => JSON.parse(raw), [raw]);
+  const plan = sessionId === "" ? null : planOf?.(sessionId) ?? null;
+  if (bot === void 0 || entry === null) return null;
+  const newest = (entry.steps ?? []).at(-1);
+  const doing = newest?.label ?? newest?.target ?? entry.note ?? entry.said ?? (entry.tool ? stepWords(entry.tool) : t("Working"));
+  const planLine = plan === null ? null : `${plan.done}/${plan.total}`;
+  return (0, import_react_dom6.createPortal)((0, import_react36.createElement)(
+    "div",
+    { className: "bt-running-bar", role: "status", "aria-live": "polite" },
+    (0, import_react36.createElement)("span", { className: "bt-running-dot", "aria-hidden": true }),
+    (0, import_react36.createElement)("span", { className: "bt-running-name" }, bot.name),
+    (0, import_react36.createElement)("span", { className: "bt-running-doing" }, Shimmer ? (0, import_react36.createElement)(Shimmer, null, `${doing}…`) : `${doing}…`),
+    planLine === null ? null : (0, import_react36.createElement)("span", { className: "bt-running-plan" }, planLine),
+    (0, import_react36.createElement)(Elapsed, { at: entry.since ?? Date.now(), className: "bt-running-time" })
+  ), document.body);
 }
 function UpdateButton({ useUpdate, actions }) {
   const update = useUpdate((value) => value);
