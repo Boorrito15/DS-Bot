@@ -15,6 +15,7 @@ const ISSUES = 'https://github.com/Fei2411/DS-Bot/issues/new'
 function page(window) {
   const notes = []
   const react = {
+  Component: class Component { constructor(props) { this.props = props } setState(next) { this.state = typeof next === 'function' ? next(this.state) : next } },
   createContext: (initial) => { const ctx = { value: initial }; ctx.Provider = ({ value, children }) => { ctx.value = value; return children }; return ctx },
   useContext: ctx => ctx.value,
   useMemo: make => make(),

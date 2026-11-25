@@ -13,6 +13,7 @@ const { outputFiles } = await build({
 const cells = []
 let hook = 0
 const react = {
+  Component: class Component { constructor(props) { this.props = props } setState(next) { this.state = typeof next === 'function' ? next(this.state) : next } },
   createElement: (type, props, ...children) => ({ type, props: { ...props, children: children.flat(Infinity) } }),
   useState(initial) {
     const i = hook++

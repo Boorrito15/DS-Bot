@@ -35,6 +35,7 @@ const react = {
   createElement: (type, p, ...children) => ({ type, props: { ...(p ?? {}), children } }),
   Fragment: 'fragment',
   useCallback: fn => fn,
+  Component: class Component { constructor(props) { this.props = props } setState(next) { this.state = typeof next === 'function' ? next(this.state) : next } },
   useEffect() {}, useLayoutEffect() {},
   useState: (init) => {
     const i = idx++

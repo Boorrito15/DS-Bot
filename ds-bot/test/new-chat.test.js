@@ -23,6 +23,7 @@ const effect = (make, deps) => {
   }
 }
 const react = {
+  Component: class Component { constructor(props) { this.props = props } setState(next) { this.state = typeof next === 'function' ? next(this.state) : next } },
   Fragment: 'fragment',
   createElement: (type, props, ...children) => ({ type, props: { ...props, children } }),
   useState: (initial) => {

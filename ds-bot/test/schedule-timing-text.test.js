@@ -15,6 +15,7 @@ const { outputFiles } = await build({
 })
 const react = {
   createElement: (type, props, ...children) => ({ type, props: { ...props, children } }), Fragment: Symbol('Fragment'),
+  Component: class Component { constructor(props) { this.props = props } setState(next) { this.state = typeof next === 'function' ? next(this.state) : next } },
   useEffect() {}, useLayoutEffect() {}, useState: initial => [initial, () => {}], useMemo: make => make(), useRef: current => ({ current }), useId: () => 'id',
   createContext: value => ({ Provider: 'Provider', value }), useContext: context => context.value,
 }

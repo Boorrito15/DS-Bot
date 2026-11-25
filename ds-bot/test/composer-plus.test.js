@@ -14,6 +14,7 @@ const { outputFiles } = await build({
 })
 let hooks = 0
 const react = {
+  Component: class Component { constructor(props) { this.props = props } setState(next) { this.state = typeof next === 'function' ? next(this.state) : next } },
   Fragment: 'fragment',
   createElement: (type, props, ...children) => ({ type, props: props ?? {}, children: children.flat(Infinity) }),
   useState: initial => { hooks += 1; return [initial, () => {}] },

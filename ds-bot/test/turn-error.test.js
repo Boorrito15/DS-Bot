@@ -32,6 +32,7 @@ const hook = (make) => {
 }
 const effects = []
 const react = {
+  Component: class Component { constructor(props) { this.props = props } setState(next) { this.state = typeof next === 'function' ? next(this.state) : next } },
   createElement: (type, props, ...children) => ({ type, props: { ...props, children } }), Fragment: Symbol('Fragment'),
   useState(initial) {
     const slot = hook(() => ({ v: typeof initial === 'function' ? initial() : initial }))

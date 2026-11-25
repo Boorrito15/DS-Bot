@@ -13,6 +13,7 @@ const bundle = await build({
 })
 const module = { exports: {} }
 const react = {
+  Component: class Component { constructor(props) { this.props = props } setState(next) { this.state = typeof next === 'function' ? next(this.state) : next } },
   createElement: (type, props, ...children) => ({ type, props: props ?? {}, children: children.flat(Infinity) }),
   useState: initial => [initial, () => {}], useEffect: () => {}, useRef: current => ({ current }), Fragment: 'fragment',
 }

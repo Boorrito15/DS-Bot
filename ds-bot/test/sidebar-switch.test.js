@@ -35,6 +35,9 @@ const react = {
   useCallback: fn => fn,
   useSyncExternalStore: (subscribe, getSnapshot) => getSnapshot(),
   createElement: (type, props, ...children) => ({ type, props: { ...props, children } }), Fragment: Symbol('Fragment'),
+  // A boundary's base class: the stand-in runs components as plain functions, so it only
+  // has to exist for the class to extend.
+  Component: class Component { constructor(props) { this.props = props } setState(next) { this.state = typeof next === 'function' ? next(this.state) : next } },
   useEffect() {}, useLayoutEffect: effect => layoutEffects?.push(effect),
   useState: (initial) => {
     if (!renderStates) return [initial, () => {}]

@@ -13,6 +13,7 @@ const { outputFiles } = await build({
   external: ['react', 'react-dom'],
 })
 const react = {
+  Component: class Component { constructor(props) { this.props = props } setState(next) { this.state = typeof next === 'function' ? next(this.state) : next } },
   createElement: (type, props, ...children) => ({ type, props: { ...props, children } }),
   Fragment: 'fragment',
 }

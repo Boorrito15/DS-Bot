@@ -16,6 +16,7 @@ const bundle = async (contents) => (await build({
 // A stand-in React that draws one tree with effects left out.
 const react = {
   Component: class {}, createElement: (type, props, ...children) => ({ type, props: { ...props, children } }), Fragment: Symbol('Fragment'),
+  Component: class Component { constructor(props) { this.props = props } setState(next) { this.state = typeof next === 'function' ? next(this.state) : next } },
   useEffect() {}, useLayoutEffect() {}, useCallback: fn => fn, useRef: current => ({ current }), useMemo: make => make(), useId: () => 'id',
   useState: initial => [typeof initial === 'function' ? initial() : initial, () => {}],
   createContext: value => ({ Provider: 'Provider', value }), useContext: context => context.value,

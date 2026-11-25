@@ -37,6 +37,7 @@ const expand = (node) => {
 const react = {
   createElement: (type, props, ...children) => ({ type, props: { ...props, children } }),
   Fragment: 'fragment',
+  Component: class Component { constructor(props) { this.props = props } setState(next) { this.state = typeof next === 'function' ? next(this.state) : next } },
   useEffect() {}, useLayoutEffect() {}, useMemo: make => make(), useCallback: fn => fn,
   useState: init => [typeof init === 'function' ? init() : init, () => {}],
   useRef: current => ({ current }),

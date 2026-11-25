@@ -13,6 +13,7 @@ const { outputFiles } = await build({
 let slots = []
 let index = 0
 const react = {
+  Component: class Component { constructor(props) { this.props = props } setState(next) { this.state = typeof next === 'function' ? next(this.state) : next } },
   createElement: (type, props, ...children) => ({ type, props: { ...props, children: children.flat(Infinity) } }),
   useState: (initial) => {
     const at = index

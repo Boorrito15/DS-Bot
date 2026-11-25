@@ -9,6 +9,7 @@ import { build } from 'esbuild'
 let instance = null
 const slot = () => instance.slots[instance.cursor++] ??= {}
 const react = {
+  Component: class Component { constructor(props) { this.props = props } setState(next) { this.state = typeof next === 'function' ? next(this.state) : next } },
   Fragment: 'fragment',
   createElement: (type, props, ...children) => ({ type, props: props ?? {}, children: children.flat(Infinity) }),
   useState(initial) {

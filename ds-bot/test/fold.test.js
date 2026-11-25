@@ -13,6 +13,7 @@ const bundle = await build({
 let slots = []
 let at = 0
 const react = {
+  Component: class Component { constructor(props) { this.props = props } setState(next) { this.state = typeof next === 'function' ? next(this.state) : next } },
   Fragment: 'fragment',
   createContext: (initial) => { const ctx = { value: initial }; ctx.Provider = ({ value, children }) => { ctx.value = value; return children }; return ctx },
   useContext: ctx => ctx.value,

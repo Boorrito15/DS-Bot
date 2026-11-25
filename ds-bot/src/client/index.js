@@ -263,6 +263,17 @@ export function apply(ctx) {
   // An open page keeps the bundle it loaded. The host serves a changed one under a new
   // revision, so a window can sit on old code for hours and nobody can see it. Watch for a
   // newer revision and offer the reload rather than leaving the page quietly out of date.
+  // A crash in this window is otherwise invisible: the shell unmounts, plain DSH shows, and
+  // nothing says why. Both the window's own errors and rejected promises go to the server's
+  // log, where the Diagnostics page can show them.
+  ctx.effect(() => {
+    const onError = event => { noteClientError('window', event?.error ?? new Error(String(event?.message ?? 'script error'))) }
+    const onRejection = event => { noteClientError('promise', event?.reason ?? new Error('unhandled rejection')) }
+    window.addEventListener('error', onError)
+    window.addEventListener('unhandledrejection', onRejection)
+    return () => { window.removeEventListener('error', onError); window.removeEventListener('unhandledrejection', onRejection) }
+  }, 'ds-bot: client error report')
+
   const bundleRev = text => text?.match(/ds-bot\/client\.js[^"']*?rev=([0-9a-f]+)/)?.[1]
   const offerReload = () => {
     if (document.querySelector('.bt-new-version') !== null) return

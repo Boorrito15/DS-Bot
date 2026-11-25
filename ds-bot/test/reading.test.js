@@ -20,6 +20,7 @@ const { outputFiles } = await build({
 })
 const react = {
   createElement: (type, props, ...children) => ({ type, props: { ...props, children } }),
+  Component: class Component { constructor(props) { this.props = props } setState(next) { this.state = typeof next === 'function' ? next(this.state) : next } },
   useEffect() {}, useLayoutEffect() {}, useRef: current => ({ current }), useState: init => [init, () => {}],
 }
 const module = { exports: {} }

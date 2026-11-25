@@ -10,6 +10,7 @@ import { botState, BotMark, BotAvatar, RoomAvatar } from './mark.js'
 import { AgentBadge } from './agent-badge.js'
 import { reducedMotion } from './activity-row.js'
 import { Elapsed, Shimmer, stepWords, workPhrase } from './cells.js'
+import { Safe } from './safe.js'
 import { SPRING_GLIDE, SPRING_POP, SPRING_SHAPE, SPRING_TAP, stepMenuFocus, useLinger, useViewport, viewBottom } from './motion.js'
 import { hostText, t } from './i18n.js'
 import { clientErrors } from './diagnostics.js'
@@ -854,7 +855,7 @@ export function TeamSidebar(props) {
     foot)
   return h(Fragment, null,
     h(TitleToggle, { hidden: mode === 'hidden', onToggle }),
-    h(RunningBar, { roster, useSessions, useWork: props.useWork, planOf: actions.planOf }),
+    h(Safe, { name: 'running strip' }, h(RunningBar, { roster, useSessions, useWork: props.useWork, planOf: actions.planOf })),
     shown === 'hidden' ? null : h(LeftColumn, { mode: shown, width: ourWidth, onGrip: startDrag, leaving }, content))
 }
 

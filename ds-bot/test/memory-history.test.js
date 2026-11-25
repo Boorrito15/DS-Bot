@@ -29,6 +29,7 @@ const react = {
   useSyncExternalStore: (subscribe, getSnapshot) => getSnapshot(),
   createElement: (type, props, ...children) => ({ type, props: { ...props, children } }),
   Fragment: Symbol('Fragment'),
+  Component: class Component { constructor(props) { this.props = props } setState(next) { this.state = typeof next === 'function' ? next(this.state) : next } },
   useEffect() {}, useLayoutEffect() {},
   useState: (initial) => {
     const index = setters.length

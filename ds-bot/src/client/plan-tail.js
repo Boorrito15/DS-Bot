@@ -3,10 +3,15 @@
 // finished turn can be read back instead of only watched.
 import { createElement as h } from 'react'
 import { planInWindow } from './turn-plan.js'
+import { Safe } from './safe.js'
 
 const TICK = '✓'
 
-export function PlanTail({ turn: location, sessionId }) {
+export function PlanTail(props) {
+  return h(Safe, { name: 'turn plan' }, h(TailPlan, props))
+}
+
+function TailPlan({ turn: location, sessionId }) {
   const start = location?.start?.time ?? 0
   const end = location?.end?.time ?? Number.MAX_SAFE_INTEGER
   let items = null

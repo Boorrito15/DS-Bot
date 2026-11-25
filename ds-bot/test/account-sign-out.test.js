@@ -29,7 +29,8 @@ const react = {
     return [slot.v, v => { slot.v = typeof v === 'function' ? v(slot.v) : v }]
   },
   useRef(initial) { const i = cursor++; if (slots[i] === undefined) slots[i] = { current: initial }; return slots[i] },
-  useMemo: make => make(), useEffect() {}, useLayoutEffect() {}, useSyncExternalStore: (subscribe, get) => get(), useId: () => 'id',
+  useMemo: make => make(), Component: class Component { constructor(props) { this.props = props } setState(next) { this.state = typeof next === 'function' ? next(this.state) : next } },
+  useEffect() {}, useLayoutEffect() {}, useSyncExternalStore: (subscribe, get) => get(), useId: () => 'id',
 }
 const module = { exports: {} }
 runInNewContext(outputFiles[0].text, {

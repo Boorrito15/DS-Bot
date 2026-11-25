@@ -19,6 +19,7 @@ const { outputFiles } = await build({
   external: ['react', 'react-dom', '@deepseek-ai/dsh-client-ui-primitives'],
 })
 const react = {
+  Component: class Component { constructor(props) { this.props = props } setState(next) { this.state = typeof next === 'function' ? next(this.state) : next } },
   createContext: (initial) => { const ctx = { value: initial }; ctx.Provider = ({ value, children }) => { ctx.value = value; return children }; return ctx },
   useContext: ctx => ctx.value,
   useCallback: fn => fn,
@@ -314,6 +315,8 @@ test('section-add menu offers both creating a new Bot/group in the section and a
     if (Array.isArray(node)) { node.forEach(child => walkSidebar(child, inBody)); return }
     if (!node || typeof node !== 'object') return
     if (typeof node.type === 'function' && node.type !== react.Fragment) {
+      // A class is a boundary (Safe): its children are what gets drawn.
+      if (/^class\b/.test(String(node.type))) { walkSidebar(node.props?.children, inBody); return }
       walkSidebar(node.type(node.props ?? {}), inBody)
       return
     }
