@@ -245,8 +245,8 @@ export function ActivityIndicator({ sessionId, useRoster, useSessionStatus, useL
       plan === null ? null : h('li', { className: 'bt-step bt-step-plan' }, `${plan.done}/${plan.total}`),
       steps.length > STEPS_SHOWN ? h('li', { className: 'bt-step bt-step-more' }, `+${steps.length - STEPS_SHOWN}`) : null,
       shownSteps.map((step, index) => h('li', { key: `${step.callId ?? step.name}:${index}`, className: 'bt-step', 'data-done': step.done === true ? '' : undefined },
-        h('span', { className: 'bt-step-words' }, stepWords(step.name)),
-        step.target === undefined ? null : h('span', { className: 'bt-step-target' }, step.target),
+        h('span', { className: 'bt-step-words' }, step.label ?? stepWords(step.name)),
+        step.target === undefined || step.target === step.label ? null : h('span', { className: 'bt-step-target' }, step.target),
         index === shownSteps.length - 1 && step.done !== true && stepAt.current.at > 0
           ? h(Elapsed, { at: stepAt.current.at, className: 'bt-step-time' }) : null)))
     : null

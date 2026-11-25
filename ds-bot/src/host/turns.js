@@ -53,20 +53,35 @@ export function turnFailure(error) {
 
 export const failureLine = failure => `${failure.code}${failure.status ? ` ${failure.status}` : ''}${failure.message ? `: ${failure.message.slice(0, 200)}` : ''}`
 
-// The shortest thing that says what a call is about, for the working row and for the list
-// of steps a turn has taken. A shell command names itself: its own description, or else the
-// start of the line without the `cd … &&` every command opens with.
-export function stepTarget(args) {
+// The thing a call works on: the file, the search, the site. Kept apart from the words a
+// person reads, because "servers.mjs" belongs after a sentence, not instead of one.
+const stepArgs = args => {
   const first = keys => keys.map(key => args?.[key]).find(value => typeof value === 'string' && value.trim() !== '')?.replace(/\s+/g, ' ').trim()
-  const path = first(['file_path', 'path'])
   const url = first(['url'])
   let site
   try { site = url && new URL(url).host } catch { site = undefined }
+  return { first, site }
+}
+
+export function stepTarget(args) {
+  const { first, site } = stepArgs(args)
+  const path = first(['file_path', 'path'])
+  const target = path?.split(/[\\/]/).filter(Boolean).at(-1) ?? first(['query', 'pattern']) ?? site
+  return target === undefined ? undefined : target.slice(0, 80)
+}
+
+/**
+ * What the step is doing, in the words the step itself gave: the description its caller
+ * wrote, or else the start of a shell line without the `cd … &&` every command opens with.
+ * This is what a person reads, so a teammate's row says what it is up to.
+ */
+export function stepLabel(args) {
+  const { first } = stepArgs(args)
+  const said = first(['description'])
+  if (said !== undefined) return said.slice(0, 120)
   const command = first(['command'])
   const line = command?.replace(/^\s*(?:cd\s+(?:"[^"]*"|'[^']*'|\S+)\s*&&\s*)+/, '').trim()
-  const target = path?.split(/[\\/]/).filter(Boolean).at(-1) ?? first(['query', 'pattern']) ?? site
-    ?? first(['description']) ?? (line === '' ? undefined : line)
-  return target === undefined ? undefined : target.slice(0, 80)
+  return line === undefined || line === '' ? undefined : line.slice(0, 120)
 }
 
 // The reply a sender waits for, sent the way a finished turn sends it: the work it was
@@ -463,9 +478,17 @@ export function install(rt) {
     // The turn's steps so far, so a chat can show what is being done rather than only
     // the newest call: a Bot that runs ten commands should not look idle between them.
     let target
-    try { target = stepTarget(JSON.parse(args || '{}')) } catch { target = undefined }
+    let label
+    try {
+      const given = JSON.parse(args || '{}')
+      target = stepTarget(given)
+      label = stepLabel(given)
+    } catch {
+      target = undefined
+      label = undefined
+    }
     const steps = entry.steps ??= []
-    steps.push({ callId: typeof callId === 'string' ? callId : undefined, name, ...(target ? { target } : {}) })
+    steps.push({ callId: typeof callId === 'string' ? callId : undefined, name, ...(label ? { label } : {}), ...(target ? { target } : {}) })
     if (steps.length > STEPS_MAX) steps.splice(0, steps.length - STEPS_MAX)
     showCall(id, entry)
   }

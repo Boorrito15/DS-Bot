@@ -82,7 +82,7 @@ function BotRow({ bot, roster, actions, useSessions, useSessionStatus, useSessio
   const newest = running ? (ownWork?.steps ?? []).at(-1) : undefined
   const stepLine = newest === undefined
     ? null
-    : `${stepWords(newest.name)}${newest.target === undefined ? '' : ` · ${newest.target}`}`
+    : `${newest.label ?? stepWords(newest.name)}${newest.target === undefined || newest.target === newest.label ? '' : ` · ${newest.target}`}`
   const planLine = plan === null ? '' : ` ${plan.done}/${plan.total}`
   const runningLine = running
     ? h(Shimmer, null, `${stepLine ?? (doing ? workPhrase(doing) : t('Working'))}${planLine}…`)

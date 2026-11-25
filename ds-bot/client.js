@@ -29616,8 +29616,8 @@ function ActivityIndicator({ sessionId, useRoster, useSessionStatus, useLive, us
     shownSteps.map((step, index) => (0, import_react35.createElement)(
       "li",
       { key: `${step.callId ?? step.name}:${index}`, className: "bt-step", "data-done": step.done === true ? "" : void 0 },
-      (0, import_react35.createElement)("span", { className: "bt-step-words" }, stepWords(step.name)),
-      step.target === void 0 ? null : (0, import_react35.createElement)("span", { className: "bt-step-target" }, step.target),
+      (0, import_react35.createElement)("span", { className: "bt-step-words" }, step.label ?? stepWords(step.name)),
+      step.target === void 0 || step.target === step.label ? null : (0, import_react35.createElement)("span", { className: "bt-step-target" }, step.target),
       index === shownSteps.length - 1 && step.done !== true && stepAt.current.at > 0 ? (0, import_react35.createElement)(Elapsed, { at: stepAt.current.at, className: "bt-step-time" }) : null
     ))
   ) : null;
@@ -29795,7 +29795,7 @@ function BotRow({ bot, roster, actions, useSessions, useSessionStatus, useSessio
   const ownWork = useWork ? JSON.parse(useWork((view) => JSON.stringify(view.bots?.[id] ?? null))) : null;
   const plan = running ? actions.planOf?.(part) ?? null : null;
   const newest = running ? (ownWork?.steps ?? []).at(-1) : void 0;
-  const stepLine = newest === void 0 ? null : `${stepWords(newest.name)}${newest.target === void 0 ? "" : ` · ${newest.target}`}`;
+  const stepLine = newest === void 0 ? null : `${newest.label ?? stepWords(newest.name)}${newest.target === void 0 || newest.target === newest.label ? "" : ` · ${newest.target}`}`;
   const planLine = plan === null ? "" : ` ${plan.done}/${plan.total}`;
   const runningLine = running ? (0, import_react36.createElement)(Shimmer, null, `${stepLine ?? (doing ? workPhrase(doing) : t("Working"))}${planLine}…`) : null;
   const awayLine = away ? workLine(roster.roomsById[groups[0].id]?.name ?? t("a group chat"), groups[0], groups.length - 1) : null;
