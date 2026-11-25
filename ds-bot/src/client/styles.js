@@ -118,12 +118,14 @@ body[data-bt-motion=quiet] .bt-mark[data-poke]{cursor:default}
 .bt-stack-more{font-size:11px;line-height:16px;color:var(--bt-ink-3);margin-left:3px!important}
 
 .bt-side{display:flex;flex-direction:column;min-height:0;flex:1 1 auto;gap:2px;padding:0 12px 8px 0;color:var(--bt-ink);font-family:var(--bt-font)}
-.bt-side-top{display:flex;justify-content:flex-end;align-items:center;gap:8px;padding:6px 5px 0 0}
+.bt-side-top{display:flex;justify-content:flex-end;align-items:center;gap:10px;padding:6px 5px 0 0}
 .bt-brand{display:inline-flex;align-items:center;gap:6px;margin-right:auto;padding:4px 8px 4px 4px;border:0;border-radius:8px;background:none;cursor:pointer;font-family:inherit;font-size:15px;line-height:20px;font-weight:600;letter-spacing:-.01em;color:var(--bt-ink);white-space:nowrap}
 .bt-brand-whale{display:inline-flex;color:var(--bt-accent)}
 .bt-round{width:36px;height:36px;border-radius:50%;border:1px solid var(--bt-line);background:var(--bt-main);color:var(--bt-ink);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;transition:background-color .12s ease,transform .12s ease}
 .bt-round:hover{background:var(--bt-hover)}
 .bt-round:active{transform:scale(.94)}
+.bt-side-top>.bt-round{position:relative}
+.bt-side-top>.bt-round::after{content:"";position:absolute;inset:-5px;border-radius:50%}
 .bt-list{display:flex;flex-direction:column;gap:3px;overflow-y:auto;min-height:0;flex:1 1 auto}
 /* Chromium ignores ::-webkit-scrollbar when scrollbar-width or scrollbar-color (inherited) is non-auto. */
 .bt-side:not(.bt-rail)>.bt-list{margin-right:-12px;scrollbar-gutter:stable;scrollbar-width:auto;scrollbar-color:auto}
