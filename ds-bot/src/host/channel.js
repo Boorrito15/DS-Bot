@@ -2,6 +2,7 @@
 import { randomUUID } from 'node:crypto'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { install as installBtw } from './btw.js'
+import { scheduleRestart, supervisorJob } from './restart.js'
 import { install as installSide } from './side.js'
 import { handoffReply, questionReply, viewReply } from './parts.js'
 import { threadCurrentOfPart } from './threads.js'
@@ -770,6 +771,14 @@ export function install(rt) {
         }
         case 'update-install':
           return ok(rt.updateStart())
+        // The server stops and comes back, so a change that only runs on the server takes
+        // effect without anyone remembering a command. Refused where nothing supervises it.
+        case 'restart-host': {
+          const label = await supervisorJob()
+          if (label === undefined) return fail('This server was not started by a job on this computer, so nothing would start it again after a restart. Start it from its own window instead.', 'bot/no-supervisor')
+          scheduleRestart({ label })
+          return ok({ label })
+        }
         case 'dsh-update-install':
           return ok(rt.dshUpdateStart?.())
         case 'repo-stars':

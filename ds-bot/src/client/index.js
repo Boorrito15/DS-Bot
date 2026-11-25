@@ -624,6 +624,8 @@ export function apply(ctx) {
     // How far the list the Bot wrote for this piece of work has got, for the row that says
     // what it is doing. The list is the Bot's own plan for the turn, so it is the one honest
     // answer to "how much is left"; a turn without one has no count at all.
+    // Put the server down and bring it back, for a change that only runs on the server.
+    restartHost: () => call('restart-host', {}),
     planOf: (sessionId) => {
       try {
         const todos = ctx.sessions.binding(sessionId)?.session?.projections?.faceOf('todos')?.getSnapshot()
