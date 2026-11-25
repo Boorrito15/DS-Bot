@@ -17189,6 +17189,15 @@ body[data-bt-goal] [class*="_scroll"]:has(> [class*="_column"]){padding-top:calc
 .bt-typing-label{display:inline-flex;align-items:center;gap:6px;min-width:0;animation:bt-typing-label .22s ease-out backwards}
 .bt-typing-label>.bt-shimmer{font-size:14px;line-height:22px;font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bt-typing-time{flex-shrink:0;margin-left:6px;font-size:12px;line-height:22px;color:var(--bt-ink-3);font-variant-numeric:tabular-nums;white-space:nowrap}
+/* A row that also lists the turn's steps stacks them under the phrase. */
+.bt-typing[data-steps]{align-items:flex-start;height:auto}
+.bt-typing-body{display:flex;flex-direction:column;gap:2px;flex:1 1 auto;min-width:0}
+.bt-steps{display:flex;flex-direction:column;gap:1px;margin:0;padding:0;list-style:none;min-width:0}
+.bt-step{display:flex;align-items:baseline;gap:6px;min-width:0;font-size:12px;line-height:17px;color:var(--bt-ink-3);animation:bt-typing-label .18s ease-out backwards}
+.bt-step-words{flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bt-step-target{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--bt-ink-3);opacity:.75}
+.bt-step[data-done]>*{opacity:.55}
+.bt-step-more{opacity:.7}
 @keyframes bt-typing-in{from{opacity:0;transform:scale(.9)}}
 @keyframes bt-typing-out{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(.92);filter:var(--bt-fx-blur-3,blur(3px))}}
 @keyframes bt-typing-label{from{opacity:0;filter:var(--bt-fx-blur-5,blur(5px));transform:translateY(3px)}}
@@ -28939,6 +28948,11 @@ var TOOL_PHRASES = [
   [/image|photo|draw/i, "Working on an image"]
 ];
 var GROUP_PHRASES = { create_group: "Creating a group", update_group: "Updating the group", delete_group: "Deleting the group", post_to_group: "Posting in the group" };
+function stepWords(name) {
+  if (GROUP_PHRASES[name] !== void 0) return t(GROUP_PHRASES[name]);
+  const phrase = TOOL_PHRASES.find(([pattern]) => pattern.test(name))?.[1];
+  return phrase === void 0 ? name : t(phrase);
+}
 function toolActivity(name, arg, findBot, self) {
   switch (name) {
     case "ask_user":
@@ -29343,6 +29357,7 @@ function ToolCell({ node, sessionId, useRoster, useUi, useWork, useHeldCards, us
 var import_react35 = require("react");
 var import_react_dom5 = require("react-dom");
 var PHRASE_HOLD_MS = 800;
+var STEPS_SHOWN = 4;
 var drawPhrase = (pool) => t(pool[Math.min(pool.length - 1, Math.floor(Math.random() * pool.length))]);
 var rowVisible = ({ running, streaming, tools, relaying, bot, room: room2 }) => running && (!streaming || tools.length > 0) && !relaying && (bot !== void 0 || room2 !== void 0);
 var freshInputAt = (submissions, steeredAt) => Math.max(
@@ -29446,6 +29461,7 @@ function ActivityIndicator({ sessionId, useRoster, useSessionStatus, useLive, us
   const pendingInput = useSession((snapshot) => freshInputAt(snapshot?.pendingSubmissions, steeredAt));
   const bot = roster.byId[sessionId];
   const room2 = roster.roomsById[sessionId];
+  const steps = useWork?.((work) => bot === void 0 ? void 0 : work.bots?.[bot.id]?.steps) ?? [];
   const moveAt = useWork?.((work) => {
     const entry = bot !== void 0 ? work.bots?.[bot.id] : room2 !== void 0 ? work.rooms?.[room2.id]?.find((item) => item.self === true) : void 0;
     return entry?.switching === true && entry.folder === true && entry.roomId === void 0 ? entry.since : 0;
@@ -29509,15 +29525,32 @@ function ActivityIndicator({ sessionId, useRoster, useSessionStatus, useLive, us
   useRowEntrances(() => leaving.current || Date.now() - endedAt.current < 300);
   const host = useRunningHost(running || moveAt !== 0);
   if (!host || phase === null || !shown) return null;
+  const shownSteps = steps.slice(-STEPS_SHOWN);
+  const stepList = shownSteps.length > 0 ? (0, import_react35.createElement)(
+    "ol",
+    { className: "bt-steps", role: "list" },
+    steps.length > STEPS_SHOWN ? (0, import_react35.createElement)("li", { className: "bt-step bt-step-more" }, `+${steps.length - STEPS_SHOWN}`) : null,
+    shownSteps.map((step, index) => (0, import_react35.createElement)(
+      "li",
+      { key: `${step.callId ?? step.name}:${index}`, className: "bt-step", "data-done": step.done === true ? "" : void 0 },
+      (0, import_react35.createElement)("span", { className: "bt-step-words" }, stepWords(step.name)),
+      step.target === void 0 ? null : (0, import_react35.createElement)("span", { className: "bt-step-target" }, step.target)
+    ))
+  ) : null;
   return (0, import_react_dom5.createPortal)((0, import_react35.createElement)(
     "div",
-    { className: "bt-typing", "data-exiting": phase === "out" ? "" : void 0, "aria-hidden": true },
+    { className: "bt-typing", "data-exiting": phase === "out" ? "" : void 0, "data-steps": stepList === null ? void 0 : "", "aria-hidden": true },
     bot ? (0, import_react35.createElement)(BotMark, { bot, size: 28, state: markState.current, live: true, pokeable: true }) : (0, import_react35.createElement)(RoomAvatar, { room: room2, roster, size: 28 }),
     (0, import_react35.createElement)(
-      "span",
-      { className: "bt-typing-text" },
-      (0, import_react35.createElement)("span", { key: `${shown.key}:${shown.at}`, className: "bt-typing-label" }, (0, import_react35.createElement)(Shimmer, null, `${shown.text}…`)),
-      (0, import_react35.createElement)(Elapsed, { at: moveAt !== 0 ? moveAt : Math.max(turnAt ?? runAt.current, inputAt), className: "bt-typing-time" })
+      "div",
+      { className: "bt-typing-body" },
+      (0, import_react35.createElement)(
+        "span",
+        { className: "bt-typing-text" },
+        (0, import_react35.createElement)("span", { key: `${shown.key}:${shown.at}`, className: "bt-typing-label" }, (0, import_react35.createElement)(Shimmer, null, `${shown.text}…`)),
+        (0, import_react35.createElement)(Elapsed, { at: moveAt !== 0 ? moveAt : Math.max(turnAt ?? runAt.current, inputAt), className: "bt-typing-time" })
+      ),
+      stepList
     )
   ), host);
 }

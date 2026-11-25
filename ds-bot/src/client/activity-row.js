@@ -1,7 +1,7 @@
 import { createElement as h, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { BotMark, RoomAvatar } from './mark.js'
-import { Elapsed, Shimmer, PHRASES } from './cells.js'
+import { Elapsed, Shimmer, PHRASES, stepWords } from './cells.js'
 import { noteClientError } from './diagnostics.js'
 import { reducedEffects, reducedMotion } from './motion.js'
 import { t } from './i18n.js'
@@ -12,6 +12,8 @@ import { t } from './i18n.js'
 // reply streams, and holds each phrase long enough to read.
 
 const PHRASE_HOLD_MS = 800
+// How many of a turn's steps the working row lists at once.
+const STEPS_SHOWN = 4
 const drawPhrase = pool => t(pool[Math.min(pool.length - 1, Math.floor(Math.random() * pool.length))])
 export { reducedMotion }
 
@@ -122,6 +124,9 @@ export function ActivityIndicator({ sessionId, useRoster, useSessionStatus, useL
   const pendingInput = useSession(snapshot => freshInputAt(snapshot?.pendingSubmissions, steeredAt))
   const bot = roster.byId[sessionId]
   const room = roster.roomsById[sessionId]
+  // What this turn has done so far, from the host (a Bot's own chat only: a group's
+  // members keep their own rows).
+  const steps = useWork?.(work => (bot === undefined ? undefined : work.bots?.[bot.id]?.steps)) ?? []
   // The one switch the row names: a working-folder move jumps the chat to a fresh
   // part while a turn is not running, so without it the conversation just empties.
   const moveAt = useWork?.((work) => {
@@ -192,9 +197,21 @@ export function ActivityIndicator({ sessionId, useRoster, useSessionStatus, useL
   useRowEntrances(() => leaving.current || Date.now() - endedAt.current < 300)
   const host = useRunningHost(running || moveAt !== 0)
   if (!host || phase === null || !shown) return null
-  return createPortal(h('div', { className: 'bt-typing', 'data-exiting': phase === 'out' ? '' : undefined, 'aria-hidden': true },
+  // The newest few steps, oldest first, so the row says what the Bot is doing rather than
+  // only that it is busy. A finished step keeps its tick; a long turn keeps the tail.
+  const shownSteps = steps.slice(-STEPS_SHOWN)
+  const stepList = shownSteps.length > 0
+    ? h('ol', { className: 'bt-steps', role: 'list' },
+      steps.length > STEPS_SHOWN ? h('li', { className: 'bt-step bt-step-more' }, `+${steps.length - STEPS_SHOWN}`) : null,
+      shownSteps.map((step, index) => h('li', { key: `${step.callId ?? step.name}:${index}`, className: 'bt-step', 'data-done': step.done === true ? '' : undefined },
+        h('span', { className: 'bt-step-words' }, stepWords(step.name)),
+        step.target === undefined ? null : h('span', { className: 'bt-step-target' }, step.target))))
+    : null
+  return createPortal(h('div', { className: 'bt-typing', 'data-exiting': phase === 'out' ? '' : undefined, 'data-steps': stepList === null ? undefined : '', 'aria-hidden': true },
     bot ? h(BotMark, { bot, size: 28, state: markState.current, live: true, pokeable: true }) : h(RoomAvatar, { room, roster, size: 28 }),
-    h('span', { className: 'bt-typing-text' },
-      h('span', { key: `${shown.key}:${shown.at}`, className: 'bt-typing-label' }, h(Shimmer, null, `${shown.text}…`)),
-      h(Elapsed, { at: moveAt !== 0 ? moveAt : Math.max(turnAt ?? runAt.current, inputAt), className: 'bt-typing-time' }))), host)
+    h('div', { className: 'bt-typing-body' },
+      h('span', { className: 'bt-typing-text' },
+        h('span', { key: `${shown.key}:${shown.at}`, className: 'bt-typing-label' }, h(Shimmer, null, `${shown.text}…`)),
+        h(Elapsed, { at: moveAt !== 0 ? moveAt : Math.max(turnAt ?? runAt.current, inputAt), className: 'bt-typing-time' })),
+      stepList)), host)
 }

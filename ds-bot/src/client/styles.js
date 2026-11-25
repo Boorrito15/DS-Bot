@@ -1265,6 +1265,15 @@ body[data-bt-goal] [class*="_scroll"]:has(> [class*="_column"]){padding-top:calc
 .bt-typing-label{display:inline-flex;align-items:center;gap:6px;min-width:0;animation:bt-typing-label .22s ease-out backwards}
 .bt-typing-label>.bt-shimmer{font-size:14px;line-height:22px;font-weight:400;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bt-typing-time{flex-shrink:0;margin-left:6px;font-size:12px;line-height:22px;color:var(--bt-ink-3);font-variant-numeric:tabular-nums;white-space:nowrap}
+/* A row that also lists the turn's steps stacks them under the phrase. */
+.bt-typing[data-steps]{align-items:flex-start;height:auto}
+.bt-typing-body{display:flex;flex-direction:column;gap:2px;flex:1 1 auto;min-width:0}
+.bt-steps{display:flex;flex-direction:column;gap:1px;margin:0;padding:0;list-style:none;min-width:0}
+.bt-step{display:flex;align-items:baseline;gap:6px;min-width:0;font-size:12px;line-height:17px;color:var(--bt-ink-3);animation:bt-typing-label .18s ease-out backwards}
+.bt-step-words{flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bt-step-target{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--bt-ink-3);opacity:.75}
+.bt-step[data-done]>*{opacity:.55}
+.bt-step-more{opacity:.7}
 @keyframes bt-typing-in{from{opacity:0;transform:scale(.9)}}
 @keyframes bt-typing-out{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(.92);filter:var(--bt-fx-blur-3,blur(3px))}}
 @keyframes bt-typing-label{from{opacity:0;filter:var(--bt-fx-blur-5,blur(5px));transform:translateY(3px)}}

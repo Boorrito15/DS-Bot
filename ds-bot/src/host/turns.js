@@ -18,6 +18,8 @@ import { usageChunk } from './usage.js'
 export const BLOCKING_CODES = new Set(['MISSING_CREDENTIAL', 'INVALID_CREDENTIAL', 'AUTH', 'QUOTA', 'ACCOUNT_QUOTA', 'ACCOUNT_SIGN_IN_REQUIRED', 'ACCOUNT_SIGNED_OUT', 'ACCOUNT_TOKEN_INVALID', 'LOCAL_AGENT_MISSING', 'LOCAL_AGENT_SIGNIN', 'LOCAL_AGENT_QUOTA', 'LOCAL_AGENT_EXIT'])
 // The ones a key set outside a turn can fix, and the ones a sign-in can (unblockBots).
 // A balance only a turn that completes shows fixed, as Retry runs one.
+// How many of a running turn's steps a chat is told about; older ones fall off the top.
+const STEPS_MAX = 20
 const KEY_CODES = new Set(['MISSING_CREDENTIAL', 'INVALID_CREDENTIAL', 'AUTH'])
 const SIGN_IN_CODES = new Set(['ACCOUNT_SIGN_IN_REQUIRED', 'ACCOUNT_SIGNED_OUT', 'ACCOUNT_TOKEN_INVALID'])
 
@@ -442,10 +444,19 @@ export function install(rt) {
   }
   const startCall = (id, entry, callId, name, args) => {
     if (typeof callId === 'string') (entry.calls ??= new Map()).set(callId, { name, args })
+    // The turn's steps so far, so a chat can show what is being done rather than only
+    // the newest call: a Bot that runs ten commands should not look idle between them.
+    let target
+    try { target = callTarget(JSON.parse(args || '{}')) } catch { target = undefined }
+    const steps = entry.steps ??= []
+    steps.push({ callId: typeof callId === 'string' ? callId : undefined, name, ...(target ? { target } : {}) })
+    if (steps.length > STEPS_MAX) steps.splice(0, steps.length - STEPS_MAX)
     showCall(id, entry)
   }
   const endCall = (id, entry, callId) => {
     entry.calls?.delete(callId)
+    const step = entry.steps?.find(item => item.callId === callId)
+    if (step !== undefined) step.done = true
     showCall(id, entry)
   }
 
@@ -563,6 +574,18 @@ export function install(rt) {
     return merged
   }
 
+  // The file, query or site a call works on: the shortest thing that says what a step is
+  // about, for the working row and the list of steps a turn has taken.
+  const callTarget = (args) => {
+    const first = keys => keys.map(key => args?.[key]).find(value => typeof value === 'string' && value.trim() !== '')?.replace(/\s+/g, ' ').trim()
+    const path = first(['file_path', 'path'])
+    const url = first(['url'])
+    let site
+    try { site = url && new URL(url).host } catch { site = undefined }
+    const target = path?.split(/[\\/]/).filter(Boolean).at(-1) ?? first(['query', 'pattern']) ?? site
+    return target === undefined ? undefined : target.slice(0, 80)
+  }
+
   // What the newest running call does, in its own words: what the Bot said in the step
   // that made it, the call's description, or the file, search or site it works on.
   const doingOf = (entry) => {
@@ -573,12 +596,8 @@ export function install(rt) {
     try { args = JSON.parse(call.args || '{}') } catch { args = {} }
     const first = keys => keys.map(key => args?.[key]).find(value => typeof value === 'string' && value.trim() !== '')?.replace(/\s+/g, ' ').trim()
     const note = first(['description', 'justification'])
-    const path = first(['file_path', 'path'])
-    const url = first(['url'])
-    let site
-    try { site = url && new URL(url).host } catch { site = undefined }
-    const target = path?.split(/[\\/]/).filter(Boolean).at(-1) ?? first(['query', 'pattern']) ?? site
-    return { tool: call.name, ...(said ? { said } : {}), ...(note ? { note: note.slice(0, 120) } : {}), ...(target ? { target: target.slice(0, 80) } : {}) }
+    const target = callTarget(args)
+    return { tool: call.name, ...(said ? { said } : {}), ...(note ? { note: note.slice(0, 120) } : {}), ...(target ? { target } : {}) }
   }
 
   // Per Bot, the turn it is running and what it is doing; its own chat wins over a
@@ -590,7 +609,12 @@ export function install(rt) {
       const owner = rt.groupOwners.get(id)
       const botId = owner?.botId ?? rt.chatOwners.get(id)
       if (botId === undefined || (owner !== undefined && bots[botId] !== undefined)) continue
-      bots[botId] = { since: entry.since, ...doingOf(entry), ...(owner ? { roomId: owner.roomId } : {}) }
+      bots[botId] = {
+        since: entry.since,
+        ...doingOf(entry),
+        ...(entry.steps?.length ? { steps: entry.steps.map(({ callId, ...step }) => step) } : {}),
+        ...(owner ? { roomId: owner.roomId } : {}),
+      }
     }
     for (const [id] of subagentsByParent) {
       const sub = subagentDoingOf(id)
@@ -875,6 +899,7 @@ export function install(rt) {
         entry.step = undefined
         entry.info = undefined
         entry.toolCount = 0
+        entry.steps = []
         entry.usage = undefined
         entry.suppressedSubagent = false
         // A turn turned away before its first step may end without a turn/end.

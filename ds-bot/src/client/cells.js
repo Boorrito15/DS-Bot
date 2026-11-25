@@ -895,6 +895,14 @@ const TOOL_PHRASES = [
   [/image|photo|draw/i, 'Working on an image'],
 ]
 const GROUP_PHRASES = { create_group: 'Creating a group', update_group: 'Updating the group', delete_group: 'Deleting the group', post_to_group: 'Posting in the group' }
+
+// The words one running or finished step is shown in, for the list under the working
+// row. A name no phrase covers is shown as the tool's own name, which is still a fact.
+export function stepWords(name) {
+  if (GROUP_PHRASES[name] !== undefined) return t(GROUP_PHRASES[name])
+  const phrase = TOOL_PHRASES.find(([pattern]) => pattern.test(name))?.[1]
+  return phrase === undefined ? name : t(phrase)
+}
 function toolActivity(name, arg, findBot, self) {
   switch (name) {
     case 'ask_user': return null
