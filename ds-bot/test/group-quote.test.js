@@ -114,6 +114,7 @@ function composerInserts(sessionId, quote) {
     actions: { clearQuote() {}, speech: () => undefined },
     useUi: select => select(state),
     useRoster: select => select({ ...writers, prefs: {} }),
+    useSessionStatus: select => select(new Map()),
   })
   return inserted
 }

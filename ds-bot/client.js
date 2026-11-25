@@ -38731,7 +38731,7 @@ function useDictation(onText) {
   const stop = () => recognition.current?.stop();
   return { listening, note, start, stop };
 }
-function ComposerVoice({ sessionId, inputActions, actions, useUi, useRoster }) {
+function ComposerVoice({ sessionId, inputActions, actions, useUi, useRoster, useWork, useSessionStatus }) {
   const enterToSend = useRoster((state) => sendsOnEnter(state.prefs));
   const composerRoot = (0, import_react58.useRef)(null);
   (0, import_react58.useEffect)(() => {
@@ -38784,8 +38784,40 @@ function ComposerVoice({ sessionId, inputActions, actions, useUi, useRoster }) {
       onMouseDown: keepComposerFocus,
       onClick: () => actions.openVoice(sessionId)
     }, (0, import_react58.createElement)(WaveIcon, { size: 18 })),
+    // The round accent button is DSH's send button, and it turns into a stop while a turn
+    // runs. That stop sets a flag on the DSH Session, which is not the same conversation a
+    // Bot runs in, so it silently does nothing; the Bot keeps going with no way to call it
+    // back. The press is taken over here and handed to the Bot's own stop.
+    (0, import_react58.createElement)(ComposerStop, { actions, sessionId, useWork, useSessionStatus }),
     dictation.note ? (0, import_react58.createElement)("span", { className: "bt-mic-note", role: "status" }, dictation.note) : null
   );
+}
+function ComposerStop({ actions, sessionId, useWork, useSessionStatus }) {
+  const working = useSessionStatus((map) => map.get(sessionId)?.running === true);
+  const busyRaw = useWork?.((work) => JSON.stringify(Object.keys(work.bots ?? {}))) ?? "[]";
+  const busy = busyRaw !== "[]";
+  const stopping = (0, import_react58.useRef)(false);
+  (0, import_react58.useEffect)(() => {
+    if (!working && !busy) {
+      stopping.current = false;
+      return void 0;
+    }
+    const onDown = (event) => {
+      const card = event.target instanceof Element ? event.target.closest("[data-composer-card]") : null;
+      const button = card?.querySelector('button[class*="_primary"]');
+      if (button === null || button === void 0 || !button.contains(event.target)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (stopping.current) return;
+      stopping.current = true;
+      Promise.resolve(actions.stopChat(sessionId)).finally(() => setTimeout(() => {
+        stopping.current = false;
+      }, 600));
+    };
+    window.addEventListener("click", onDown, true);
+    return () => window.removeEventListener("click", onDown, true);
+  }, [working, busy, sessionId]);
+  return null;
 }
 function menuIcons(roster) {
   const marks = /* @__PURE__ */ new Map();

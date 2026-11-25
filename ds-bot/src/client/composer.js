@@ -56,7 +56,7 @@ export function useDictation(onText) {
   return { listening, note, start, stop }
 }
 
-export function ComposerVoice({ sessionId, inputActions, actions, useUi, useRoster }) {
+export function ComposerVoice({ sessionId, inputActions, actions, useUi, useRoster, useWork, useSessionStatus }) {
   const enterToSend = useRoster(state => sendsOnEnter(state.prefs))
   const composerRoot = useRef(null)
   useEffect(() => {
@@ -98,7 +98,41 @@ export function ComposerVoice({ sessionId, inputActions, actions, useUi, useRost
       ref: composerRoot, type: 'button', className: 'bt-voice', 'aria-label': t('Start voice chat'), title: t('Voice chat'),
       onMouseDown: keepComposerFocus, onClick: () => actions.openVoice(sessionId),
     }, h(WaveIcon, { size: 18 })),
+    // The round accent button is DSH's send button, and it turns into a stop while a turn
+    // runs. That stop sets a flag on the DSH Session, which is not the same conversation a
+    // Bot runs in, so it silently does nothing; the Bot keeps going with no way to call it
+    // back. The press is taken over here and handed to the Bot's own stop.
+    h(ComposerStop, { actions, sessionId, useWork, useSessionStatus }),
     dictation.note ? h('span', { className: 'bt-mic-note', role: 'status' }, dictation.note) : null)
+}
+
+// The round accent button's press goes to the Bot's own stop while that Bot is working.
+// Nothing is drawn: the button is DSH's, only the press belongs to us.
+function ComposerStop({ actions, sessionId, useWork, useSessionStatus }) {
+  const working = useSessionStatus(map => map.get(sessionId)?.running === true)
+  // The host's own work state is the second opinion: the session flag can lag behind it.
+  const busyRaw = useWork?.(work => JSON.stringify(Object.keys(work.bots ?? {}))) ?? '[]'
+  const busy = busyRaw !== '[]'
+  const stopping = useRef(false)
+  useEffect(() => {
+    if (!working && !busy) { stopping.current = false; return undefined }
+    const onDown = (event) => {
+      const card = event.target instanceof Element ? event.target.closest('[data-composer-card]') : null
+      const button = card?.querySelector('button[class*="_primary"]')
+      if (button === null || button === undefined || !button.contains(event.target)) return
+      // The send button is hidden while the draft is empty, so a visible one here is the
+      // stop. The shell would only reset its own Session, which stops nothing.
+      event.preventDefault()
+      event.stopPropagation()
+      if (stopping.current) return
+      stopping.current = true
+      Promise.resolve(actions.stopChat(sessionId)).finally(() => setTimeout(() => { stopping.current = false }, 600))
+    }
+    // Capture on the window so this runs before the shell's own handler on the button.
+    window.addEventListener('click', onDown, true)
+    return () => window.removeEventListener('click', onDown, true)
+  }, [working, busy, sessionId])
+  return null
 }
 
 // Character marks for the "@" menu rows. Each Bot keeps one component, so the menu
