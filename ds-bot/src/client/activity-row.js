@@ -15,8 +15,10 @@ import { t } from './i18n.js'
 const PHRASE_HOLD_MS = 800
 // How long a finished turn keeps saying so before the row goes.
 const DONE_HOLD_MS = 3000
-// How many of a turn's steps the working row lists at once.
-const STEPS_SHOWN = 4
+// How many of a turn's steps the working row lists at once. More than two turned the row
+// into a wall: the phrase, the clock, a hidden count and each step's label and target all
+// said the same thing several times over.
+const STEPS_SHOWN = 2
 const drawPhrase = pool => t(pool[Math.min(pool.length - 1, Math.floor(Math.random() * pool.length))])
 export { reducedMotion }
 
@@ -246,19 +248,24 @@ export function ActivityIndicator({ sessionId, useRoster, useSessionStatus, useL
   if (!host || phase === null || !shown) return null
   const stepList = shownSteps.length > 0 || plan !== null
     ? h('ol', { className: 'bt-steps', role: 'list' },
-      plan === null ? null : h('li', { className: 'bt-step bt-step-plan' }, `${plan.done}/${plan.total}`),
-      steps.length > STEPS_SHOWN ? h('li', { className: 'bt-step bt-step-more' }, `+${steps.length - STEPS_SHOWN}`) : null,
+      steps.length > STEPS_SHOWN ? h('li', { className: 'bt-step bt-step-more' }, t('and {count} earlier', { count: steps.length - STEPS_SHOWN })) : null,
+      // A step's words are a whole phrase in the Bot's own language ("List the composer's
+      // buttons"), so the thing it touched is only added when the phrase says nothing.
       shownSteps.map((step, index) => h('li', { key: `${step.callId ?? step.name}:${index}`, className: 'bt-step', 'data-done': step.done === true ? '' : undefined },
-        h('span', { className: 'bt-step-words' }, step.label ?? stepWords(step.name)),
-        step.target === undefined || step.target === step.label ? null : h('span', { className: 'bt-step-target' }, step.target),
+        h('span', { className: 'bt-step-words' }, step.label ?? step.target ?? stepWords(step.name)),
+        // One clock in the row: the newest step's, and only when it is still running.
         index === shownSteps.length - 1 && step.done !== true && stepAt.current.at > 0
           ? h(Elapsed, { at: stepAt.current.at, className: 'bt-step-time' }) : null)))
     : null
+  // The phrase keeps its clock only while no step is timed, or the same seconds would be
+  // printed twice, a line apart.
+  const stepClock = stepList === null ? 0 : 1
   return createPortal(h('div', { className: 'bt-typing', 'data-exiting': phase === 'out' ? '' : undefined, 'data-steps': stepList === null ? undefined : '', 'aria-hidden': true },
     bot ? h(BotMark, { bot, size: 28, state: markState.current, live: true, pokeable: true }) : h(RoomAvatar, { room, roster, size: 28 }),
     h('div', { className: 'bt-typing-body' },
       h('span', { className: 'bt-typing-text' },
         h('span', { key: `${shown.key}:${shown.at}`, className: 'bt-typing-label' }, h(Shimmer, null, `${shown.text}…`)),
-        h(Elapsed, { at: moveAt !== 0 ? moveAt : Math.max(turnAt ?? runAt.current, inputAt), className: 'bt-typing-time' })),
+        plan === null ? null : h('span', { className: 'bt-typing-plan' }, `${plan.done}/${plan.total}`),
+        stepClock === 0 ? h(Elapsed, { at: moveAt !== 0 ? moveAt : Math.max(turnAt ?? runAt.current, inputAt), className: 'bt-typing-time' }) : null),
       stepList)), host)
 }

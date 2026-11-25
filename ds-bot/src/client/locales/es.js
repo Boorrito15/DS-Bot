@@ -45,6 +45,7 @@ export const ES = {
   // Shared
   'Main Bot': 'Bot principal',
   Working: 'En curso',
+  'and {count} earlier': 'y {count} anteriores',
   'Waiting for your answer': 'Esperando tu respuesta',
   'Waiting for {names}': 'Esperando a {names}',
   'Unread activity': 'Actividad sin leer',

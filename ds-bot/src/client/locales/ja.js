@@ -44,6 +44,7 @@ export const JA = {
   "Beta": "ベータ",
   "Main Bot": "メイン Bot",
   "Working": "実行中",
+  "and {count} earlier": "さらに前の {count} 件",
   "Waiting for your answer": "回答待ち",
   "Waiting for {names}": "{names} の応答待ち",
   "Unread activity": "未読あり",

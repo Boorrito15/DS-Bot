@@ -45,6 +45,7 @@ export const DE = {
   // Shared
   'Main Bot': 'Haupt-Bot',
   Working: 'Arbeitet',
+  'and {count} earlier': 'und {count} davor',
   'Waiting for your answer': 'Wartet auf deine Antwort',
   'Waiting for {names}': 'Wartet auf {names}',
   'Unread activity': 'Ungelesene Aktivität',

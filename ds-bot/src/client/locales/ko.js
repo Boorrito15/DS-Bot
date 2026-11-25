@@ -45,6 +45,7 @@ export const KO = {
   // Shared
   'Main Bot': '메인 Bot',
   Working: '작업 중',
+  'and {count} earlier': '이전 {count}개',
   'Waiting for your answer': '답변 대기 중',
   'Waiting for {names}': '{names} 응답 대기 중',
   'Unread activity': '읽지 않은 활동',

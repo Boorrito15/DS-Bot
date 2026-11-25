@@ -44,6 +44,7 @@ export const FR = {
   "Beta": "Bêta",
   "Main Bot": "Bot principal",
   "Working": "En cours",
+  "and {count} earlier": "et {count} précédentes",
   "Waiting for your answer": "Attend votre réponse",
   "Waiting for {names}": "En attente de {names}",
   "Unread activity": "Activité non lue",

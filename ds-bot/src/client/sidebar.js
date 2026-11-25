@@ -9,8 +9,7 @@ import { lookOf, MAIN_LOOK } from './characters.js'
 import { botState, BotMark, BotAvatar, RoomAvatar } from './mark.js'
 import { AgentBadge } from './agent-badge.js'
 import { reducedMotion } from './activity-row.js'
-import { Elapsed, Shimmer, stepWords, workPhrase } from './cells.js'
-import { Safe } from './safe.js'
+import { Shimmer, stepWords, workPhrase } from './cells.js'
 import { SPRING_GLIDE, SPRING_POP, SPRING_SHAPE, SPRING_TAP, stepMenuFocus, useLinger, useViewport, viewBottom } from './motion.js'
 import { hostText, t } from './i18n.js'
 import { clientErrors } from './diagnostics.js'
@@ -855,30 +854,7 @@ export function TeamSidebar(props) {
     foot)
   return h(Fragment, null,
     h(TitleToggle, { hidden: mode === 'hidden', onToggle }),
-    h(Safe, { name: 'running strip' }, h(RunningBar, { roster, useSessions, useWork: props.useWork, planOf: actions.planOf })),
     shown === 'hidden' ? null : h(LeftColumn, { mode: shown, width: ourWidth, onGrip: startDrag, leaving }, content))
-}
-
-// The one indicator that cannot be missed while a Bot works: a strip over the composer with
-// the Bot, what it is doing, how far its plan has got and how long the step has run. It reads
-// the host's own work state, the same thing this column does, and sits outside the transcript
-// so the chat cannot hide it.
-function RunningBar({ roster, useSessions, useWork, planOf }) {
-  const sessionId = useSessions(list => Object.values(list.byId ?? {}).find(session => (session?.retainedBy?.mainView ?? 0) > 0)?.id ?? '')
-  const bot = sessionId === '' ? undefined : roster.byId[sessionId]
-  const raw = useWork ? useWork(work => JSON.stringify(work.bots?.[bot?.id] ?? null)) : 'null'
-  const entry = useMemo(() => JSON.parse(raw), [raw])
-  const plan = sessionId === '' ? null : planOf?.(sessionId) ?? null
-  if (bot === undefined || entry === null) return null
-  const newest = (entry.steps ?? []).at(-1)
-  const doing = newest?.label ?? newest?.target ?? entry.note ?? entry.said ?? (entry.tool ? stepWords(entry.tool) : t('Working'))
-  const planLine = plan === null ? null : `${plan.done}/${plan.total}`
-  return createPortal(h('div', { className: 'bt-running-bar', role: 'status', 'aria-live': 'polite' },
-    h('span', { className: 'bt-running-dot', 'aria-hidden': true }),
-    h('span', { className: 'bt-running-name' }, bot.name),
-    h('span', { className: 'bt-running-doing' }, Shimmer ? h(Shimmer, null, `${doing}…`) : `${doing}…`),
-    planLine === null ? null : h('span', { className: 'bt-running-plan' }, planLine),
-    h(Elapsed, { at: entry.since ?? Date.now(), className: 'bt-running-time' })), document.body)
 }
 
 // The update button at the sidebar's top right: a cloud while a newer DS Bot —

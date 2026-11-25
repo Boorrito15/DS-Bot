@@ -22,6 +22,7 @@ const ZH = {
   // Shared
   'Main Bot': '主 Bot',
   Working: '进行中',
+  'and {count} earlier': '更早 {count} 步',
   'A new reply is waiting': "有一条新回复",
   'Waiting for your answer': '等你回答',
   'Waiting for {names}': '等 {names} 交回',
