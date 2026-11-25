@@ -264,8 +264,8 @@ export function apply(ctx) {
   // revision, so a window can sit on old code for hours and nobody can see it. Watch for a
   // newer revision and offer the reload rather than leaving the page quietly out of date.
   // A crash in this window is otherwise invisible: the shell unmounts, plain DSH shows, and
-  // nothing says why. Both the window's own errors and rejected promises go to the server's
-  // log, where the Diagnostics page can show them.
+  // nothing says why. Both the window's own errors and rejected promises are kept, so the
+  // next report built in Settings → Feedback carries them with it.
   ctx.effect(() => {
     const onError = event => { noteClientError('window', event?.error ?? new Error(String(event?.message ?? 'script error'))) }
     const onRejection = event => { noteClientError('promise', event?.reason ?? new Error('unhandled rejection')) }

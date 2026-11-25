@@ -217,12 +217,14 @@ export function ActivityIndicator({ sessionId, useRoster, useSessionStatus, useL
   useEffect(() => { if (!running) actions.clearLive(sessionId) }, [running, sessionId])
   // Only rows that take the activity row's place grow out of it.
   useRowEntrances(() => leaving.current || Date.now() - endedAt.current < 300)
-  const host = useRunningHost(working || moveAt !== 0)
-  if (!host || phase === null || !shown) return null
   // The newest few steps, oldest first, so the row says what the Bot is doing rather than
   // only that it is busy. A finished step keeps its tick; a long turn keeps the tail.
   // How long the newest step has been running, timed from when this window first saw it.
   // A step that takes a minute says so, instead of only spinning.
+  // Every hook stays above the row's early return: a hook below it runs on the renders that
+  // draw the row and not on the ones that do not, React counts a different number of hooks
+  // between the two, and it throws #310. That throw unmounts the slot the row sits in, so
+  // the whole Bot layer of the chat goes with it.
   const newestStep = steps.at(-1)
   const stepKey = newestStep === undefined || newestStep.done === true
     ? null
@@ -240,6 +242,8 @@ export function ActivityIndicator({ sessionId, useRoster, useSessionStatus, useL
     if (planKey === '') return
     try { notePlan(window.localStorage, sessionId, JSON.parse(planKey)) } catch { /* storage full or gone */ }
   }, [planKey, sessionId])
+  const host = useRunningHost(working || moveAt !== 0)
+  if (!host || phase === null || !shown) return null
   const stepList = shownSteps.length > 0 || plan !== null
     ? h('ol', { className: 'bt-steps', role: 'list' },
       plan === null ? null : h('li', { className: 'bt-step bt-step-plan' }, `${plan.done}/${plan.total}`),

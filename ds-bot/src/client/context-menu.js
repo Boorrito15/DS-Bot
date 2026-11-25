@@ -47,14 +47,17 @@ export function ContextMenu({ menu, roster, actions, useWork, leaving = false })
     if (!box) return
     setPlace({ left: Math.max(8, Math.min(menu.x, window.innerWidth - box.width - 8)), top: Math.max(8, Math.min(menu.y, viewBottom() - box.height - 8)) })
   }, [menu.x, menu.y, tick])
-  if (menu.kind === 'agent' || menu.kind === 'agent-session') return h(AgentMenu, { menu, roster, actions, leaving })
-  if (menu.kind === 'section' || menu.kind === 'section-add') return h(SectionMenu, { menu, roster, actions, leaving })
   const bot = roster.byId[menu.id]
   const room = roster.roomsById[menu.id]
   const entry = bot ?? room
-  // Only a Bot that is waiting on a hand-off offers to give one up.
-  const waitsRaw = useWork && bot ? useWork(work => JSON.stringify(work.waiting?.[bot.id] ?? null)) : 'null'
+  // Only a Bot that is waiting on a hand-off offers to give one up. Both hooks stay above
+  // the menus that return early: a hook that runs in a Bot's menu and not in a section's
+  // makes the count differ between renders, and React throws #310 and drops the slot.
+  const readWork = useWork ?? (() => null)
+  const waitsRaw = readWork(work => (bot === undefined ? 'null' : JSON.stringify(work?.waiting?.[bot.id] ?? null))) ?? 'null'
   const waits = useMemo(() => JSON.parse(waitsRaw), [waitsRaw])
+  if (menu.kind === 'agent' || menu.kind === 'agent-session') return h(AgentMenu, { menu, roster, actions, leaving })
+  if (menu.kind === 'section' || menu.kind === 'section-add') return h(SectionMenu, { menu, roster, actions, leaving })
   if (entry === undefined) return null
   const isMainBot = isMainOf(roster, menu.id)
   const isTile = roster.mainBotId === menu.id

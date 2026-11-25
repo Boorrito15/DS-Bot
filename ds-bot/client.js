@@ -29629,8 +29629,6 @@ function ActivityIndicator({ sessionId, useRoster, useSessionStatus, useLive, us
     if (!running) actions.clearLive(sessionId);
   }, [running, sessionId]);
   useRowEntrances(() => leaving.current || Date.now() - endedAt.current < 300);
-  const host = useRunningHost(working || moveAt !== 0);
-  if (!host || phase === null || !shown) return null;
   const newestStep = steps.at(-1);
   const stepKey = newestStep === void 0 || newestStep.done === true ? null : `${steps.length}:${newestStep.name}:${newestStep.target ?? ""}`;
   const stepAt = (0, import_react35.useRef)({ key: null, at: 0 });
@@ -29645,6 +29643,8 @@ function ActivityIndicator({ sessionId, useRoster, useSessionStatus, useLive, us
     } catch {
     }
   }, [planKey, sessionId]);
+  const host = useRunningHost(working || moveAt !== 0);
+  if (!host || phase === null || !shown) return null;
   const stepList = shownSteps.length > 0 || plan !== null ? (0, import_react35.createElement)(
     "ol",
     { className: "bt-steps", role: "list" },
@@ -41271,13 +41271,14 @@ function ContextMenu({ menu, roster, actions, useWork, leaving = false }) {
     if (!box) return;
     setPlace({ left: Math.max(8, Math.min(menu.x, window.innerWidth - box.width - 8)), top: Math.max(8, Math.min(menu.y, viewBottom() - box.height - 8)) });
   }, [menu.x, menu.y, tick]);
-  if (menu.kind === "agent" || menu.kind === "agent-session") return (0, import_react68.createElement)(AgentMenu, { menu, roster, actions, leaving });
-  if (menu.kind === "section" || menu.kind === "section-add") return (0, import_react68.createElement)(SectionMenu, { menu, roster, actions, leaving });
   const bot = roster.byId[menu.id];
   const room2 = roster.roomsById[menu.id];
   const entry = bot ?? room2;
-  const waitsRaw = useWork && bot ? useWork((work) => JSON.stringify(work.waiting?.[bot.id] ?? null)) : "null";
+  const readWork = useWork ?? (() => null);
+  const waitsRaw = readWork((work) => bot === void 0 ? "null" : JSON.stringify(work?.waiting?.[bot.id] ?? null)) ?? "null";
   const waits = (0, import_react68.useMemo)(() => JSON.parse(waitsRaw), [waitsRaw]);
+  if (menu.kind === "agent" || menu.kind === "agent-session") return (0, import_react68.createElement)(AgentMenu, { menu, roster, actions, leaving });
+  if (menu.kind === "section" || menu.kind === "section-add") return (0, import_react68.createElement)(SectionMenu, { menu, roster, actions, leaving });
   if (entry === void 0) return null;
   const isMainBot = isMainOf(roster, menu.id);
   const isTile = roster.mainBotId === menu.id;
