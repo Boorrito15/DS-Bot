@@ -17198,6 +17198,7 @@ body[data-bt-goal] [class*="_scroll"]:has(> [class*="_column"]){padding-top:calc
 .bt-step-target{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--bt-ink-3);opacity:.75}
 .bt-step[data-done]>*{opacity:.55}
 .bt-step-more{opacity:.7}
+.bt-step-time{flex-shrink:0;font-variant-numeric:tabular-nums;opacity:.8}
 .bt-step-plan{flex-shrink:0;font-variant-numeric:tabular-nums;color:var(--bt-ink-2);letter-spacing:.02em}
 @keyframes bt-typing-in{from{opacity:0;transform:scale(.9)}}
 @keyframes bt-typing-out{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(.92);filter:var(--bt-fx-blur-3,blur(3px))}}
@@ -29526,6 +29527,10 @@ function ActivityIndicator({ sessionId, useRoster, useSessionStatus, useLive, us
   useRowEntrances(() => leaving.current || Date.now() - endedAt.current < 300);
   const host = useRunningHost(running || moveAt !== 0);
   if (!host || phase === null || !shown) return null;
+  const newestStep = steps.at(-1);
+  const stepKey = newestStep === void 0 || newestStep.done === true ? null : `${steps.length}:${newestStep.name}:${newestStep.target ?? ""}`;
+  const stepAt = (0, import_react35.useRef)({ key: null, at: 0 });
+  if (stepAt.current.key !== stepKey) stepAt.current = { key: stepKey, at: stepKey === null ? 0 : Date.now() };
   const shownSteps = steps.slice(-STEPS_SHOWN);
   const plan = actions?.planOf?.(sessionId) ?? null;
   const stepList = shownSteps.length > 0 || plan !== null ? (0, import_react35.createElement)(
@@ -29537,7 +29542,8 @@ function ActivityIndicator({ sessionId, useRoster, useSessionStatus, useLive, us
       "li",
       { key: `${step.callId ?? step.name}:${index}`, className: "bt-step", "data-done": step.done === true ? "" : void 0 },
       (0, import_react35.createElement)("span", { className: "bt-step-words" }, stepWords(step.name)),
-      step.target === void 0 ? null : (0, import_react35.createElement)("span", { className: "bt-step-target" }, step.target)
+      step.target === void 0 ? null : (0, import_react35.createElement)("span", { className: "bt-step-target" }, step.target),
+      index === shownSteps.length - 1 && step.done !== true && stepAt.current.at > 0 ? (0, import_react35.createElement)(Elapsed, { at: stepAt.current.at, className: "bt-step-time" }) : null
     ))
   ) : null;
   return (0, import_react_dom5.createPortal)((0, import_react35.createElement)(
@@ -29691,7 +29697,6 @@ var useGroupWork = (useWork, pick2) => {
 };
 var doingOf = ({ tool, said, note, target, switching }) => ({ tool, said, note, target, switching });
 var workLine = (lead, doing, more) => (0, import_react36.createElement)(Shimmer, null, `${lead} · ${workPhrase(doing)}…${more > 0 ? ` +${more}` : ""}`);
-var doingLine = (doing) => (0, import_react36.createElement)(Shimmer, null, `${workPhrase(doing)}…`);
 var waitingFor = (roster, waits) => {
   const names = [...(waits?.bots ?? []).map((id) => roster.byId[id]?.name), ...(waits?.rooms ?? []).map((id) => roster.roomsById[id]?.name)].filter(Boolean);
   return names.length === 0 ? "" : t("Waiting for {names}", { names: names.join(t(" and ")) });
@@ -29712,7 +29717,12 @@ function BotRow({ bot, roster, actions, useSessions, useSessionStatus, useSessio
   const groups = useGroupWork(useWork, (rooms) => Object.entries(rooms).flatMap(([roomId, entries2]) => entries2.filter((entry) => entry.botId === id).map((entry) => ({ id: roomId, ...doingOf(entry) }))));
   const away = !running && groups.length > 0;
   const state = botState(running || away, doing, alert);
-  const runningLine = running && doing ? doingLine(doing) : null;
+  const ownWork = useWork ? JSON.parse(useWork((view) => JSON.stringify(view.bots?.[id] ?? null))) : null;
+  const plan = running ? actions.planOf?.(part) ?? null : null;
+  const newest = running ? (ownWork?.steps ?? []).at(-1) : void 0;
+  const stepLine = newest === void 0 ? null : `${stepWords(newest.name)}${newest.target === void 0 ? "" : ` · ${newest.target}`}`;
+  const planLine = plan === null ? "" : ` ${plan.done}/${plan.total}`;
+  const runningLine = running ? (0, import_react36.createElement)(Shimmer, null, `${stepLine ?? (doing ? workPhrase(doing) : t("Working"))}${planLine}…`) : null;
   const awayLine = away ? workLine(roster.roomsById[groups[0].id]?.name ?? t("a group chat"), groups[0], groups.length - 1) : null;
   const waitsRaw = useWork ? useWork((work) => JSON.stringify(work.waiting?.[id] ?? null)) : "null";
   const waits = (0, import_react36.useMemo)(() => JSON.parse(waitsRaw), [waitsRaw]);

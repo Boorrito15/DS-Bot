@@ -1274,6 +1274,7 @@ body[data-bt-goal] [class*="_scroll"]:has(> [class*="_column"]){padding-top:calc
 .bt-step-target{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--bt-ink-3);opacity:.75}
 .bt-step[data-done]>*{opacity:.55}
 .bt-step-more{opacity:.7}
+.bt-step-time{flex-shrink:0;font-variant-numeric:tabular-nums;opacity:.8}
 .bt-step-plan{flex-shrink:0;font-variant-numeric:tabular-nums;color:var(--bt-ink-2);letter-spacing:.02em}
 @keyframes bt-typing-in{from{opacity:0;transform:scale(.9)}}
 @keyframes bt-typing-out{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(.92);filter:var(--bt-fx-blur-3,blur(3px))}}

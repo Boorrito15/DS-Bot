@@ -9,7 +9,7 @@ import { lookOf, MAIN_LOOK } from './characters.js'
 import { botState, BotMark, BotAvatar, RoomAvatar } from './mark.js'
 import { AgentBadge } from './agent-badge.js'
 import { reducedMotion } from './activity-row.js'
-import { Shimmer, workPhrase } from './cells.js'
+import { Shimmer, stepWords, workPhrase } from './cells.js'
 import { SPRING_GLIDE, SPRING_POP, SPRING_SHAPE, SPRING_TAP, stepMenuFocus, useLinger, useViewport, viewBottom } from './motion.js'
 import { hostText, t } from './i18n.js'
 import { clientErrors } from './diagnostics.js'
@@ -52,8 +52,6 @@ const useGroupWork = (useWork, pick) => {
 }
 const doingOf = ({ tool, said, note, target, switching }) => ({ tool, said, note, target, switching })
 const workLine = (lead, doing, more) => h(Shimmer, null, `${lead} · ${workPhrase(doing)}…${more > 0 ? ` +${more}` : ''}`)
-// The row already names the Bot; its own-chat preview is just what it is doing.
-const doingLine = doing => h(Shimmer, null, `${workPhrase(doing)}…`)
 // The Bots and groups a Bot waits for (handoffs.js), by the names they have now.
 const waitingFor = (roster, waits) => {
   const names = [...(waits?.bots ?? []).map(id => roster.byId[id]?.name), ...(waits?.rooms ?? []).map(id => roster.roomsById[id]?.name)].filter(Boolean)
@@ -77,8 +75,18 @@ function BotRow({ bot, roster, actions, useSessions, useSessionStatus, useSessio
   const groups = useGroupWork(useWork, rooms => Object.entries(rooms).flatMap(([roomId, entries]) => entries.filter(entry => entry.botId === id).map(entry => ({ id: roomId, ...doingOf(entry) }))))
   const away = !running && groups.length > 0
   const state = botState(running || away, doing, alert)
-  // A Bot running in its own chat previews what it is doing, like a group's row.
-  const runningLine = running && doing ? doingLine(doing) : null
+  // A Bot running in its own chat previews what it is doing, like a group's row: the newest
+  // step it took in its own words, then how far the plan it wrote has got.
+  const ownWork = useWork ? JSON.parse(useWork(view => JSON.stringify(view.bots?.[id] ?? null))) : null
+  const plan = running ? actions.planOf?.(part) ?? null : null
+  const newest = running ? (ownWork?.steps ?? []).at(-1) : undefined
+  const stepLine = newest === undefined
+    ? null
+    : `${stepWords(newest.name)}${newest.target === undefined ? '' : ` · ${newest.target}`}`
+  const planLine = plan === null ? '' : ` ${plan.done}/${plan.total}`
+  const runningLine = running
+    ? h(Shimmer, null, `${stepLine ?? (doing ? workPhrase(doing) : t('Working'))}${planLine}…`)
+    : null
   const awayLine = away ? workLine(roster.roomsById[groups[0].id]?.name ?? t('a group chat'), groups[0], groups.length - 1) : null
   const waitsRaw = useWork ? useWork(work => JSON.stringify(work.waiting?.[id] ?? null)) : 'null'
   const waits = useMemo(() => JSON.parse(waitsRaw), [waitsRaw])

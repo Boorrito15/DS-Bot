@@ -199,6 +199,14 @@ export function ActivityIndicator({ sessionId, useRoster, useSessionStatus, useL
   if (!host || phase === null || !shown) return null
   // The newest few steps, oldest first, so the row says what the Bot is doing rather than
   // only that it is busy. A finished step keeps its tick; a long turn keeps the tail.
+  // How long the newest step has been running, timed from when this window first saw it.
+  // A step that takes a minute says so, instead of only spinning.
+  const newestStep = steps.at(-1)
+  const stepKey = newestStep === undefined || newestStep.done === true
+    ? null
+    : `${steps.length}:${newestStep.name}:${newestStep.target ?? ''}`
+  const stepAt = useRef({ key: null, at: 0 })
+  if (stepAt.current.key !== stepKey) stepAt.current = { key: stepKey, at: stepKey === null ? 0 : Date.now() }
   const shownSteps = steps.slice(-STEPS_SHOWN)
   // How far the list the Bot wrote for this work has got. A turn without one has no count:
   // the number of steps still to come is not something anyone can know in advance.
@@ -209,7 +217,9 @@ export function ActivityIndicator({ sessionId, useRoster, useSessionStatus, useL
       steps.length > STEPS_SHOWN ? h('li', { className: 'bt-step bt-step-more' }, `+${steps.length - STEPS_SHOWN}`) : null,
       shownSteps.map((step, index) => h('li', { key: `${step.callId ?? step.name}:${index}`, className: 'bt-step', 'data-done': step.done === true ? '' : undefined },
         h('span', { className: 'bt-step-words' }, stepWords(step.name)),
-        step.target === undefined ? null : h('span', { className: 'bt-step-target' }, step.target))))
+        step.target === undefined ? null : h('span', { className: 'bt-step-target' }, step.target),
+        index === shownSteps.length - 1 && step.done !== true && stepAt.current.at > 0
+          ? h(Elapsed, { at: stepAt.current.at, className: 'bt-step-time' }) : null)))
     : null
   return createPortal(h('div', { className: 'bt-typing', 'data-exiting': phase === 'out' ? '' : undefined, 'data-steps': stepList === null ? undefined : '', 'aria-hidden': true },
     bot ? h(BotMark, { bot, size: 28, state: markState.current, live: true, pokeable: true }) : h(RoomAvatar, { room, roster, size: 28 }),
