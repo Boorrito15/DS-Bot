@@ -2,6 +2,7 @@
 // connect to. It opens from the app's menu at any time, so it is small and separate from the
 // start page, and the caller keeps the handle so a second click brings it forward instead.
 import { addServer, readServers, removeServer, serversFile } from './servers.mjs'
+import { shownRemoteUrl } from './remote-url.mjs'
 
 const CHANNELS = ['state', 'add', 'remove', 'connect', 'local', 'close']
 
@@ -40,8 +41,10 @@ export function openServersWindow(options) {
   }
 
   ipcMain.handle('ds-bot:servers-state', answer(() => ({
-    servers: readServers(file).servers,
-    currentUrl: options.currentUrl ?? null,
+    // The page shows the address without the sign-in it may carry, so a token never sits in
+    // a window that is only a list of names.
+    servers: readServers(file).servers.map(server => ({ ...server, shown: shownRemoteUrl(server.url) ?? server.url })),
+    currentUrl: shownRemoteUrl(options.currentUrl) ?? null,
     lang: options.lang ?? 'en',
   })))
   ipcMain.handle('ds-bot:servers-add', answer((entry) => {

@@ -15,7 +15,7 @@ export const SERVERS_TEXT = {
     nameHint: 'Mac mini',
     add: 'Add server',
     badAddress: 'That is not an address this app can open. It needs to start with http:// or https://',
-    note: 'Only an http:// or https:// address is opened.',
+    note: 'Only an http:// or https:// address is opened. A server that asks for a sign-in takes the whole address it printed, token and all.',
     close: 'Close',
   },
   zh: {
@@ -32,7 +32,7 @@ export const SERVERS_TEXT = {
     nameHint: 'Mac mini',
     add: '添加服务器',
     badAddress: '这个地址打不开，要以 http:// 或 https:// 开头',
-    note: '只打开 http:// 或 https:// 的地址。',
+    note: '只打开 http:// 或 https:// 的地址。需要登录的服务器，请把它打印的完整地址粘进来，连 token 一起。',
     close: '关闭',
   },
   'zh-TW': {
@@ -49,7 +49,7 @@ export const SERVERS_TEXT = {
     nameHint: 'Mac mini',
     add: '新增伺服器',
     badAddress: '這個位址打不開，要以 http:// 或 https:// 開頭',
-    note: '只開啟 http:// 或 https:// 的位址。',
+    note: '只開啟 http:// 或 https:// 的位址。需要登入的伺服器，請把它印出的完整位址貼進來，連 token 一起。',
     close: '關閉',
   },
   ja: {
@@ -66,7 +66,7 @@ export const SERVERS_TEXT = {
     nameHint: 'Mac mini',
     add: 'サーバーを追加',
     badAddress: 'このアプリで開けないアドレスです。http:// か https:// で始めてください',
-    note: '開けるのは http:// か https:// のアドレスだけです。',
+    note: '開けるのは http:// か https:// のアドレスだけです。サインインを求めるサーバーは、表示されたアドレスを token まで含めて貼り付けてください。',
     close: '閉じる',
   },
   ko: {
@@ -83,7 +83,7 @@ export const SERVERS_TEXT = {
     nameHint: 'Mac mini',
     add: '서버 추가',
     badAddress: '이 앱에서 열 수 없는 주소입니다. http:// 또는 https:// 로 시작해야 합니다',
-    note: 'http:// 또는 https:// 주소만 엽니다.',
+    note: 'http:// 또는 https:// 주소만 엽니다. 로그인을 요구하는 서버는 출력된 주소를 token까지 그대로 붙여 넣으세요.',
     close: '닫기',
   },
   es: {
@@ -100,7 +100,7 @@ export const SERVERS_TEXT = {
     nameHint: 'Mac mini',
     add: 'Añadir servidor',
     badAddress: 'Esta aplicación no puede abrir esa dirección. Tiene que empezar por http:// o https://',
-    note: 'Solo se abren direcciones http:// o https://.',
+    note: 'Solo se abren direcciones http:// o https://. Si el servidor pide iniciar sesión, pega la dirección completa que imprimió, con el token.',
     close: 'Cerrar',
   },
   fr: {
@@ -117,7 +117,7 @@ export const SERVERS_TEXT = {
     nameHint: 'Mac mini',
     add: 'Ajouter un serveur',
     badAddress: 'Cette application ne peut pas ouvrir cette adresse. Elle doit commencer par http:// ou https://',
-    note: 'Seules les adresses http:// ou https:// sont ouvertes.',
+    note: 'Seules les adresses http:// ou https:// sont ouvertes. Si le serveur demande de se connecter, collez l’adresse complète qu’il a affichée, jeton compris.',
     close: 'Fermer',
   },
   de: {
@@ -134,7 +134,7 @@ export const SERVERS_TEXT = {
     nameHint: 'Mac mini',
     add: 'Server hinzufügen',
     badAddress: 'Diese App kann diese Adresse nicht öffnen. Sie muss mit http:// oder https:// beginnen',
-    note: 'Nur Adressen mit http:// oder https:// werden geöffnet.',
+    note: 'Nur Adressen mit http:// oder https:// werden geöffnet. Verlangt ein Server eine Anmeldung, füge die vollständige ausgebene Adresse samt Token ein.',
     close: 'Schließen',
   },
 }

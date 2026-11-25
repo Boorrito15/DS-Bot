@@ -32,6 +32,26 @@ test('the same address twice updates the name instead of adding a row', () => {
   } finally { at.done() }
 })
 
+test('a fresh sign-in for the same computer replaces the old one and keeps its name', () => {
+  const at = folder()
+  try {
+    addServer(at.file, { name: 'Mac mini', url: 'https://mini.tailnet.ts.net/?token=old' })
+    const { servers } = addServer(at.file, { url: 'https://mini.tailnet.ts.net/?token=new' })
+    assert.equal(servers.length, 1)
+    assert.equal(servers[0].name, 'Mac mini')
+    assert.equal(servers[0].url, 'https://mini.tailnet.ts.net?token=new')
+    assert.equal(readServers(at.file).servers[0].url, 'https://mini.tailnet.ts.net?token=new')
+  } finally { at.done() }
+})
+
+test('a row with no name shows the address without its scheme or sign-in', () => {
+  const at = folder()
+  try {
+    addServer(at.file, { url: 'https://mini.tailnet.ts.net/?token=abc' })
+    assert.equal(readServers(at.file).servers[0].name, 'mini.tailnet.ts.net')
+  } finally { at.done() }
+})
+
 test('an address that is not http is refused, and nothing is written for it', () => {
   const at = folder()
   try {

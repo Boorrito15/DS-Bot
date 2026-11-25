@@ -25,7 +25,7 @@ import { Pickers } from './picker-host.mjs'
 import { currentRootOf, driveOf, formatBytes, freeSpace, isEmptyTree, pickFrom, placeOf, rootOf, runningLow } from './place.mjs'
 import { createShell, SHELL_TEXT } from './shell.mjs'
 import { openServersWindow } from './servers-window.mjs'
-import { serversFile, touchServer } from './servers.mjs'
+import { addServer, serversFile, touchServer } from './servers.mjs'
 import { readStartFrame, writeStartFrame } from './start-frame.mjs'
 import { explainOf, StartWindow } from './start-window.mjs'
 import { langOf } from './start/text.mjs'
@@ -285,6 +285,19 @@ function relaunchAt(url) {
   app.quit()
 }
 
+// A computer named on the command line (--remote, DS_BOT_REMOTE) is one the user means to come
+// back to, so it goes into the list by itself and the menu can offer it again.
+function rememberRemote() {
+  if (remoteUrl === undefined) return
+  const file = serversFile(app.getPath('userData'))
+  try {
+    addServer(file, { url: remoteUrl })
+  } catch {
+    // A full list still connects this once; it just does not grow.
+  }
+  touchServer(file, remoteUrl)
+}
+
 function openServers() {
   if (serversWindow !== undefined && !serversWindow.isDestroyed()) {
     serversWindow.focus()
@@ -307,6 +320,7 @@ function openServers() {
 
 async function start() {
   setMenu()
+  rememberRemote()
   nativeTheme.themeSource = readStartFrame(frameFile).themeSource
   // A packaged app has the icon in its bundle; Electron's own run shows Electron's.
   if (process.platform === 'darwin' && !app.isPackaged) app.dock?.setIcon(iconFile)

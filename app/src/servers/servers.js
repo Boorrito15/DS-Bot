@@ -29,7 +29,7 @@ function draw() {
     const name = document.createElement('div')
     name.className = 'name'
     name.textContent = server.name
-    if (server.url === state.currentUrl) {
+    if (server.shown === state.currentUrl) {
       const badge = document.createElement('span')
       badge.className = 'badge'
       badge.textContent = say('current')
@@ -37,7 +37,7 @@ function draw() {
     }
     const url = document.createElement('div')
     url.className = 'url'
-    url.textContent = server.url
+    url.textContent = server.shown
     text.append(name, url)
 
     const connect = document.createElement('button')
@@ -82,11 +82,11 @@ $('add').addEventListener('submit', async (event) => {
   }
   $('url').value = ''
   $('name').value = ''
-  $('local').addEventListener('click', () => void api.local())
-
-await refresh()
+  await refresh()
   $('url').focus()
 })
+
+$('local').addEventListener('click', () => void api.local())
 
 // The page closes the window, so a connect that the main process refuses leaves the list up.
 window.addEventListener('keydown', (event) => {

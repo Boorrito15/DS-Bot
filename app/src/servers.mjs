@@ -4,17 +4,18 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { randomUUID } from 'node:crypto'
-import { normalizeRemoteUrl } from './remote-url.mjs'
+import { normalizeRemoteUrl, shownRemoteUrl } from './remote-url.mjs'
 
 // More than anyone needs, and small enough that the file stays something to read.
 export const SERVERS_MAX = 20
 const NAME_MAX = 60
 
 // A name is what the list shows; the address is what it connects to. A name that is only
-// spaces falls back to the address, so a row is never blank.
+// spaces falls back to the address, so a row is never blank, and the sign-in in that address
+// stays out of the name.
 const nameOf = (name, url) => {
   const text = typeof name === 'string' ? name.replace(/\s+/g, ' ').trim().slice(0, NAME_MAX) : ''
-  return text === '' ? url.replace(/^https?:\/\//, '') : text
+  return text === '' ? shownRemoteUrl(url).replace(/^https?:\/\//, '') : text
 }
 
 const empty = () => ({ version: 1, servers: [] })
@@ -56,18 +57,26 @@ function write(file, held) {
 }
 
 /**
- * Add a server, or rename the one already saved at that address. Throws with a message the
- * window can show when the address is not one this app can load.
+ * Add a server, or update the one already saved for that address. Two addresses that differ
+ * only in their sign-in are the same computer, so a fresh token replaces the old one instead
+ * of adding a second row. Throws with a message the window can show when the address is not
+ * one this app can load.
  * @param {string} file
  * @param {{ name?: string, url: string, now?: number }} entry
  */
 export function addServer(file, { name, url, now = Date.now() }) {
   const remote = normalizeRemoteUrl(url)
   if (remote === undefined) throw new Error('That is not an address this app can open. It needs to start with http:// or https://')
+  const shown = shownRemoteUrl(remote)
   const held = readServers(file)
-  const at = held.servers.findIndex(server => server.url === remote)
+  const at = held.servers.findIndex(server => shownRemoteUrl(server.url) === shown)
   if (at >= 0) {
-    const servers = held.servers.map((server, index) => (index === at ? { ...server, name: nameOf(name, remote) } : server))
+    const old = held.servers[at]
+    // A fresh sign-in for a computer already in the list keeps the name it was given.
+    const keep = typeof name !== 'string' || name.trim() === ''
+    const servers = held.servers.map((server, index) => (index === at
+      ? { ...server, name: keep ? old.name : nameOf(name, remote), url: remote }
+      : server))
     const next = { version: 1, servers }
     write(file, next)
     return { servers, server: servers[at] }
@@ -90,11 +99,13 @@ export function removeServer(file, id) {
 
 /**
  * Note that the app just connected to this one. The address is matched rather than the id,
- * because a launch address (--remote) may not be in the list yet.
+ * because a launch address (--remote) may not be in the list yet, and it is matched without
+ * its sign-in so a fresh token still finds the row it belongs to.
  */
 export function touchServer(file, idOrUrl, now = Date.now()) {
   const held = readServers(file)
-  const servers = held.servers.map(server => (server.id === idOrUrl || server.url === normalizeRemoteUrl(idOrUrl) ? { ...server, lastUsedAt: now } : server))
+  const shown = shownRemoteUrl(idOrUrl)
+  const servers = held.servers.map(server => (server.id === idOrUrl || (shown !== undefined && shownRemoteUrl(server.url) === shown) ? { ...server, lastUsedAt: now } : server))
   write(file, { version: 1, servers })
   return { version: 1, servers }
 }
