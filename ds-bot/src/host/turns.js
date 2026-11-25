@@ -53,6 +53,22 @@ export function turnFailure(error) {
 
 export const failureLine = failure => `${failure.code}${failure.status ? ` ${failure.status}` : ''}${failure.message ? `: ${failure.message.slice(0, 200)}` : ''}`
 
+// The shortest thing that says what a call is about, for the working row and for the list
+// of steps a turn has taken. A shell command names itself: its own description, or else the
+// start of the line without the `cd … &&` every command opens with.
+export function stepTarget(args) {
+  const first = keys => keys.map(key => args?.[key]).find(value => typeof value === 'string' && value.trim() !== '')?.replace(/\s+/g, ' ').trim()
+  const path = first(['file_path', 'path'])
+  const url = first(['url'])
+  let site
+  try { site = url && new URL(url).host } catch { site = undefined }
+  const command = first(['command'])
+  const line = command?.replace(/^\s*(?:cd\s+(?:"[^"]*"|'[^']*'|\S+)\s*&&\s*)+/, '').trim()
+  const target = path?.split(/[\\/]/).filter(Boolean).at(-1) ?? first(['query', 'pattern']) ?? site
+    ?? first(['description']) ?? (line === '' ? undefined : line)
+  return target === undefined ? undefined : target.slice(0, 80)
+}
+
 // The reply a sender waits for, sent the way a finished turn sends it: the work it was
 // for closes, and the answer goes up to the Bot that asked. `id` is the Session the
 // answer comes from; `source` is the trigger the turn answered.
@@ -447,7 +463,7 @@ export function install(rt) {
     // The turn's steps so far, so a chat can show what is being done rather than only
     // the newest call: a Bot that runs ten commands should not look idle between them.
     let target
-    try { target = callTarget(JSON.parse(args || '{}')) } catch { target = undefined }
+    try { target = stepTarget(JSON.parse(args || '{}')) } catch { target = undefined }
     const steps = entry.steps ??= []
     steps.push({ callId: typeof callId === 'string' ? callId : undefined, name, ...(target ? { target } : {}) })
     if (steps.length > STEPS_MAX) steps.splice(0, steps.length - STEPS_MAX)
@@ -574,18 +590,6 @@ export function install(rt) {
     return merged
   }
 
-  // The file, query or site a call works on: the shortest thing that says what a step is
-  // about, for the working row and the list of steps a turn has taken.
-  const callTarget = (args) => {
-    const first = keys => keys.map(key => args?.[key]).find(value => typeof value === 'string' && value.trim() !== '')?.replace(/\s+/g, ' ').trim()
-    const path = first(['file_path', 'path'])
-    const url = first(['url'])
-    let site
-    try { site = url && new URL(url).host } catch { site = undefined }
-    const target = path?.split(/[\\/]/).filter(Boolean).at(-1) ?? first(['query', 'pattern']) ?? site
-    return target === undefined ? undefined : target.slice(0, 80)
-  }
-
   // What the newest running call does, in its own words: what the Bot said in the step
   // that made it, the call's description, or the file, search or site it works on.
   const doingOf = (entry) => {
@@ -596,7 +600,7 @@ export function install(rt) {
     try { args = JSON.parse(call.args || '{}') } catch { args = {} }
     const first = keys => keys.map(key => args?.[key]).find(value => typeof value === 'string' && value.trim() !== '')?.replace(/\s+/g, ' ').trim()
     const note = first(['description', 'justification'])
-    const target = callTarget(args)
+    const target = stepTarget(args)
     return { tool: call.name, ...(said ? { said } : {}), ...(note ? { note: note.slice(0, 120) } : {}), ...(target ? { target } : {}) }
   }
 
