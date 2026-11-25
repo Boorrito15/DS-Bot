@@ -14597,8 +14597,8 @@ function bodyOf(def, paint, flat = false) {
     return "";
   }
 }
-var eyeMarkup = ([cx, cy, w, h74, tilt]) => `<g transform="translate(${cx} ${cy}) rotate(${tilt})"><rect class="bt-eye" x="${-w / 2}" y="${-h74 / 2}" width="${w}" height="${h74}" rx="${w / 2}"/></g>`;
-var happyEyeMarkup = ([cx, cy, w, h74, tilt]) => `<g transform="translate(${cx} ${cy}) rotate(${tilt})"><path class="bt-eye-happy" opacity="0" d="M${-w * 0.62} ${h74 * 0.14}Q0 ${-h74 * 0.42} ${w * 0.62} ${h74 * 0.14}" fill="none" stroke="#000" stroke-width="${w * 0.5}" stroke-linecap="round"/></g>`;
+var eyeMarkup = ([cx, cy, w, h75, tilt]) => `<g transform="translate(${cx} ${cy}) rotate(${tilt})"><rect class="bt-eye" x="${-w / 2}" y="${-h75 / 2}" width="${w}" height="${h75}" rx="${w / 2}"/></g>`;
+var happyEyeMarkup = ([cx, cy, w, h75, tilt]) => `<g transform="translate(${cx} ${cy}) rotate(${tilt})"><path class="bt-eye-happy" opacity="0" d="M${-w * 0.62} ${h75 * 0.14}Q0 ${-h75 * 0.42} ${w * 0.62} ${h75 * 0.14}" fill="none" stroke="#000" stroke-width="${w * 0.5}" stroke-linecap="round"/></g>`;
 var maskBox = (size) => `maskUnits="userSpaceOnUse" x="${-size}" y="${-size}" width="${size * 3}" height="${size * 3}"`;
 var holes = (def, eyes) => `<rect x="${-def.size}" y="${-def.size}" width="${def.size * 3}" height="${def.size * 3}" fill="#fff"/>${eyes}`;
 var MASK_ID = "%MASK%";
@@ -15613,12 +15613,12 @@ function liveSprings(apply2) {
     const dt = Math.min(0.5, Math.max(1e-3, (now - last) / 1e3));
     last = now;
     const steps = Math.ceil(dt * 240);
-    const h74 = dt / steps;
+    const h75 = dt / steps;
     let moving = false;
     for (const [key, value] of values) {
       for (let index = 0; index < steps; index += 1) {
-        value.v += (-value.k * (value.x - value.to) - value.c * value.v) * h74;
-        value.x += value.v * h74;
+        value.v += (-value.k * (value.x - value.to) - value.c * value.v) * h75;
+        value.x += value.v * h75;
       }
       if (Math.abs(value.x - value.to) < 0.05 && Math.abs(value.v) < 1) {
         value.x = value.to;
@@ -17199,6 +17199,14 @@ body[data-bt-goal] [class*="_scroll"]:has(> [class*="_column"]){padding-top:calc
 .bt-step[data-done]>*{opacity:.55}
 .bt-step-more{opacity:.7}
 .bt-step-time{flex-shrink:0;font-variant-numeric:tabular-nums;opacity:.8}
+.bt-turn-plan{display:flex;flex-direction:column;gap:2px;margin:6px 0 0;padding:0;font-size:12px;line-height:17px;color:var(--bt-ink-3)}
+.bt-turn-plan-count{font-variant-numeric:tabular-nums;color:var(--bt-ink-2)}
+.bt-turn-plan-list{display:flex;flex-direction:column;gap:1px;margin:0;padding:0;list-style:none}
+.bt-turn-plan-item{display:flex;align-items:baseline;gap:6px;min-width:0}
+.bt-turn-plan-item[data-done]>*{opacity:.6}
+.bt-turn-plan-item[data-now]>.bt-turn-plan-text{color:var(--bt-ink-2)}
+.bt-turn-plan-mark{flex-shrink:0;width:10px;text-align:center;opacity:.8}
+.bt-turn-plan-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bt-step-plan{flex-shrink:0;font-variant-numeric:tabular-nums;color:var(--bt-ink-2);letter-spacing:.02em}
 @keyframes bt-typing-in{from{opacity:0;transform:scale(.9)}}
 @keyframes bt-typing-out{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(.92);filter:var(--bt-fx-blur-3,blur(3px))}}
@@ -22207,8 +22215,8 @@ function walkView(node, visit) {
 }
 function stripPromptLine(raw) {
   const first = String(raw).split(/\r?\n/).map((line) => line.trim()).find(Boolean) ?? "";
-  const clean = first.replace(/^#+\s*/, "").replace(/[*_`~]+/g, "").replace(/\s+/g, " ").trim();
-  return clean.length > 80 ? `${clean.slice(0, 79)}…` : clean;
+  const clean2 = first.replace(/^#+\s*/, "").replace(/[*_`~]+/g, "").replace(/\s+/g, " ").trim();
+  return clean2.length > 80 ? `${clean2.slice(0, 79)}…` : clean2;
 }
 var LABELED_NODES = /* @__PURE__ */ new Set(["metric", "progress", "slider", "number", "choice", "toggle", "submit"]);
 function viewPrompt(title, view, answer = null) {
@@ -29355,6 +29363,48 @@ function ToolCell({ node, sessionId, useRoster, useUi, useWork, useHeldCards, us
   return (0, import_react34.createElement)(import_react34.Fragment, null, drawn.map((call2, index) => (0, import_react34.createElement)(import_react34.Fragment, { key: call2.callId ?? index }, renderCall(call2, env))));
 }
 
+// src/client/turn-plan.js
+var KEY = "dsbot.turnPlans";
+var KEEP = 60;
+var MAX_ITEMS = 40;
+var TEXT_MAX = 160;
+var clean = (todos) => (Array.isArray(todos) ? todos : []).slice(0, MAX_ITEMS).map((item) => ({
+  content: typeof item?.content === "string" ? item.content.replace(/\s+/g, " ").trim().slice(0, TEXT_MAX) : "",
+  status: item?.status === "completed" || item?.status === "in_progress" ? item.status : "pending"
+})).filter((item) => item.content !== "");
+function readPlans(storage) {
+  try {
+    return JSON.parse(storage?.getItem?.(KEY) ?? "{}") ?? {};
+  } catch {
+    return {};
+  }
+}
+function notePlan(storage, sessionId, todos, at = Date.now()) {
+  const items = clean(todos);
+  if (typeof sessionId !== "string" || sessionId === "" || items.length === 0) return false;
+  const all = readPlans(storage);
+  const mine = Array.isArray(all[sessionId]) ? all[sessionId] : [];
+  const key = JSON.stringify(items);
+  const same = [...mine].reverse().find((entry) => JSON.stringify(entry?.items) === key);
+  const kept = mine.filter((entry) => entry !== same);
+  kept.push({ at, items });
+  kept.sort((a, b) => a.at - b.at);
+  all[sessionId] = kept.slice(-KEEP);
+  try {
+    storage.setItem(KEY, JSON.stringify(all));
+  } catch {
+    return false;
+  }
+  return true;
+}
+function planInWindow(storage, sessionId, start, end = Number.MAX_SAFE_INTEGER) {
+  const mine = readPlans(storage)[sessionId];
+  if (!Array.isArray(mine)) return null;
+  const inside = mine.filter((entry) => Number.isFinite(entry?.at) && entry.at >= start && entry.at <= end);
+  const last = inside.at(-1);
+  return last === void 0 || !Array.isArray(last.items) || last.items.length === 0 ? null : last.items;
+}
+
 // src/client/activity-row.js
 var import_react35 = require("react");
 var import_react_dom5 = require("react-dom");
@@ -29548,6 +29598,14 @@ function ActivityIndicator({ sessionId, useRoster, useSessionStatus, useLive, us
   if (stepAt.current.key !== stepKey) stepAt.current = { key: stepKey, at: stepKey === null ? 0 : Date.now() };
   const shownSteps = steps.slice(-STEPS_SHOWN);
   const plan = actions?.planOf?.(sessionId) ?? null;
+  const planKey = plan === null ? "" : JSON.stringify(plan.items);
+  (0, import_react35.useEffect)(() => {
+    if (planKey === "") return;
+    try {
+      notePlan(window.localStorage, sessionId, JSON.parse(planKey));
+    } catch {
+    }
+  }, [planKey, sessionId]);
   const stepList = shownSteps.length > 0 || plan !== null ? (0, import_react35.createElement)(
     "ol",
     { className: "bt-steps", role: "list" },
@@ -44847,18 +44905,49 @@ var LEARNING_CSS = `
 .bt-learning-error{font-size:12px;line-height:16px;color:var(--bt-danger)}
 `;
 
-// src/client/read-only-dock.js
+// src/client/plan-tail.js
 var import_react74 = require("react");
+var TICK2 = "✓";
+function PlanTail({ turn: location2, sessionId }) {
+  const start = location2?.start?.time ?? 0;
+  const end = location2?.end?.time ?? Number.MAX_SAFE_INTEGER;
+  let items = null;
+  try {
+    items = planInWindow(window.localStorage, sessionId, start, end);
+  } catch {
+    items = null;
+  }
+  if (items === null) return null;
+  const done = items.filter((item) => item.status === "completed").length;
+  return (0, import_react74.createElement)(
+    "div",
+    { className: "bt-turn-plan" },
+    (0, import_react74.createElement)("span", { className: "bt-turn-plan-count" }, `${done}/${items.length}`),
+    (0, import_react74.createElement)(
+      "ol",
+      { className: "bt-turn-plan-list", role: "list" },
+      items.map((item, index) => (0, import_react74.createElement)(
+        "li",
+        { key: `${index}:${item.content}`, className: "bt-turn-plan-item", "data-done": item.status === "completed" ? "" : void 0, "data-now": item.status === "in_progress" ? "" : void 0 },
+        (0, import_react74.createElement)("span", { className: "bt-turn-plan-mark", "aria-hidden": true }, item.status === "completed" ? TICK2 : "·"),
+        (0, import_react74.createElement)("span", { className: "bt-turn-plan-text" }, item.content)
+      ))
+    )
+  );
+}
+
+// src/client/read-only-dock.js
+var import_react75 = require("react");
 function ReadOnlyDock({ sessionId, useUi, useRoster, actions }) {
   const readOnlyPart = useUi((state) => state.readOnlyPart);
   const bot = useRoster((state) => state.byId?.[sessionId] ?? Object.values(state.byId ?? {}).find((entry) => entry?.sessionId === sessionId));
   const running = useRoster((state) => state.partsRunning?.[sessionId] === true);
   const active = readOnlyPart !== null && readOnlyPart === sessionId && running;
-  const root = (0, import_react74.useRef)(null);
-  (0, import_react74.useEffect)(() => {
+  const root = (0, import_react75.useRef)(null);
+  (0, import_react75.useEffect)(() => {
     if (readOnlyPart !== null && readOnlyPart === sessionId && !running) actions.clearReadOnlyPart?.();
   }, [readOnlyPart, sessionId, running]);
-  (0, import_react74.useEffect)(() => {
+  (0, import_react75.useEffect)(() => {
     if (!active) return void 0;
     const card = root.current?.closest("[data-composer-card]") ?? document.querySelector("[data-composer-card]");
     if (card === null || card === void 0) return void 0;
@@ -44883,11 +44972,11 @@ function ReadOnlyDock({ sessionId, useUi, useRoster, actions }) {
       card.removeEventListener("click", onClick, true);
     };
   }, [active]);
-  return (0, import_react74.createElement)(
+  return (0, import_react75.createElement)(
     "div",
     { ref: root, className: "bt-readonly-dock", "data-on": active ? "" : void 0, role: "status", hidden: !active },
-    (0, import_react74.createElement)("span", { className: "bt-readonly-text" }, t("This session is still running. Wait for it to finish, or stop it.")),
-    (0, import_react74.createElement)("button", { type: "button", className: "bt-soft bt-soft-sm", onClick: () => actions.stopChat(bot.id) }, t("Stop"))
+    (0, import_react75.createElement)("span", { className: "bt-readonly-text" }, t("This session is still running. Wait for it to finish, or stop it.")),
+    (0, import_react75.createElement)("button", { type: "button", className: "bt-soft bt-soft-sm", onClick: () => actions.stopChat(bot.id) }, t("Stop"))
   );
 }
 var READ_ONLY_CSS = `
@@ -45019,7 +45108,7 @@ function installBotMentionRule(userText, roster) {
 }
 
 // src/client/queue-dock.js
-var import_react75 = require("react");
+var import_react76 = require("react");
 var OWN_QUEUE_KINDS = /* @__PURE__ */ new Set(["user", "schedule", "user-question-reply"]);
 var EMPTY_QUEUE = [];
 var QUEUE_TEXT_FACTS = { collapseWhitespace: true, trimWhitespace: true };
@@ -45036,17 +45125,17 @@ function queueAttachments(content) {
 var fileSizeText2 = (bytes) => typeof bytes !== "number" || !Number.isFinite(bytes) ? "" : bytes < 1024 ? `${bytes} B` : bytes < 1048576 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1048576).toFixed(1)} MB`;
 function QueueFile({ attachment, label }) {
   const size = fileSizeText2(attachment.bytes);
-  return (0, import_react75.createElement)(
+  return (0, import_react76.createElement)(
     "span",
     { className: "bt-queue-file", "aria-label": label, title: attachment.name },
-    (0, import_react75.createElement)("span", { className: "bt-queue-fileicon", "aria-hidden": true }, (0, import_react75.createElement)(PaperclipIcon)),
-    (0, import_react75.createElement)("span", { className: "bt-queue-filename" }, attachment.name),
-    size !== "" ? (0, import_react75.createElement)("span", { className: "bt-queue-filesize" }, size) : null
+    (0, import_react76.createElement)("span", { className: "bt-queue-fileicon", "aria-hidden": true }, (0, import_react76.createElement)(PaperclipIcon)),
+    (0, import_react76.createElement)("span", { className: "bt-queue-filename" }, attachment.name),
+    size !== "" ? (0, import_react76.createElement)("span", { className: "bt-queue-filesize" }, size) : null
   );
 }
 function QueueThumb({ attachment, loadImage, label }) {
-  const [url, setUrl] = (0, import_react75.useState)(null);
-  (0, import_react75.useEffect)(() => {
+  const [url, setUrl] = (0, import_react76.useState)(null);
+  (0, import_react76.useEffect)(() => {
     let alive = true;
     loadImage(attachment).then((resolved) => {
       if (alive) setUrl(resolved);
@@ -45056,22 +45145,22 @@ function QueueThumb({ attachment, loadImage, label }) {
       alive = false;
     };
   }, [attachment, loadImage]);
-  return url === null ? (0, import_react75.createElement)("span", { className: "bt-queue-thumb", "aria-hidden": true }) : (0, import_react75.createElement)("img", { className: "bt-queue-thumb", src: url, alt: label });
+  return url === null ? (0, import_react76.createElement)("span", { className: "bt-queue-thumb", "aria-hidden": true }) : (0, import_react76.createElement)("img", { className: "bt-queue-thumb", src: url, alt: label });
 }
 function Preview({ text, renderFactorySlot }) {
   const rendered = renderFactorySlot?.("conversation.user.text", { text, facts: QUEUE_TEXT_FACTS, interactive: false, ellipsis: true });
-  return (0, import_react75.createElement)("span", { className: "bt-queue-preview" }, rendered ?? text);
+  return (0, import_react76.createElement)("span", { className: "bt-queue-preview" }, rendered ?? text);
 }
 function EditField({ text, onChange, onSave, onCancel }) {
-  const field = (0, import_react75.useRef)(null);
-  (0, import_react75.useEffect)(() => {
+  const field = (0, import_react76.useRef)(null);
+  (0, import_react76.useEffect)(() => {
     const node = field.current;
     if (node === null) return;
     node.focus();
     node.style.height = "auto";
     node.style.height = `${node.scrollHeight}px`;
   }, [text]);
-  return (0, import_react75.createElement)("textarea", {
+  return (0, import_react76.createElement)("textarea", {
     ref: field,
     className: "bt-queue-edit",
     value: text,
@@ -45090,28 +45179,28 @@ function EditField({ text, onChange, onSave, onCancel }) {
   });
 }
 function RowButton({ label, title, disabled, onClick, children }) {
-  return (0, import_react75.createElement)("button", { type: "button", className: "bt-queue-action", "aria-label": label, title: title ?? label, disabled, onClick }, children);
+  return (0, import_react76.createElement)("button", { type: "button", className: "bt-queue-action", "aria-label": label, title: title ?? label, disabled, onClick }, children);
 }
 function QueueDock({ useSession, useProjection, updateQueue, loadImage, renderFactorySlot, actions }) {
   const inbox = useProjection?.("inbox");
   const pendingSubmissions = useSession?.((s) => s.pendingSubmissions) ?? EMPTY_QUEUE;
-  const queue = (0, import_react75.useMemo)(() => {
+  const queue = (0, import_react76.useMemo)(() => {
     const rows2 = (inbox?.["next-turn"] ?? EMPTY_QUEUE).filter((row) => OWN_QUEUE_KINDS.has(row.source?.kind));
     const inChat = new Set(pendingSubmissions.filter((item) => item.placement === "transcript").map((item) => item.requestId));
     return inChat.size === 0 ? rows2 : rows2.filter(({ source }) => source === null || typeof source !== "object" || !("rpcId" in source) || !inChat.has(source.rpcId));
   }, [inbox, pendingSubmissions]);
-  const pendingQueue = (0, import_react75.useMemo)(() => {
+  const pendingQueue = (0, import_react76.useMemo)(() => {
     const admitted = new Set(queue.flatMap(({ source }) => source !== null && typeof source === "object" && "rpcId" in source ? [source.rpcId] : []));
     return pendingSubmissions.filter((submission) => submission.placement === "queued" && !admitted.has(submission.requestId));
   }, [pendingSubmissions, queue]);
   const rowCount = queue.length + pendingQueue.length;
   const running = useSession?.((s) => s.running) === true;
   const queueMutable = useSession?.((s) => s.subagent === null || s.subagent === void 0 || s.subagent.address?.mode === "continuable") ?? true;
-  const [editing, setEditing] = (0, import_react75.useState)(null);
-  const [busy, setBusy] = (0, import_react75.useState)(null);
-  const [collapsed, setCollapsed] = (0, import_react75.useState)(true);
-  const listId = (0, import_react75.useId)();
-  (0, import_react75.useEffect)(() => {
+  const [editing, setEditing] = (0, import_react76.useState)(null);
+  const [busy, setBusy] = (0, import_react76.useState)(null);
+  const [collapsed, setCollapsed] = (0, import_react76.useState)(true);
+  const listId = (0, import_react76.useId)();
+  (0, import_react76.useEffect)(() => {
     if (rowCount === 0 && !collapsed) setCollapsed(true);
     if (editing !== null && (!queueMutable || !queue.some((row) => row.id === editing.id))) setEditing(null);
   }, [collapsed, editing, queue, queueMutable, rowCount]);
@@ -45139,77 +45228,77 @@ function QueueDock({ useSession, useProjection, updateQueue, loadImage, renderFa
     if (editing === null || editing.text.trim() === "") return;
     if (await applyAction(editing.id, { kind: "edit", content: [{ type: "text", text: editing.text }] }, t("Couldn’t edit the queued message — it may have started already."))) setEditing(null);
   };
-  return (0, import_react75.createElement)(
+  return (0, import_react76.createElement)(
     "div",
     { className: "bt-queue-dock", "data-queue-dock": "" },
-    (0, import_react75.createElement)(
+    (0, import_react76.createElement)(
       "div",
       { className: "bt-queue-panel" },
-      rowCount > 1 && (0, import_react75.createElement)(
+      rowCount > 1 && (0, import_react76.createElement)(
         "button",
         { type: "button", className: "bt-queue-head", "aria-controls": listId, "aria-expanded": expanded, disabled: interactionActive, onClick: () => setCollapsed((value) => !value) },
-        (0, import_react75.createElement)("span", { className: "bt-queue-lead", "aria-hidden": true }, (0, import_react75.createElement)(QueueIcon)),
-        (0, import_react75.createElement)("span", { className: "bt-queue-count" }, t("{n} queued messages", { n: rowCount })),
-        !listVisible && pendingQueue.length > 0 && (0, import_react75.createElement)("span", { className: "bt-queue-status", role: "status" }, t("Sending…")),
-        (0, import_react75.createElement)("span", { className: "bt-queue-chev", "aria-hidden": true }, expanded ? (0, import_react75.createElement)(ChevronDownIcon) : (0, import_react75.createElement)(ChevronUpIcon))
+        (0, import_react76.createElement)("span", { className: "bt-queue-lead", "aria-hidden": true }, (0, import_react76.createElement)(QueueIcon)),
+        (0, import_react76.createElement)("span", { className: "bt-queue-count" }, t("{n} queued messages", { n: rowCount })),
+        !listVisible && pendingQueue.length > 0 && (0, import_react76.createElement)("span", { className: "bt-queue-status", role: "status" }, t("Sending…")),
+        (0, import_react76.createElement)("span", { className: "bt-queue-chev", "aria-hidden": true }, expanded ? (0, import_react76.createElement)(ChevronDownIcon) : (0, import_react76.createElement)(ChevronUpIcon))
       ),
-      (0, import_react75.createElement)(
+      (0, import_react76.createElement)(
         "ul",
         { id: listId, className: "bt-queue-list", hidden: !listVisible },
         listVisible && queue.map((row) => {
           const attachments = queueAttachments(row.content);
           const text = textOf(row.content);
-          return (0, import_react75.createElement)(
+          return (0, import_react76.createElement)(
             "li",
             { key: row.id, className: "bt-queue-row" },
-            rowCount === 1 && (0, import_react75.createElement)("span", { className: "bt-queue-lead", "aria-hidden": true }, (0, import_react75.createElement)(QueueIcon)),
-            editing?.id === row.id ? (0, import_react75.createElement)(EditField, { text: editing.text, onChange: (text2) => setEditing({ id: row.id, text: text2 }), onSave: saveEdit, onCancel: () => setEditing(null) }) : (0, import_react75.createElement)(
-              import_react75.Fragment,
+            rowCount === 1 && (0, import_react76.createElement)("span", { className: "bt-queue-lead", "aria-hidden": true }, (0, import_react76.createElement)(QueueIcon)),
+            editing?.id === row.id ? (0, import_react76.createElement)(EditField, { text: editing.text, onChange: (text2) => setEditing({ id: row.id, text: text2 }), onSave: saveEdit, onCancel: () => setEditing(null) }) : (0, import_react76.createElement)(
+              import_react76.Fragment,
               null,
-              attachments.length > 0 && (0, import_react75.createElement)(
+              attachments.length > 0 && (0, import_react76.createElement)(
                 "span",
                 { className: "bt-queue-attachments" },
-                attachments.map((item, index) => item.type === "image" ? (0, import_react75.createElement)(QueueThumb, { key: `${item.attachment.attachmentId}:${index}`, attachment: item.attachment, loadImage, label: t("Queued image") }) : (0, import_react75.createElement)(QueueFile, { key: `${item.attachment.attachmentId}:${item.attachment.name}:${index}`, attachment: item.attachment, label: t("Queued file {name}", { name: item.attachment.name }) }))
+                attachments.map((item, index) => item.type === "image" ? (0, import_react76.createElement)(QueueThumb, { key: `${item.attachment.attachmentId}:${index}`, attachment: item.attachment, loadImage, label: t("Queued image") }) : (0, import_react76.createElement)(QueueFile, { key: `${item.attachment.attachmentId}:${item.attachment.name}:${index}`, attachment: item.attachment, label: t("Queued file {name}", { name: item.attachment.name }) }))
               ),
-              (0, import_react75.createElement)(Preview, { text: row.content.filter((block) => block.type === "text").map((block) => block.text).join(""), renderFactorySlot })
+              (0, import_react76.createElement)(Preview, { text: row.content.filter((block) => block.type === "text").map((block) => block.text).join(""), renderFactorySlot })
             ),
-            queueMutable && (0, import_react75.createElement)(
+            queueMutable && (0, import_react76.createElement)(
               "div",
               { className: "bt-queue-actions" },
-              editing?.id === row.id ? (0, import_react75.createElement)(
-                import_react75.Fragment,
+              editing?.id === row.id ? (0, import_react76.createElement)(
+                import_react76.Fragment,
                 null,
-                (0, import_react75.createElement)(RowButton, { label: t("Save queued message"), disabled: busy !== null || editing.text.trim() === "", onClick: saveEdit }, (0, import_react75.createElement)(CheckIcon)),
-                (0, import_react75.createElement)(RowButton, { label: t("Cancel editing"), disabled: busy !== null, onClick: () => setEditing(null) }, (0, import_react75.createElement)(CloseIcon))
-              ) : (0, import_react75.createElement)(
-                import_react75.Fragment,
+                (0, import_react76.createElement)(RowButton, { label: t("Save queued message"), disabled: busy !== null || editing.text.trim() === "", onClick: saveEdit }, (0, import_react76.createElement)(CheckIcon)),
+                (0, import_react76.createElement)(RowButton, { label: t("Cancel editing"), disabled: busy !== null, onClick: () => setEditing(null) }, (0, import_react76.createElement)(CloseIcon))
+              ) : (0, import_react76.createElement)(
+                import_react76.Fragment,
                 null,
-                (0, import_react75.createElement)(RowButton, { label: t("Edit queued message"), title: text === null ? t("Contains non-text content, so editing is not supported yet") : void 0, disabled: busy !== null || text === null, onClick: () => {
+                (0, import_react76.createElement)(RowButton, { label: t("Edit queued message"), title: text === null ? t("Contains non-text content, so editing is not supported yet") : void 0, disabled: busy !== null || text === null, onClick: () => {
                   if (text !== null) setEditing({ id: row.id, text });
-                } }, (0, import_react75.createElement)(PencilIcon)),
-                (0, import_react75.createElement)(RowButton, { label: t("Delete queued message"), disabled: busy !== null, onClick: () => applyAction(row.id, { kind: "remove" }, t("Couldn’t delete the queued message — it may have started already.")) }, (0, import_react75.createElement)(TrashIcon)),
-                (0, import_react75.createElement)(RowButton, { label: t("Steer queued message"), title: running ? void 0 : t("Only while a turn is running"), disabled: busy !== null || !running, onClick: () => applyAction(row.id, { kind: "steer" }, t("Couldn’t steer the queued message. Try again.")) }, (0, import_react75.createElement)(ArrowUpIcon))
+                } }, (0, import_react76.createElement)(PencilIcon)),
+                (0, import_react76.createElement)(RowButton, { label: t("Delete queued message"), disabled: busy !== null, onClick: () => applyAction(row.id, { kind: "remove" }, t("Couldn’t delete the queued message — it may have started already.")) }, (0, import_react76.createElement)(TrashIcon)),
+                (0, import_react76.createElement)(RowButton, { label: t("Steer queued message"), title: running ? void 0 : t("Only while a turn is running"), disabled: busy !== null || !running, onClick: () => applyAction(row.id, { kind: "steer" }, t("Couldn’t steer the queued message. Try again.")) }, (0, import_react76.createElement)(ArrowUpIcon))
               )
             )
           );
         }),
-        listVisible && pendingQueue.map((submission) => (0, import_react75.createElement)(
+        listVisible && pendingQueue.map((submission) => (0, import_react76.createElement)(
           "li",
           { key: submission.requestId, className: "bt-queue-row bt-queue-pending" },
-          rowCount === 1 && (0, import_react75.createElement)("span", { className: "bt-queue-lead", "aria-hidden": true }, (0, import_react75.createElement)(QueueIcon)),
-          submission.attachments.length > 0 && (0, import_react75.createElement)(
+          rowCount === 1 && (0, import_react76.createElement)("span", { className: "bt-queue-lead", "aria-hidden": true }, (0, import_react76.createElement)(QueueIcon)),
+          submission.attachments.length > 0 && (0, import_react76.createElement)(
             "span",
             { className: "bt-queue-attachments" },
-            submission.attachments.map((attachment, index) => attachment.type === "image" ? (0, import_react75.createElement)("img", { key: `${attachment.value.previewUrl}:${index}`, className: "bt-queue-thumb", src: attachment.value.previewUrl, alt: t("Queued image") }) : (0, import_react75.createElement)(QueueFile, { key: `${attachment.value.attachmentId}:${attachment.value.name}:${index}`, attachment: attachment.value, label: t("Queued file {name}", { name: attachment.value.name }) }))
+            submission.attachments.map((attachment, index) => attachment.type === "image" ? (0, import_react76.createElement)("img", { key: `${attachment.value.previewUrl}:${index}`, className: "bt-queue-thumb", src: attachment.value.previewUrl, alt: t("Queued image") }) : (0, import_react76.createElement)(QueueFile, { key: `${attachment.value.attachmentId}:${attachment.value.name}:${index}`, attachment: attachment.value, label: t("Queued file {name}", { name: attachment.value.name }) }))
           ),
-          (0, import_react75.createElement)(Preview, { text: submission.text, renderFactorySlot }),
-          (0, import_react75.createElement)("span", { className: "bt-queue-status", role: "status" }, t("Sending…")),
-          queueMutable && (0, import_react75.createElement)(
+          (0, import_react76.createElement)(Preview, { text: submission.text, renderFactorySlot }),
+          (0, import_react76.createElement)("span", { className: "bt-queue-status", role: "status" }, t("Sending…")),
+          queueMutable && (0, import_react76.createElement)(
             "div",
             { className: "bt-queue-actions" },
-            (0, import_react75.createElement)(RowButton, { label: t("Edit queued message"), title: t("Sending…"), disabled: true }, (0, import_react75.createElement)(PencilIcon)),
-            (0, import_react75.createElement)(RowButton, { label: t("Delete queued message"), title: t("Sending…"), disabled: true }, (0, import_react75.createElement)(TrashIcon)),
-            (0, import_react75.createElement)(RowButton, { label: t("Steer queued message"), title: t("Sending…"), disabled: true }, (0, import_react75.createElement)(ArrowUpIcon))
+            (0, import_react76.createElement)(RowButton, { label: t("Edit queued message"), title: t("Sending…"), disabled: true }, (0, import_react76.createElement)(PencilIcon)),
+            (0, import_react76.createElement)(RowButton, { label: t("Delete queued message"), title: t("Sending…"), disabled: true }, (0, import_react76.createElement)(TrashIcon)),
+            (0, import_react76.createElement)(RowButton, { label: t("Steer queued message"), title: t("Sending…"), disabled: true }, (0, import_react76.createElement)(ArrowUpIcon))
           )
         ))
       )
@@ -45470,7 +45559,7 @@ function singleFlight(map, key, run2) {
 }
 
 // src/client/text-annotation.js
-var import_react76 = require("react");
+var import_react77 = require("react");
 var quoteMarkdown = (text) => text.replace(/\r\n?/gu, "\n").split("\n").map((line) => `> ${line}`).join("\n");
 var withAnnotation = (text, annotation) => annotation.trim() ? `${text}
 
@@ -45483,23 +45572,23 @@ function insertAnnotation(inputActions, text, annotation) {
 function TextSelectionAction({ sessionId, dismiss, readText, clearSelection, inputActions, useSession, useRoster, actions, t: hostT }) {
   const enabled = useSession((state) => !state.removed && (state.subagent === null || state.subagent.address.mode === "continuable" && state.subagent.parentAvailable === true));
   const team = useRoster((state) => state.byId[sessionId] !== void 0 || state.roomsById[sessionId] !== void 0);
-  const [editing, setEditing] = (0, import_react76.useState)(false);
-  const [excerpt, setExcerpt] = (0, import_react76.useState)(null);
-  const [annotation, setAnnotation] = (0, import_react76.useState)("");
-  const [sending, setSending] = (0, import_react76.useState)(false);
-  const [closing, setClosing] = (0, import_react76.useState)(false);
-  const field = (0, import_react76.useRef)(null);
-  const pending = (0, import_react76.useRef)(false);
-  const closeTimer = (0, import_react76.useRef)(null);
-  (0, import_react76.useEffect)(() => {
+  const [editing, setEditing] = (0, import_react77.useState)(false);
+  const [excerpt, setExcerpt] = (0, import_react77.useState)(null);
+  const [annotation, setAnnotation] = (0, import_react77.useState)("");
+  const [sending, setSending] = (0, import_react77.useState)(false);
+  const [closing, setClosing] = (0, import_react77.useState)(false);
+  const field = (0, import_react77.useRef)(null);
+  const pending = (0, import_react77.useRef)(false);
+  const closeTimer = (0, import_react77.useRef)(null);
+  (0, import_react77.useEffect)(() => {
     if (!enabled) dismiss();
   }, [enabled, dismiss]);
-  (0, import_react76.useEffect)(() => {
+  (0, import_react77.useEffect)(() => {
     if (!team || !enabled || !editing) return;
     field.current?.focus();
     if (typeof window !== "undefined") window.dispatchEvent(new Event("resize"));
   }, [team, enabled, editing]);
-  (0, import_react76.useEffect)(() => () => clearTimeout(closeTimer.current), []);
+  (0, import_react77.useEffect)(() => () => clearTimeout(closeTimer.current), []);
   if (!enabled) return null;
   const close = () => {
     clearSelection();
@@ -45572,7 +45661,7 @@ function TextSelectionAction({ sessionId, dismiss, readText, clearSelection, inp
     else void send();
   };
   if (!team) {
-    return (0, import_react76.createElement)("button", {
+    return (0, import_react77.createElement)("button", {
       type: "button",
       className: "bt-quote-plain",
       "aria-label": hostT("quote.add"),
@@ -45581,17 +45670,17 @@ function TextSelectionAction({ sessionId, dismiss, readText, clearSelection, inp
     }, hostT("quote.add"));
   }
   if (!editing) {
-    return (0, import_react76.createElement)(
+    return (0, import_react77.createElement)(
       "div",
       { className: "bt-selection-actions" },
-      (0, import_react76.createElement)("button", {
+      (0, import_react77.createElement)("button", {
         type: "button",
         className: "bt-selection-action",
         "aria-label": hostT("quote.add"),
         onPointerDown: (event) => event.preventDefault(),
         onClick: quoteOnly
       }, hostT("quote.add")),
-      (0, import_react76.createElement)("button", {
+      (0, import_react77.createElement)("button", {
         type: "button",
         className: "bt-selection-action bt-quote-annotate",
         "aria-label": t("Annotate"),
@@ -45600,12 +45689,12 @@ function TextSelectionAction({ sessionId, dismiss, readText, clearSelection, inp
       }, t("Annotate"))
     );
   }
-  return (0, import_react76.createElement)(
+  return (0, import_react77.createElement)(
     "section",
     { className: "bt-annotation", "aria-label": t("Annotate quote"), "data-leaving": closing || void 0, onPointerDown: (event) => event.stopPropagation() },
-    (0, import_react76.createElement)("label", { className: "bt-annotation-label", htmlFor: "bt-annotation-field" }, t("Annotation")),
-    (0, import_react76.createElement)("blockquote", { className: "bt-annotation-quote" }, quoteText()),
-    (0, import_react76.createElement)("textarea", {
+    (0, import_react77.createElement)("label", { className: "bt-annotation-label", htmlFor: "bt-annotation-field" }, t("Annotation")),
+    (0, import_react77.createElement)("blockquote", { className: "bt-annotation-quote" }, quoteText()),
+    (0, import_react77.createElement)("textarea", {
       id: "bt-annotation-field",
       ref: field,
       value: annotation,
@@ -45616,11 +45705,11 @@ function TextSelectionAction({ sessionId, dismiss, readText, clearSelection, inp
       onChange: (event) => setAnnotation(event.target.value),
       onKeyDown
     }),
-    (0, import_react76.createElement)(
+    (0, import_react77.createElement)(
       "div",
       { className: "bt-annotation-actions" },
-      (0, import_react76.createElement)("button", { type: "button", className: "bt-annotation-add", disabled: sending || closing, onClick: add, title: t("Add quote and annotation to the composer · Enter") }, t("Add")),
-      (0, import_react76.createElement)("button", { type: "button", className: "bt-annotation-send", disabled: sending || closing, onClick: () => void send(), title: t("Send quote and annotation · Ctrl+Enter") }, sending ? t("Sending…") : t("Send"))
+      (0, import_react77.createElement)("button", { type: "button", className: "bt-annotation-add", disabled: sending || closing, onClick: add, title: t("Add quote and annotation to the composer · Enter") }, t("Add")),
+      (0, import_react77.createElement)("button", { type: "button", className: "bt-annotation-send", disabled: sending || closing, onClick: () => void send(), title: t("Send quote and annotation · Ctrl+Enter") }, sending ? t("Sending…") : t("Send"))
     )
   );
 }
@@ -46150,7 +46239,7 @@ function apply(ctx) {
       try {
         const todos = ctx.sessions.binding(sessionId)?.session?.projections?.faceOf("todos")?.getSnapshot();
         if (!Array.isArray(todos) || todos.length === 0) return null;
-        return { done: todos.filter((item) => item?.status === "completed").length, total: todos.length };
+        return { done: todos.filter((item) => item?.status === "completed").length, total: todos.length, items: todos };
       } catch {
         return null;
       }
@@ -46802,6 +46891,8 @@ function apply(ctx) {
     // sits on that turn's tail, ahead of the time separator.
     () => shadow("conversation.chat.turnTail", { id: "bot-btw", order: 800, priority: BOT_PRIORITY, inject: face }, BtwTurnTail),
     () => shadow("conversation.chat.turnTail", { id: "bot-learning", order: 850, priority: BOT_PRIORITY, inject: face }, LearningTurnTail),
+    // The list the turn worked to, kept on its tail so a finished turn can be read back.
+    () => shadow("conversation.chat.turnTail", { id: "bot-turn-plan", order: 810, priority: BOT_PRIORITY, inject: face }, PlanTail),
     // The cards of the files a turn delivered get a Save action beside DSH's own
     // actions, so a phone browser can put the file on the device.
     () => ctx.slots.inject("deliverables.file.actions", () => ctx.slots.register({ name: "deliverables.file.actions", id: "bot-file-save", locale: "chat" }, SaveFileAction)),

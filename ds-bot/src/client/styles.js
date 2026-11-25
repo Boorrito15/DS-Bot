@@ -1275,6 +1275,14 @@ body[data-bt-goal] [class*="_scroll"]:has(> [class*="_column"]){padding-top:calc
 .bt-step[data-done]>*{opacity:.55}
 .bt-step-more{opacity:.7}
 .bt-step-time{flex-shrink:0;font-variant-numeric:tabular-nums;opacity:.8}
+.bt-turn-plan{display:flex;flex-direction:column;gap:2px;margin:6px 0 0;padding:0;font-size:12px;line-height:17px;color:var(--bt-ink-3)}
+.bt-turn-plan-count{font-variant-numeric:tabular-nums;color:var(--bt-ink-2)}
+.bt-turn-plan-list{display:flex;flex-direction:column;gap:1px;margin:0;padding:0;list-style:none}
+.bt-turn-plan-item{display:flex;align-items:baseline;gap:6px;min-width:0}
+.bt-turn-plan-item[data-done]>*{opacity:.6}
+.bt-turn-plan-item[data-now]>.bt-turn-plan-text{color:var(--bt-ink-2)}
+.bt-turn-plan-mark{flex-shrink:0;width:10px;text-align:center;opacity:.8}
+.bt-turn-plan-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bt-step-plan{flex-shrink:0;font-variant-numeric:tabular-nums;color:var(--bt-ink-2);letter-spacing:.02em}
 @keyframes bt-typing-in{from{opacity:0;transform:scale(.9)}}
 @keyframes bt-typing-out{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(.92);filter:var(--bt-fx-blur-3,blur(3px))}}

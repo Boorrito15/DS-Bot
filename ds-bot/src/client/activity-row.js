@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { BotMark, RoomAvatar } from './mark.js'
 import { Elapsed, Shimmer, PHRASES, stepWords } from './cells.js'
 import { noteClientError } from './diagnostics.js'
+import { notePlan } from './turn-plan.js'
 import { reducedEffects, reducedMotion } from './motion.js'
 import { t } from './i18n.js'
 
@@ -227,6 +228,13 @@ export function ActivityIndicator({ sessionId, useRoster, useSessionStatus, useL
   // How far the list the Bot wrote for this work has got. A turn without one has no count:
   // the number of steps still to come is not something anyone can know in advance.
   const plan = actions?.planOf?.(sessionId) ?? null
+  // Keep the list the turn works to: the projection is replaced by the next turn, so this
+  // is the only moment it can be read back later.
+  const planKey = plan === null ? '' : JSON.stringify(plan.items)
+  useEffect(() => {
+    if (planKey === '') return
+    try { notePlan(window.localStorage, sessionId, JSON.parse(planKey)) } catch { /* storage full or gone */ }
+  }, [planKey, sessionId])
   const stepList = shownSteps.length > 0 || plan !== null
     ? h('ol', { className: 'bt-steps', role: 'list' },
       plan === null ? null : h('li', { className: 'bt-step bt-step-plan' }, `${plan.done}/${plan.total}`),

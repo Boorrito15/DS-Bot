@@ -36,6 +36,7 @@ import { SECRET_CSS, SecretDock } from './secret-card.js'
 import { ConnectorDock, MailDock, CONNECTOR_CSS } from './connectors.js'
 import { CONNECTORS_PAGE_CSS } from './connectors-page.js'
 import { LearningDock, LearningTurnTail, LEARNING_CSS } from './learning-card.js'
+import { PlanTail } from './plan-tail.js'
 import { MODEL_CSS, ModelChoiceDock, DeepSeekSignIn } from './model-menu.js'
 import { ReadOnlyDock, READ_ONLY_CSS } from './read-only-dock.js'
 import { BOT_SETTINGS_CSS } from './bot-settings.js'
@@ -592,7 +593,7 @@ export function apply(ctx) {
       try {
         const todos = ctx.sessions.binding(sessionId)?.session?.projections?.faceOf('todos')?.getSnapshot()
         if (!Array.isArray(todos) || todos.length === 0) return null
-        return { done: todos.filter(item => item?.status === 'completed').length, total: todos.length }
+        return { done: todos.filter(item => item?.status === 'completed').length, total: todos.length, items: todos }
       } catch {
         return null
       }
@@ -1271,6 +1272,8 @@ export function apply(ctx) {
     // sits on that turn's tail, ahead of the time separator.
     () => shadow('conversation.chat.turnTail', { id: 'bot-btw', order: 800, priority: BOT_PRIORITY, inject: face }, BtwTurnTail),
     () => shadow('conversation.chat.turnTail', { id: 'bot-learning', order: 850, priority: BOT_PRIORITY, inject: face }, LearningTurnTail),
+    // The list the turn worked to, kept on its tail so a finished turn can be read back.
+    () => shadow('conversation.chat.turnTail', { id: 'bot-turn-plan', order: 810, priority: BOT_PRIORITY, inject: face }, PlanTail),
     // The cards of the files a turn delivered get a Save action beside DSH's own
     // actions, so a phone browser can put the file on the device.
     () => ctx.slots.inject('deliverables.file.actions', () => ctx.slots.register({ name: 'deliverables.file.actions', id: 'bot-file-save', locale: 'chat' }, SaveFileAction)),
