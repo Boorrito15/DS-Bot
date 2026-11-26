@@ -38478,9 +38478,14 @@ function HeaderPill({ sessionId, useRoster, useSessions, useSessionStatus, useSe
     (0, import_react56.createElement)(MemoryNotice, { shown: memoryNotice }),
     (0, import_react56.createElement)("span", { className: "bt-pill-go", "aria-hidden": true }, (0, import_react56.createElement)(GoArrow))
   );
+  const toUnder = (event) => {
+    if (event.target instanceof Element && event.target.closest('button, a, [role="button"], [contenteditable="true"]') !== null) return;
+    const hit = document.elementsFromPoint(event.clientX, event.clientY).find((node) => node !== event.currentTarget && !event.currentTarget.contains(node));
+    if (hit instanceof HTMLElement) hit.dispatchEvent(new MouseEvent(event.type, { bubbles: true, cancelable: true, view: window, clientX: event.clientX, clientY: event.clientY, button: 0 }));
+  };
   return (0, import_react56.createElement)(
     "div",
-    { className: "bt-head" },
+    { className: "bt-head", onMouseDown: toUnder, onClick: toUnder },
     showGoal ? (0, import_react56.createElement)(GoalIsland, { room: room2, goal, view, open: goalOpen, composing: goalCompose, roomWork, roster, actions, pill }) : pill,
     (0, import_react56.createElement)("span", { className: "bt-sr", role: "status" }, memoryNotice ? t("Memory updated") : ""),
     room2 !== void 0 && !away ? (0, import_react56.createElement)("button", {

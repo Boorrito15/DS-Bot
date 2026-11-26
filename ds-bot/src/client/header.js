@@ -134,7 +134,16 @@ export function HeaderPill({ sessionId, useRoster, useSessions, useSessionStatus
     goalShown && view?.number !== undefined ? h('span', { className: 'bt-pill-count' }, `${view.number}/${view.count}`) : null,
     h(MemoryNotice, { shown: memoryNotice }),
     h('span', { className: 'bt-pill-go', 'aria-hidden': true }, h(GoArrow)))
-  return h('div', { className: 'bt-head' },
+  // The header's whole 40px band takes a press, not just the pill in the middle: the band
+  // reaches above the chat, so a click at its top half did nothing and only the lower half
+  // answered. It sends the press back to whatever is underneath.
+  const toUnder = event => {
+    if (event.target instanceof Element && event.target.closest('button, a, [role="button"], [contenteditable="true"]') !== null) return
+    const hit = document.elementsFromPoint(event.clientX, event.clientY)
+      .find(node => node !== event.currentTarget && !event.currentTarget.contains(node))
+    if (hit instanceof HTMLElement) hit.dispatchEvent(new MouseEvent(event.type, { bubbles: true, cancelable: true, view: window, clientX: event.clientX, clientY: event.clientY, button: 0 }))
+  }
+  return h('div', { className: 'bt-head', onMouseDown: toUnder, onClick: toUnder },
     showGoal ? h(GoalIsland, { room, goal, view, open: goalOpen, composing: goalCompose, roomWork, roster, actions, pill }) : pill,
     h('span', { className: 'bt-sr', role: 'status' }, memoryNotice ? t('Memory updated') : ''),
     room !== undefined && !away
