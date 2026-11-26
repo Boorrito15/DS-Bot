@@ -17112,6 +17112,11 @@ body[data-ds-dark-theme] .bt-theme-chip i{background:var(--da)}
 .bt-mem{height:min(760px,calc(100dvh - 2*max(32px,var(--dsh-frame-overlay-top,32px))))}
 .bt-settings-layer,.bt-mem-layer,.bt-palette-layer{padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
 .bt-panel{padding-bottom:env(safe-area-inset-bottom,0px)}
+/* On macOS the top 40px of the window is the drag strip. The details panel reaches into
+   it, so its own top row sat inside a drag region and a press there dragged the window
+   instead of hitting the button. The panel, its grip and the scrolling body are marked
+   no-drag; a drag still comes from the chat header over the transcript. */
+.bt-panel,.bt-panel-grip,.bt-panel-view,.bt-panel-view.body{-webkit-app-region:no-drag}
 .bt-settings-scroll{padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}
 .bt-voice-bar{padding-bottom:calc(32px + env(safe-area-inset-bottom,0px))}
 .bt-exchange .bt-dialog-foot{padding-bottom:calc(28px + env(safe-area-inset-bottom,0px))}
