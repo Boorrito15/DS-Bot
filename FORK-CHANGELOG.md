@@ -8,6 +8,10 @@ Every commit on our branch appears here. Upstream commits that arrived through a
 
 ## 2026-11-27
 
+**Phone (build)**
+
+- Fix: each iOS build now carries a build number that only goes up, taken from the commit count. Before, every build of a release read the same and SideStore never offered the update. ([88516b3a])
+
 **Desktop**
 
 - Fix: a press on the details panel's top row no longer starts a window drag. The buttons in that row only answered on their lower half before. ([c55316b5])
@@ -148,3 +152,4 @@ Every commit on our branch appears here. Upstream commits that arrived through a
 [21fbb7ea]: https://github.com/Boorrito15/DS-Bot/commit/21fbb7ea
 [dc70e097]: https://github.com/Boorrito15/DS-Bot/commit/dc70e097
 [5bf57ed1]: https://github.com/Boorrito15/DS-Bot/commit/5bf57ed1
+[88516b3a]: https://github.com/Boorrito15/DS-Bot/commit/88516b3a
