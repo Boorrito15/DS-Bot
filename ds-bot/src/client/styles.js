@@ -551,7 +551,10 @@ html[data-windows-titlebar]:not([data-fullscreen]) :is(.bt-pane,.bt-panel)::befo
 .bt-more{border:0;background:none;color:var(--bt-ink-3);font-size:12px;line-height:16px;cursor:pointer;padding:2px 0}
 .bt-more:hover{color:var(--bt-ink)}
 .bt-subhead{display:flex;align-items:center;gap:4px;padding:10px 12px 4px}
-.bt-subhead-title{flex:1;font-size:15px;line-height:24px;font-weight:600;padding-left:4px}
+/* The title stretches between the two buttons, and a press on it fell through to nothing.
+   It takes the press, and sends it back to whatever sits under it. */
+.bt-subhead-title{flex:1;font-size:15px;line-height:24px;font-weight:600;padding-left:4px;cursor:default}
+button.bt-icon-btn{flex:none;width:32px;height:32px}
 .bt-icon-btn{width:28px;height:28px;border-radius:50%;border:0;background:none;color:var(--bt-ink-2);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
 .bt-icon-btn:hover{background:var(--bt-hover);color:var(--bt-ink)}
 .bt-set-body{gap:20px}
