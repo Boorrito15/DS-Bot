@@ -1,6 +1,12 @@
 // German (de) localization for DS Bot client and DSH settings namespaces.
 
 export const DE = {
+  "The plan for this turn": "Der Plan dieses Durchgangs",
+  "The plan": "Der Plan",
+  "{name} is stuck on {step} ({n} min)": "{name} hängt bei {step} ({n} Min.)",
+  "{name} has been on the same step for {n} min": "{name} ist seit {n} Min. am selben Schritt",
+  "{name} has waited {n} min for your answer": "{name} wartet seit {n} Min. auf deine Antwort",
+  "{name} finished a {n} min job": "{name} hat eine {n}-Minuten-Aufgabe beendet",
   "Plan usage": "Tarifnutzung",
   "No signed-in account to read": "Kein angemeldetes Konto zu lesen",
   "Not signed in on this computer": "Auf diesem Computer nicht angemeldet",

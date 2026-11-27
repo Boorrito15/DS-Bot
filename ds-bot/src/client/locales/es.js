@@ -1,6 +1,12 @@
 // Spanish (es) localization for DS Bot client and DSH settings namespaces.
 
 export const ES = {
+  "The plan for this turn": "El plan de este turno",
+  "The plan": "El plan",
+  "{name} is stuck on {step} ({n} min)": "{name} está atascado en {step} ({n} min)",
+  "{name} has been on the same step for {n} min": "{name} lleva {n} min en el mismo paso",
+  "{name} has waited {n} min for your answer": "{name} lleva {n} min esperando tu respuesta",
+  "{name} finished a {n} min job": "{name} terminó una tarea de {n} min",
   "Plan usage": "Uso del plan",
   "No signed-in account to read": "No hay ninguna cuenta con sesión que leer",
   "Not signed in on this computer": "Sin sesión en este ordenador",

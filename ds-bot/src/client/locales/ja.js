@@ -1,6 +1,12 @@
 // Japanese (ja) localization for DS Bot client and DSH settings namespaces.
 
 export const JA = {
+  "The plan for this turn": "このターンの計画",
+  "The plan": "計画",
+  "{name} is stuck on {step} ({n} min)": "{name} が {step} で {n} 分止まっています",
+  "{name} has been on the same step for {n} min": "{name} が同じ手順のまま {n} 分経っています",
+  "{name} has waited {n} min for your answer": "{name} があなたの返事を {n} 分待っています",
+  "{name} finished a {n} min job": "{name} が {n} 分の作業を終えました",
   "Plan usage": "プランの使用量",
   "No signed-in account to read": "読み取れるサインイン済みのアカウントがありません",
   "Not signed in on this computer": "このコンピューターではサインインしていません",

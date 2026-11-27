@@ -11,6 +11,12 @@ import { DSH_DE, HOST_ERRORS_DE, DE } from './locales/de.js'
 export const NAMESPACE = 'ds-bot'
 
 const ZH = {
+  'The plan': '计划',
+  'The plan for this turn': '这一轮的步骤',
+  '{name} is stuck on {step} ({n} min)': '{name} 卡在 {step} 上（{n} 分钟）',
+  '{name} has been on the same step for {n} min': '{name} 同一步已经做了 {n} 分钟',
+  '{name} has waited {n} min for your answer': '{name} 已经等了你 {n} 分钟',
+  '{name} finished a {n} min job': '{name} 刚做完一个 {n} 分钟的任务',
   'Plan usage': '套餐用量',
   'No signed-in account to read': '没有已登录的账号可读取',
   'Not signed in on this computer': '这台电脑上没有登录',

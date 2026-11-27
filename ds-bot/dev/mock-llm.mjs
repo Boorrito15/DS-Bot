@@ -83,6 +83,11 @@ const systemText = system => typeof system === 'string' ? system
 
 const text = value => ({ type: 'text', text: value })
 // ask_user takes options as { label } objects; the scenarios below list plain labels.
+// "计划 N": one list of N steps, the first `done` of them ticked and the next one in hand.
+const planItems = (count, done) => Array.from({ length: count }, (_, index) => ({
+  content: `第 ${index + 1} 步`,
+  status: index < done ? 'completed' : index === done ? 'in_progress' : 'pending',
+}))
 const tool = (name, input) => ({
   type: 'tool_use',
   name,
@@ -196,6 +201,17 @@ function decide(body) {
     const call = [...messages].reverse().find(m => m.role === 'assistant' && Array.isArray(m.content) && m.content.some(b => b.type === 'tool_use'))
     const used = call?.content.find(b => b.type === 'tool_use' && b.id === result.tool_use_id) ?? call?.content.find(b => b.type === 'tool_use')
     // "长任务 N [K]": N steps in one turn, each adding about K thousand characters (default 4).
+    // "计划 N [K]": each todo_write ticks one more step; the last one ends the turn. The
+    // steps in between are plain calls, so the row has something to show while it runs.
+    const planAt = messages.findLastIndex(m => m.role === 'user' && !isResults(m) && /^计划\s*\d+/.test(textOf(m.content).trimStart()))
+    if (planAt !== -1) {
+      const opened = /^计划\s*(\d+)(?:\s+(\d+))?/.exec(textOf(messages[planAt].content).trimStart())
+      const count = Number(opened[1])
+      const size = Number(opened[2] ?? 1)
+      const ticked = messages.slice(planAt + 1).filter(m => Array.isArray(m.content) && m.content.some(b => b.type === 'tool_use' && b.name === 'todo_write')).length
+      if (ticked < count) return [text(filler(size * 1000, `步骤${ticked + 1}`)), tool('todo_write', { todos: planItems(count, ticked + 1) })]
+      return [text(`计划做完了，一共 ${count} 步。`)]
+    }
     const openerAt = messages.findLastIndex(m => m.role === 'user' && !isResults(m) && /^长任务\s*\d+/.test(textOf(m.content).trimStart()))
     if (openerAt !== -1 && used?.name === 'list_bots') {
       const task = /^长任务\s*(\d+)(?:\s+(\d+))?/.exec(textOf(messages[openerAt].content).trimStart())
@@ -456,6 +472,13 @@ function decide(body) {
   // Context-line tests: grow the context, run a long multi-step turn, search history.
   if ((order = /^(?:长文|long)\s*(\d+)/.exec(userText))) return [text(filler(Number(order[1]) * 1000, '长文'))]
   if ((order = /^长任务\s*(\d+)(?:\s+(\d+))?/.exec(userText))) return [text(filler(Number(order[2] ?? 4) * 1000, '步骤0')), tool('list_bots', {})]
+  // "计划 N [K]": N steps, written as a todo list first, then one todo ticked per step.
+  // The row's count and the turn's card both read that list, so this is what checks them.
+  if (/^计划\s*\d+/.test(userText) && (order = /^计划\s*(\d+)(?:\s+(\d+))?/.exec(userText))) {
+    const count = Number(order[1])
+    const size = Number(order[2] ?? 1)
+    return [text(filler(size * 1000, '开始前'), tool('todo_write', { todos: planItems(count, 0) }))]
+  }
   if ((order = /^查记录\s*([^\n]+)/.exec(userText))) return [tool('read_own_chat', { query: order[1].trim() })]
   if ((order = /^查锚点\s*([^\n]+)/.exec(userText))) return [tool('read_own_chat', { around: order[1].trim() })]
   if ((order = /^查第\s*(\d+)\s*段/.exec(userText))) return [tool('read_own_chat', { part: Number(order[1]) })]

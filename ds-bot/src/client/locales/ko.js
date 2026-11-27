@@ -1,6 +1,12 @@
 // Korean (ko) localization for DS Bot client and DSH settings namespaces.
 
 export const KO = {
+  "The plan for this turn": "이번 턴의 계획",
+  "The plan": "계획",
+  "{name} is stuck on {step} ({n} min)": "{name}이(가) {step}에서 {n}분째 멈춰 있습니다",
+  "{name} has been on the same step for {n} min": "{name}이(가) 같은 단계에 {n}분째 있습니다",
+  "{name} has waited {n} min for your answer": "{name}이(가) 답을 {n}분째 기다리고 있습니다",
+  "{name} finished a {n} min job": "{name}이(가) {n}분 걸린 작업을 끝냈습니다",
   "Plan usage": "요금제 사용량",
   "No signed-in account to read": "읽을 수 있는 로그인 계정이 없습니다",
   "Not signed in on this computer": "이 컴퓨터에서 로그인하지 않았습니다",

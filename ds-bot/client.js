@@ -124,6 +124,12 @@ function convertHostErrors(pairs) {
 
 // src/client/locales/ja.js
 var JA = {
+  "The plan for this turn": "このターンの計画",
+  "The plan": "計画",
+  "{name} is stuck on {step} ({n} min)": "{name} が {step} で {n} 分止まっています",
+  "{name} has been on the same step for {n} min": "{name} が同じ手順のまま {n} 分経っています",
+  "{name} has waited {n} min for your answer": "{name} があなたの返事を {n} 分待っています",
+  "{name} finished a {n} min job": "{name} が {n} 分の作業を終えました",
   "Plan usage": "プランの使用量",
   "No signed-in account to read": "読み取れるサインイン済みのアカウントがありません",
   "Not signed in on this computer": "このコンピューターではサインインしていません",
@@ -2554,6 +2560,12 @@ var DSH_JA = {
 
 // src/client/locales/ko.js
 var KO = {
+  "The plan for this turn": "이번 턴의 계획",
+  "The plan": "계획",
+  "{name} is stuck on {step} ({n} min)": "{name}이(가) {step}에서 {n}분째 멈춰 있습니다",
+  "{name} has been on the same step for {n} min": "{name}이(가) 같은 단계에 {n}분째 있습니다",
+  "{name} has waited {n} min for your answer": "{name}이(가) 답을 {n}분째 기다리고 있습니다",
+  "{name} finished a {n} min job": "{name}이(가) {n}분 걸린 작업을 끝냈습니다",
   "Plan usage": "요금제 사용량",
   "No signed-in account to read": "읽을 수 있는 로그인 계정이 없습니다",
   "Not signed in on this computer": "이 컴퓨터에서 로그인하지 않았습니다",
@@ -5029,6 +5041,12 @@ var DSH_KO = {
 
 // src/client/locales/es.js
 var ES = {
+  "The plan for this turn": "El plan de este turno",
+  "The plan": "El plan",
+  "{name} is stuck on {step} ({n} min)": "{name} está atascado en {step} ({n} min)",
+  "{name} has been on the same step for {n} min": "{name} lleva {n} min en el mismo paso",
+  "{name} has waited {n} min for your answer": "{name} lleva {n} min esperando tu respuesta",
+  "{name} finished a {n} min job": "{name} terminó una tarea de {n} min",
   "Plan usage": "Uso del plan",
   "No signed-in account to read": "No hay ninguna cuenta con sesión que leer",
   "Not signed in on this computer": "Sin sesión en este ordenador",
@@ -7504,6 +7522,12 @@ var DSH_ES = {
 
 // src/client/locales/fr.js
 var FR = {
+  "The plan for this turn": "Le plan de ce tour",
+  "The plan": "Le plan",
+  "{name} is stuck on {step} ({n} min)": "{name} est bloqué sur {step} ({n} min)",
+  "{name} has been on the same step for {n} min": "{name} est sur la même étape depuis {n} min",
+  "{name} has waited {n} min for your answer": "{name} attend votre réponse depuis {n} min",
+  "{name} finished a {n} min job": "{name} a terminé une tâche de {n} min",
   "Plan usage": "Utilisation du forfait",
   "No signed-in account to read": "Aucun compte connecté à lire",
   "Not signed in on this computer": "Pas connecté sur cet ordinateur",
@@ -9934,6 +9958,12 @@ var DSH_FR = {
 
 // src/client/locales/de.js
 var DE = {
+  "The plan for this turn": "Der Plan dieses Durchgangs",
+  "The plan": "Der Plan",
+  "{name} is stuck on {step} ({n} min)": "{name} hängt bei {step} ({n} Min.)",
+  "{name} has been on the same step for {n} min": "{name} ist seit {n} Min. am selben Schritt",
+  "{name} has waited {n} min for your answer": "{name} wartet seit {n} Min. auf deine Antwort",
+  "{name} finished a {n} min job": "{name} hat eine {n}-Minuten-Aufgabe beendet",
   "Plan usage": "Tarifnutzung",
   "No signed-in account to read": "Kein angemeldetes Konto zu lesen",
   "Not signed in on this computer": "Auf diesem Computer nicht angemeldet",
@@ -12410,6 +12440,12 @@ var DSH_DE = {
 // src/client/i18n.js
 var NAMESPACE = "ds-bot";
 var ZH = {
+  "The plan": "计划",
+  "The plan for this turn": "这一轮的步骤",
+  "{name} is stuck on {step} ({n} min)": "{name} 卡在 {step} 上（{n} 分钟）",
+  "{name} has been on the same step for {n} min": "{name} 同一步已经做了 {n} 分钟",
+  "{name} has waited {n} min for your answer": "{name} 已经等了你 {n} 分钟",
+  "{name} finished a {n} min job": "{name} 刚做完一个 {n} 分钟的任务",
   "Plan usage": "套餐用量",
   "No signed-in account to read": "没有已登录的账号可读取",
   "Not signed in on this computer": "这台电脑上没有登录",
@@ -17247,13 +17283,22 @@ body[data-bt-goal] [class*="_scroll"]:has(> [class*="_column"]){padding-top:calc
 .bt-step-words{flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bt-step[data-done]>*{opacity:.55}
 .bt-step-more{opacity:.7}
+.bt-step-plan .bt-step-words{font-variant-numeric:tabular-nums;color:var(--bt-ink-2);flex-shrink:0}
+.bt-step-target{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bt-step-time{flex-shrink:0;font-variant-numeric:tabular-nums;opacity:.8}
 .bt-new-version{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:2147483000;appearance:none;border:0;border-radius:999px;padding:8px 14px;font:inherit;font-size:12px;line-height:16px;color:var(--bt-paper);background:var(--bt-ink-1);box-shadow:var(--bt-card-shadow);cursor:pointer}
-.bt-turn-plan{display:flex;flex-direction:column;gap:2px;margin:6px 0 0;padding:0;font-size:12px;line-height:17px;color:var(--bt-ink-3)}
-.bt-turn-plan-count{font-variant-numeric:tabular-nums;color:var(--bt-ink-2)}
-.bt-turn-plan-list{display:flex;flex-direction:column;gap:1px;margin:0;padding:0;list-style:none}
+.bt-turn-plan{display:flex;flex-direction:column;gap:4px;box-sizing:border-box;max-width:min(560px,100%);margin:8px 0 2px;padding:8px 12px 9px;border-radius:12px;background:var(--bt-main);box-shadow:0 0 0 .5px var(--bt-line-2);font-size:12px;line-height:17px;color:var(--bt-ink-3)}
+.bt-turn-plan-head{display:flex;align-items:baseline;gap:8px;min-width:0}
+.bt-turn-plan-count{flex:none;font-variant-numeric:tabular-nums;color:var(--bt-ink-2);font-weight:600}
+.bt-turn-plan-title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--bt-ink-3)}
+.bt-turn-plan-list{display:flex;flex-direction:column;gap:2px;margin:0;padding:0;list-style:none}
 .bt-turn-plan-item{display:flex;align-items:baseline;gap:6px;min-width:0}
-.bt-turn-plan-item[data-done]>*{opacity:.6}
+.bt-turn-plan-mark{flex:none;width:11px;text-align:center;color:var(--bt-green);font-size:11px}
+.bt-turn-plan-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--bt-ink-2)}
+.bt-turn-plan-item[data-done] .bt-turn-plan-text{opacity:.6}
+.bt-turn-plan-item[data-now] .bt-turn-plan-text{color:var(--bt-ink)}
+.bt-turn-plan-more{align-self:flex-start;height:22px;margin:0 0 0 17px;padding:0 6px;border:0;border-radius:6px;background:none;color:var(--bt-ink-3);font:inherit;font-size:11.5px;cursor:pointer}
+.bt-turn-plan-more:hover{background:var(--bt-hover);color:var(--bt-ink-2)}
 .bt-turn-plan-item[data-now]>.bt-turn-plan-text{color:var(--bt-ink-2)}
 .bt-turn-plan-mark{flex-shrink:0;width:10px;text-align:center;opacity:.8}
 .bt-turn-plan-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -29428,7 +29473,7 @@ function readPlans(storage) {
     return {};
   }
 }
-function notePlan(storage, sessionId, todos, at = Date.now()) {
+function notePlan(storage, sessionId, todos, at = Date.now(), turn) {
   const items = clean(todos);
   if (typeof sessionId !== "string" || sessionId === "" || items.length === 0) return false;
   const all = readPlans(storage);
@@ -29436,7 +29481,7 @@ function notePlan(storage, sessionId, todos, at = Date.now()) {
   const key = JSON.stringify(items);
   const same = [...mine].reverse().find((entry) => JSON.stringify(entry?.items) === key);
   const kept = mine.filter((entry) => entry !== same);
-  kept.push({ at, items });
+  kept.push({ at, items, ...Number.isInteger(turn) ? { turn } : {} });
   kept.sort((a, b) => a.at - b.at);
   all[sessionId] = kept.slice(-KEEP);
   try {
@@ -29453,14 +29498,37 @@ function planInWindow(storage, sessionId, start, end = Number.MAX_SAFE_INTEGER) 
   const last = inside.at(-1);
   return last === void 0 || !Array.isArray(last.items) || last.items.length === 0 ? null : last.items;
 }
+function planOfTurn(storage, sessionId, turn) {
+  const mine = readPlans(storage)[sessionId];
+  if (!Array.isArray(mine) || !Number.isInteger(turn)) return null;
+  const last = [...mine].reverse().find((entry) => entry?.turn === turn && Array.isArray(entry.items) && entry.items.length > 0);
+  return last === void 0 ? null : last.items;
+}
+function planCount(items, live) {
+  const list = Array.isArray(items) ? items : [];
+  const marks = list.map((item) => item?.status);
+  const statusesKept = marks.some((status) => status === "completed" || status === "in_progress" || status === "cancelled");
+  const done = marks.filter((status) => status === "completed").length;
+  const current2 = marks.indexOf("in_progress");
+  const marked2 = done > 0 || current2 >= 0 || marks.some((status) => status === "cancelled");
+  if (marked2 || live === false || statusesKept) return { done, total: list.length, current: current2 };
+  return { done: 0, total: list.length, current: 0 };
+}
+function planLine(items, live) {
+  const { done, total, current: current2 } = planCount(items, live);
+  if (total === 0) return { count: "", head: "", text: "0/0" };
+  const item = live === false || current2 < 0 ? void 0 : items?.[current2];
+  const head = typeof item?.content === "string" ? item.content : "";
+  return { count: `${done}/${total}`, head, text: head === "" ? `${done}/${total}` : `${done}/${total} · ${head}` };
+}
 
 // src/client/activity-row.js
 var import_react35 = require("react");
 var import_react_dom5 = require("react-dom");
 var PHRASE_HOLD_MS = 800;
 var DONE_HOLD_MS = 3e3;
-var STEPS_SHOWN = 2;
 var drawPhrase = (pool) => t(pool[Math.min(pool.length - 1, Math.floor(Math.random() * pool.length))]);
+var STEPS_SHOWN = 2;
 var rowVisible = ({ running, relaying, bot, room: room2 }) => running && !relaying && (bot !== void 0 || room2 !== void 0);
 var freshInputAt = (submissions, steeredAt) => Math.max(
   0,
@@ -29645,24 +29713,28 @@ function ActivityIndicator({ sessionId, useRoster, useSessionStatus, useLive, us
   const stepKey = newestStep === void 0 || newestStep.done === true ? null : `${steps.length}:${newestStep.name}:${newestStep.target ?? ""}`;
   const stepAt = (0, import_react35.useRef)({ key: null, at: 0 });
   if (stepAt.current.key !== stepKey) stepAt.current = { key: stepKey, at: stepKey === null ? 0 : Date.now() };
-  const shownSteps = steps.slice(-STEPS_SHOWN);
   const plan = actions?.planOf?.(sessionId) ?? null;
   const planKey = plan === null ? "" : JSON.stringify(plan.items);
   (0, import_react35.useEffect)(() => {
     if (planKey === "") return;
     try {
-      notePlan(window.localStorage, sessionId, JSON.parse(planKey));
+      notePlan(window.localStorage, sessionId, JSON.parse(planKey), Date.now(), turnAt);
     } catch {
     }
-  }, [planKey, sessionId]);
+  }, [planKey, sessionId, turnAt]);
   const host = useRunningHost(working || moveAt !== 0);
   if (!host || phase === null || !shown) return null;
-  const stepList = shownSteps.length > 0 || plan !== null ? (0, import_react35.createElement)(
+  const planText = plan === null ? { count: "", head: "", text: "" } : planLine(plan.items, true);
+  const shownSteps = steps.slice(-STEPS_SHOWN);
+  const stepList = plan !== null || shownSteps.length > 0 ? (0, import_react35.createElement)(
     "ol",
     { className: "bt-steps", role: "list" },
-    steps.length > STEPS_SHOWN ? (0, import_react35.createElement)("li", { className: "bt-step bt-step-more" }, t("and {count} earlier", { count: steps.length - STEPS_SHOWN })) : null,
-    // A step's words are a whole phrase in the Bot's own language ("List the composer's
-    // buttons"), so the thing it touched is only added when the phrase says nothing.
+    plan === null ? null : (0, import_react35.createElement)(
+      "li",
+      { key: "plan", className: "bt-step bt-step-plan", "data-plan": planText.count },
+      (0, import_react35.createElement)("span", { key: planText.count, className: "bt-step-words", "aria-label": planText.text }, planText.count),
+      planText.head === "" ? null : (0, import_react35.createElement)("span", { className: "bt-step-target" }, planText.head)
+    ),
     shownSteps.map((step, index) => (0, import_react35.createElement)(
       "li",
       { key: `${step.callId ?? step.name}:${index}`, className: "bt-step", "data-done": step.done === true ? "" : void 0 },
@@ -29683,7 +29755,6 @@ function ActivityIndicator({ sessionId, useRoster, useSessionStatus, useLive, us
         "span",
         { className: "bt-typing-text" },
         (0, import_react35.createElement)("span", { key: `${shown.key}:${shown.at}`, className: "bt-typing-label" }, (0, import_react35.createElement)(Shimmer, null, `${shown.text}…`)),
-        plan === null ? null : (0, import_react35.createElement)("span", { className: "bt-typing-plan" }, `${plan.done}/${plan.total}`),
         stepClock === 0 ? (0, import_react35.createElement)(Elapsed, { at: moveAt !== 0 ? moveAt : Math.max(turnAt ?? runAt.current, inputAt), className: "bt-typing-time" }) : null
       ),
       stepList
@@ -29848,8 +29919,8 @@ function BotRow({ bot, roster, actions, useSessions, useSessionStatus, useSessio
   const plan = running ? actions.planOf?.(part) ?? null : null;
   const newest = running ? (ownWork?.steps ?? []).at(-1) : void 0;
   const stepLine = newest === void 0 ? null : `${newest.label ?? stepWords(newest.name)}${newest.target === void 0 || newest.target === newest.label ? "" : ` · ${newest.target}`}`;
-  const planLine = plan === null ? "" : ` ${plan.done}/${plan.total}`;
-  const runningLine = running ? (0, import_react36.createElement)(Shimmer, null, `${stepLine ?? (doing ? workPhrase(doing) : t("Working"))}${planLine}…`) : null;
+  const planLine2 = plan === null ? "" : ` ${plan.done}/${plan.total}`;
+  const runningLine = running ? (0, import_react36.createElement)(Shimmer, null, `${stepLine ?? (doing ? workPhrase(doing) : t("Working"))}${planLine2}…`) : null;
   const awayLine = away ? workLine(roster.roomsById[groups[0].id]?.name ?? t("a group chat"), groups[0], groups.length - 1) : null;
   const waitsRaw = useWork ? useWork((work) => JSON.stringify(work.waiting?.[id] ?? null)) : "null";
   const waits = (0, import_react36.useMemo)(() => JSON.parse(waitsRaw), [waitsRaw]);
@@ -45066,34 +45137,54 @@ var Safe = class extends import_react75.Component {
 // src/client/plan-tail.js
 var import_react76 = require("react");
 var TICK2 = "✓";
+var SHOWN = 3;
 function PlanTail(props) {
   return (0, import_react76.createElement)(Safe, { name: "turn plan" }, (0, import_react76.createElement)(TailPlan, props));
 }
 function TailPlan({ turn: location2, sessionId }) {
+  const [open, setOpen] = (0, import_react76.useState)(false);
   const start = location2?.start?.time ?? 0;
   const end = location2?.end?.time ?? Number.MAX_SAFE_INTEGER;
   let items = null;
   try {
-    items = planInWindow(window.localStorage, sessionId, start, end);
+    items = planOfTurn(window.localStorage, sessionId, location2?.turn) ?? planInWindow(window.localStorage, sessionId, start, end);
   } catch {
     items = null;
   }
   if (items === null) return null;
-  const done = items.filter((item) => item.status === "completed").length;
+  const line = planLine(items, false);
+  const folded = !open && items.length > SHOWN;
+  const shown = folded ? items.slice(0, SHOWN) : items;
+  const rest = items.length - shown.length;
   return (0, import_react76.createElement)(
     "div",
-    { className: "bt-turn-plan" },
-    (0, import_react76.createElement)("span", { className: "bt-turn-plan-count" }, `${done}/${items.length}`),
+    { className: "bt-turn-plan", role: "group", "aria-label": t("The plan for this turn") },
+    (0, import_react76.createElement)(
+      "div",
+      { className: "bt-turn-plan-head" },
+      (0, import_react76.createElement)("span", { className: "bt-turn-plan-count", title: line.count }, line.count),
+      (0, import_react76.createElement)("span", { className: "bt-turn-plan-title" }, t("The plan"))
+    ),
     (0, import_react76.createElement)(
       "ol",
       { className: "bt-turn-plan-list", role: "list" },
-      items.map((item, index) => (0, import_react76.createElement)(
+      shown.map((item, index) => (0, import_react76.createElement)(
         "li",
-        { key: `${index}:${item.content}`, className: "bt-turn-plan-item", "data-done": item.status === "completed" ? "" : void 0, "data-now": item.status === "in_progress" ? "" : void 0 },
+        {
+          key: `${index}:${item.content}`,
+          className: "bt-turn-plan-item",
+          "data-done": item.status === "completed" ? "" : void 0,
+          "data-now": item.status === "in_progress" ? "" : void 0
+        },
         (0, import_react76.createElement)("span", { className: "bt-turn-plan-mark", "aria-hidden": true }, item.status === "completed" ? TICK2 : "·"),
         (0, import_react76.createElement)("span", { className: "bt-turn-plan-text" }, item.content)
       ))
-    )
+    ),
+    rest > 0 || open ? (0, import_react76.createElement)(
+      "button",
+      { type: "button", className: "bt-turn-plan-more", onClick: () => setOpen((value) => !value) },
+      open ? t("Show less") : t("and {count} more", { count: rest })
+    ) : null
   );
 }
 

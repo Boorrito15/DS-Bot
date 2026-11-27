@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { BotMark, RoomAvatar } from './mark.js'
 import { Elapsed, Shimmer, PHRASES, stepWords } from './cells.js'
 import { noteClientError } from './diagnostics.js'
-import { notePlan } from './turn-plan.js'
+import { notePlan, planLine } from './turn-plan.js'
 import { reducedEffects, reducedMotion } from './motion.js'
 import { t } from './i18n.js'
 
@@ -15,12 +15,12 @@ import { t } from './i18n.js'
 const PHRASE_HOLD_MS = 800
 // How long a finished turn keeps saying so before the row goes.
 const DONE_HOLD_MS = 3000
-// How many of a turn's steps the working row lists at once. More than two turned the row
-// into a wall: the phrase, the clock, a hidden count and each step's label and target all
-// said the same thing several times over.
-const STEPS_SHOWN = 2
 const drawPhrase = pool => t(pool[Math.min(pool.length - 1, Math.floor(Math.random() * pool.length))])
 export { reducedMotion }
+
+// How many of a turn's steps the row lists under its plan: enough to see what it is on,
+// not a wall of them.
+const STEPS_SHOWN = 2
 
 // The row stays for the whole turn, streaming included: a reply being written is still a
 // turn under way, and a row that comes and goes is what made "is it done?" unanswerable.
@@ -233,24 +233,32 @@ export function ActivityIndicator({ sessionId, useRoster, useSessionStatus, useL
     : `${steps.length}:${newestStep.name}:${newestStep.target ?? ''}`
   const stepAt = useRef({ key: null, at: 0 })
   if (stepAt.current.key !== stepKey) stepAt.current = { key: stepKey, at: stepKey === null ? 0 : Date.now() }
-  const shownSteps = steps.slice(-STEPS_SHOWN)
   // How far the list the Bot wrote for this work has got. A turn without one has no count:
   // the number of steps still to come is not something anyone can know in advance.
   const plan = actions?.planOf?.(sessionId) ?? null
   // Keep the list the turn works to: the projection is replaced by the next turn, so this
-  // is the only moment it can be read back later.
+  // is the only moment it can be read back later. Each look that moved the list is kept,
+  // not only the last, or a turn that finishes would leave the card reading whatever the
+  // projection said when it went away.
   const planKey = plan === null ? '' : JSON.stringify(plan.items)
   useEffect(() => {
     if (planKey === '') return
-    try { notePlan(window.localStorage, sessionId, JSON.parse(planKey)) } catch { /* storage full or gone */ }
-  }, [planKey, sessionId])
+    try { notePlan(window.localStorage, sessionId, JSON.parse(planKey), Date.now(), turnAt) } catch { /* storage full or gone */ }
+  }, [planKey, sessionId, turnAt])
   const host = useRunningHost(working || moveAt !== 0)
   if (!host || phase === null || !shown) return null
-  const stepList = shownSteps.length > 0 || plan !== null
+  // The count the row says and the count a finished turn's card says are the same number,
+  // worked out by one function: a row reading 0/7 beside a card reading 6/7 is one of them
+  // lying, and which of the two a reader believes is a coin toss.
+  const planText = plan === null ? { count: '', head: '', text: '' } : planLine(plan.items, true)
+  const shownSteps = steps.slice(-STEPS_SHOWN)
+  // The plan first, then the newest step or two: the count says how far the turn got and
+  // the steps say what it is doing right now, which a count on its own cannot.
+  const stepList = plan !== null || shownSteps.length > 0
     ? h('ol', { className: 'bt-steps', role: 'list' },
-      steps.length > STEPS_SHOWN ? h('li', { className: 'bt-step bt-step-more' }, t('and {count} earlier', { count: steps.length - STEPS_SHOWN })) : null,
-      // A step's words are a whole phrase in the Bot's own language ("List the composer's
-      // buttons"), so the thing it touched is only added when the phrase says nothing.
+      plan === null ? null : h('li', { key: 'plan', className: 'bt-step bt-step-plan', 'data-plan': planText.count },
+        h('span', { key: planText.count, className: 'bt-step-words', 'aria-label': planText.text }, planText.count),
+        planText.head === '' ? null : h('span', { className: 'bt-step-target' }, planText.head)),
       shownSteps.map((step, index) => h('li', { key: `${step.callId ?? step.name}:${index}`, className: 'bt-step', 'data-done': step.done === true ? '' : undefined },
         h('span', { className: 'bt-step-words' }, step.label ?? step.target ?? stepWords(step.name)),
         // One clock in the row: the newest step's, and only when it is still running.
@@ -265,7 +273,6 @@ export function ActivityIndicator({ sessionId, useRoster, useSessionStatus, useL
     h('div', { className: 'bt-typing-body' },
       h('span', { className: 'bt-typing-text' },
         h('span', { key: `${shown.key}:${shown.at}`, className: 'bt-typing-label' }, h(Shimmer, null, `${shown.text}…`)),
-        plan === null ? null : h('span', { className: 'bt-typing-plan' }, `${plan.done}/${plan.total}`),
         stepClock === 0 ? h(Elapsed, { at: moveAt !== 0 ? moveAt : Math.max(turnAt ?? runAt.current, inputAt), className: 'bt-typing-time' }) : null),
       stepList)), host)
 }

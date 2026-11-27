@@ -10,6 +10,11 @@
 #   scripts/test-server.sh stop
 #   scripts/test-server.sh status
 #
+# A Bot needs a model that answers. For a test team with no key, run the mock model and
+# point the server at it:
+#   node ds-bot/dev/mock-llm.mjs &
+#   DS_BOT_TEST_MODEL_URL=http://127.0.0.1:8799/v1 scripts/test-server.sh start
+#
 # The home is <repo>/.test-server, which git ignores. Deleting it throws the test
 # team away; nothing in it is worth keeping.
 set -euo pipefail
@@ -69,7 +74,14 @@ NODE
   ( cd "$profile" && PATH="/opt/homebrew/bin:$PATH" npm install --no-audit --no-fund >/dev/null 2>&1 ) || true
   echo "starting on branch $(git -C "$REPO" rev-parse --abbrev-ref HEAD), port $PORT"
   : > "$LOG"
-  DSH_HOME="$HOME_DIR" nohup /opt/homebrew/bin/dsh --profile web --host 127.0.0.1 --port "$PORT" --no-open >> "$LOG" 2>&1 &
+  # A model can be pointed at a mock server (dev/mock-llm.mjs) so a Bot can run a real
+  # turn without a key or a bill: DS_BOT_TEST_MODEL_URL=http://127.0.0.1:8799/v1.
+  local model_env=()
+  if [ -n "${DS_BOT_TEST_MODEL_URL:-}" ]; then
+    model_env=(DEEPSEEK_BASE_URL="$DS_BOT_TEST_MODEL_URL" DEEPSEEK_API_KEY=mock-key)
+  fi
+  DSH_HOME="$HOME_DIR" nohup env ${model_env[@]+"${model_env[@]}"} \
+    /opt/homebrew/bin/dsh --profile web --host 127.0.0.1 --port "$PORT" --no-open >> "$LOG" 2>&1 &
   echo $! > "$PID_FILE"
   # The address carries a one-time sign-in, so it has to be read back from the log.
   for _ in $(seq 1 60); do

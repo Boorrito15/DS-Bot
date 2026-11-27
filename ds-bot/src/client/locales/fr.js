@@ -1,6 +1,12 @@
 // French (fr) localization for DS Bot client and DSH settings namespaces.
 
 export const FR = {
+  "The plan for this turn": "Le plan de ce tour",
+  "The plan": "Le plan",
+  "{name} is stuck on {step} ({n} min)": "{name} est bloqué sur {step} ({n} min)",
+  "{name} has been on the same step for {n} min": "{name} est sur la même étape depuis {n} min",
+  "{name} has waited {n} min for your answer": "{name} attend votre réponse depuis {n} min",
+  "{name} finished a {n} min job": "{name} a terminé une tâche de {n} min",
   "Plan usage": "Utilisation du forfait",
   "No signed-in account to read": "Aucun compte connecté à lire",
   "Not signed in on this computer": "Pas connecté sur cet ordinateur",
