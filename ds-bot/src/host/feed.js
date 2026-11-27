@@ -6,6 +6,7 @@
 //   stream    the reply a Bot is writing: a start, its text as it comes, an end
 //   notice    something a client that is not looking should hear about (mobile.js)
 //   room      a group chat changed: ask for `room-chat` again
+//   watch     the watcher has something worth saying (watcher.js)
 // `hello` carries the team's revision and, for the mobile API, its version and the
 // latest notice, so a client that reconnects knows what it missed.
 import { ROUTE } from './constants.js'

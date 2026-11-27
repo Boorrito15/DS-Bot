@@ -10,6 +10,14 @@ Every commit on our branch appears here. Upstream commits that arrived through a
 
 **Desktop**
 
+- New: the watcher, a strip above the composer that says what has gone wrong with the team's work, so a Bot does not sit still unwatched. Three things only: a Bot stuck on one step past a limit, a Bot or an approval waiting on you past a limit, and a long job reaching its end. Each line opens the Bot it names and can be dismissed; nothing is said twice. The switches and limits sit in the team's preferences, defaulting to 5, 2 and 10 minutes. ([408a9fb6])
+
+**Desktop**
+
+- New: a test copy of the server, `scripts/test-server.sh start | stop | status`, so a branch can be tried before it goes live. It runs this checkout on port 61830 with its own home in `.test-server`, and cannot see the live team. ([a1d6a157])
+
+**Desktop**
+
 - Change: the reading pill over a long reply loses its back-to-start arrow. The section name beside it already jumps to where the reader is. ([6bccd07e])
 
 **Phone (build)**

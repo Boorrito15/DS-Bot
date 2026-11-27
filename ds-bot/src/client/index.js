@@ -59,6 +59,7 @@ import { RIGHTBAR_ATTRIBUTES, columnOpened, createSwitchWindow, drawerOpened, ri
 import { ErrorToast, FEEDBACK_CSS } from './feedback.js'
 import { ABOUT_CSS } from './about.js'
 import { MEMBER_CSS, MemberDock } from './member-status.js'
+import { WATCH_CSS, WatchStrip } from './watcher.js'
 import { TASK_CSS } from './task-board.js'
 import { IM_CSS } from './im-page.js'
 import { GOAL_CSS } from './goal.js'
@@ -1243,6 +1244,7 @@ export function apply(ctx) {
     [FEEDBACK_CSS, 'feedback'],
     [ABOUT_CSS, 'about'],
     [MEMBER_CSS, 'members'],
+    [WATCH_CSS, 'watch'],
     [TASK_CSS, 'tasks'],
     [PASTE_CSS, 'paste'],
     [OPENING_CSS, 'opening'],
@@ -1351,6 +1353,8 @@ export function apply(ctx) {
     () => shadow('conversation.composer.dock', { id: 'activity', order: 0, priority: BOT_PRIORITY }, Nothing),
     () => shadow('conversation.composer.dock', { id: 'usage', order: 1, priority: BOT_PRIORITY }, Nothing),
     () => shadow('conversation.composer.dock', { id: 'btw', order: 2, priority: BOT_PRIORITY, inject: face }, BtwDock),
+    // What the watcher noticed about the team, above the composer, in every conversation.
+    () => shadow('conversation.composer.dock', { id: 'watch', order: -1, priority: BOT_PRIORITY, inject: face }, WatchStrip),
     () => shadow('conversation.input.left', { id: 'bot-paste', order: -110, inject: face }, PasteGuard),
     () => shadow('conversation.input.left', { id: 'bot-plus', order: -100, inject: face }, ComposerPlus),
     () => shadow('conversation.input.right', { id: 'bot-voice', order: 100, inject: face }, ComposerVoice),

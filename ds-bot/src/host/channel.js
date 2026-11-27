@@ -9,6 +9,7 @@ import { threadCurrentOfPart } from './threads.js'
 import { validateViewAnswer } from 'deep-view/core'
 import { commandRows } from './command-rows.js'
 import { COLORS, EXTRA_COLORS, ROUTE } from './constants.js'
+import { readWatcherPrefs } from './watcher.js'
 
 const STAGED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
 const STAGED_MS = 30 * 60_000
@@ -194,7 +195,7 @@ export function install(rt) {
   }
   // What a host that only reads the team may still answer.
   // Updates change the dsh profile, not the team, so a reading host may run them too.
-  const READS = new Set(['secret-store', 'secret-unlock', 'state', 'models', 'efforts', 'providers', 'provider-models', 'earlier', 'chat', 'run-stats', 'room-progress', 'group-rows', 'exchange', 'exchange-text', 'file-text', 'usage', 'schedules', 'memory-view', 'browser-wait', 'browser-result', 'diagnostics', 'diagnostics-log', 'diagnostics-clear', 'subscriptions', 'update-check', 'update-install', 'dsh-update-install', 'repo-stars', 'approval-answer', 'thinking', 'avatar-library', 'computer-system-status', 'computer-shot', 'local-agents', 'local-agent-models', 'browser-frame', 'hello', 'notices', 'avatar', 'room-chat', 'usage-summary', 'image', 'markdown-image', 'file-download', 'changes-check', 'changes-summary', 'changes-diff'])
+  const READS = new Set(['secret-store', 'secret-unlock', 'state', 'models', 'efforts', 'providers', 'provider-models', 'earlier', 'chat', 'run-stats', 'room-progress', 'group-rows', 'exchange', 'exchange-text', 'file-text', 'usage', 'schedules', 'memory-view', 'browser-wait', 'browser-result', 'diagnostics', 'diagnostics-log', 'diagnostics-clear', 'subscriptions', 'update-check', 'update-install', 'dsh-update-install', 'repo-stars', 'approval-answer', 'thinking', 'watch-check', 'avatar-library', 'computer-system-status', 'computer-shot', 'local-agents', 'local-agent-models', 'browser-frame', 'hello', 'notices', 'avatar', 'room-chat', 'usage-summary', 'image', 'markdown-image', 'file-download', 'changes-check', 'changes-summary', 'changes-diff'])
 
   async function setPrefs(body) {
     if (body.theme !== undefined) {
@@ -256,6 +257,12 @@ export function install(rt) {
       const sizes = Object.entries(body.memoryLimits ?? {}).filter(([scope, size]) => MEMORY_LIMIT_SCOPES.has(scope) && Number.isInteger(size) && size >= MEMORY_LIMIT_MIN && size <= MEMORY_LIMIT_MAX)
       if (sizes.length === 0) delete state.prefs.memoryLimits
       else state.prefs.memoryLimits = { ...state.prefs.memoryLimits, ...Object.fromEntries(sizes) }
+    }
+    // The watcher's switches and minutes (watcher.js keeps the defaults).
+    if (body.watcher !== undefined) {
+      const given = body.watcher ?? {}
+      const next = readWatcherPrefs({ ...state.prefs.watcher, ...given })
+      state.prefs.watcher = next
     }
     return rt.save()
   }
@@ -355,6 +362,10 @@ export function install(rt) {
         }
         // DSH's own whole-log figures for the current part of a Bot's chat, the ones its
         // status bar shows; a window without that bar shows them in the Bot's details.
+        // What the watcher (watcher.js) makes of the work a window reports: the notices
+        // worth showing, and when the look happened. Reading the team is all it does.
+        case 'watch-check':
+          return ok(await rt.watchCheck(body))
         case 'run-stats': {
           await rt.load()
           const bot = rt.botOf(String(body.botId ?? ''))

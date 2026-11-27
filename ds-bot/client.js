@@ -14633,8 +14633,8 @@ function bodyOf(def, paint, flat = false) {
     return "";
   }
 }
-var eyeMarkup = ([cx, cy, w, h77, tilt]) => `<g transform="translate(${cx} ${cy}) rotate(${tilt})"><rect class="bt-eye" x="${-w / 2}" y="${-h77 / 2}" width="${w}" height="${h77}" rx="${w / 2}"/></g>`;
-var happyEyeMarkup = ([cx, cy, w, h77, tilt]) => `<g transform="translate(${cx} ${cy}) rotate(${tilt})"><path class="bt-eye-happy" opacity="0" d="M${-w * 0.62} ${h77 * 0.14}Q0 ${-h77 * 0.42} ${w * 0.62} ${h77 * 0.14}" fill="none" stroke="#000" stroke-width="${w * 0.5}" stroke-linecap="round"/></g>`;
+var eyeMarkup = ([cx, cy, w, h78, tilt]) => `<g transform="translate(${cx} ${cy}) rotate(${tilt})"><rect class="bt-eye" x="${-w / 2}" y="${-h78 / 2}" width="${w}" height="${h78}" rx="${w / 2}"/></g>`;
+var happyEyeMarkup = ([cx, cy, w, h78, tilt]) => `<g transform="translate(${cx} ${cy}) rotate(${tilt})"><path class="bt-eye-happy" opacity="0" d="M${-w * 0.62} ${h78 * 0.14}Q0 ${-h78 * 0.42} ${w * 0.62} ${h78 * 0.14}" fill="none" stroke="#000" stroke-width="${w * 0.5}" stroke-linecap="round"/></g>`;
 var maskBox = (size) => `maskUnits="userSpaceOnUse" x="${-size}" y="${-size}" width="${size * 3}" height="${size * 3}"`;
 var holes = (def, eyes) => `<rect x="${-def.size}" y="${-def.size}" width="${def.size * 3}" height="${def.size * 3}" fill="#fff"/>${eyes}`;
 var MASK_ID = "%MASK%";
@@ -15649,12 +15649,12 @@ function liveSprings(apply2) {
     const dt = Math.min(0.5, Math.max(1e-3, (now - last) / 1e3));
     last = now;
     const steps = Math.ceil(dt * 240);
-    const h77 = dt / steps;
+    const h78 = dt / steps;
     let moving = false;
     for (const [key, value] of values) {
       for (let index = 0; index < steps; index += 1) {
-        value.v += (-value.k * (value.x - value.to) - value.c * value.v) * h77;
-        value.x += value.v * h77;
+        value.v += (-value.k * (value.x - value.to) - value.c * value.v) * h78;
+        value.x += value.v * h78;
       }
       if (Math.abs(value.x - value.to) < 0.05 && Math.abs(value.v) < 1) {
         value.x = value.to;
@@ -45232,6 +45232,139 @@ function createSwitchWindow(settle) {
   };
 }
 
+// src/client/watcher.js
+var import_react78 = require("react");
+var LOOK_MS = 1e4;
+var LOOK_REST_MS = 6e4;
+var SHOWN_MAX = 2;
+function watchLook({ work, now, seen }) {
+  const bots = {};
+  const workBots = work?.bots ?? {};
+  const waits = work?.waiting ?? {};
+  const asks = work?.approvals ?? [];
+  const ids = /* @__PURE__ */ new Set([...Object.keys(workBots), ...Object.keys(waits), ...asks.map((entry) => entry?.botId), ...seen.keys()]);
+  for (const id of ids) {
+    const entry = workBots[id];
+    const going = entry !== void 0;
+    const was = seen.get(id);
+    const look = { going };
+    if (going) {
+      const steps = Array.isArray(entry.steps) ? entry.steps : [];
+      const newest = steps.at(-1);
+      const running = newest !== void 0 && newest.done !== true;
+      const key = running ? `${steps.length}:${newest.name}:${newest.target ?? ""}` : null;
+      const stepAt = key === null ? 0 : was?.stepKey === key ? was.stepAt : now;
+      look.stepAt = stepAt;
+      look.step = running ? String(newest.label ?? newest.target ?? newest.name ?? "") : "";
+      const since = was?.since ?? (Number.isFinite(entry.since) ? entry.since : now);
+      seen.set(id, { stepKey: key, stepAt, since });
+    } else {
+      if (was !== void 0 && was.since > 0) {
+        look.ran = now - was.since;
+        look.finishedAt = now;
+      }
+      seen.delete(id);
+    }
+    const approval = asks.find((item) => item?.botId === id);
+    const wait = waits[id];
+    const waitingAt = Number.isFinite(approval?.at) ? approval.at : Number.isFinite(wait?.since) ? wait.since : void 0;
+    if (waitingAt !== void 0) {
+      look.waiting = true;
+      look.waitingAt = waitingAt;
+      look.ask = approval !== void 0 || wait !== void 0;
+      look.askText = approval?.tool ?? "";
+    }
+    bots[id] = look;
+  }
+  return bots;
+}
+function WatchStrip({ useRoster, useWork, actions }) {
+  const roster = useRoster((value) => value);
+  const work = useWork?.((value) => value) ?? { bots: {}, approvals: [], waiting: {} };
+  const [notices, setNotices] = (0, import_react78.useState)([]);
+  const seen = (0, import_react78.useRef)(/* @__PURE__ */ new Map());
+  const dismissed = (0, import_react78.useRef)(/* @__PURE__ */ new Set());
+  const workKey = JSON.stringify(work);
+  const watching = useWork !== void 0 && roster.ready !== false && Object.keys(roster.byId ?? {}).length > 0;
+  (0, import_react78.useEffect)(() => {
+    if (!watching) return () => {
+    };
+    let stopped = false;
+    let timer;
+    const look = async () => {
+      const bots = watchLook({ work: JSON.parse(workKey), now: Date.now(), seen: seen.current });
+      const busy = Object.keys(bots).length;
+      let quiet = busy === 0 || Object.values(bots).every((item) => item.going !== true && item.waiting !== true);
+      try {
+        const value = await call("watch-check", { bots });
+        if (!stopped && Array.isArray(value?.notices)) setNotices(value.notices);
+      } catch {
+        if (!stopped) setNotices([]);
+        quiet = true;
+      }
+      if (stopped) return;
+      timer = setTimeout(look, quiet ? LOOK_REST_MS : LOOK_MS);
+    };
+    void look();
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+    };
+  }, [workKey, watching]);
+  const lines = notices.filter((notice) => !dismissed.current.has(notice.id)).slice(-SHOWN_MAX).reverse();
+  const hide = (id) => {
+    dismissed.current.add(id);
+    setNotices((current2) => current2.filter((notice) => notice.id !== id));
+  };
+  if (!watching || lines.length === 0) return null;
+  return (0, import_react78.createElement)(
+    "div",
+    { className: "bt-watch", role: "status", "aria-live": "polite" },
+    lines.map((notice) => {
+      const bot = roster?.byId?.[notice.botId];
+      const text = watchText(notice);
+      const open = () => {
+        hide(notice.id);
+        if (bot) actions?.openSession?.(bot.id);
+      };
+      return (0, import_react78.createElement)(
+        "div",
+        { key: notice.id, className: "bt-watch-line", "data-kind": notice.kind },
+        (0, import_react78.createElement)(
+          "button",
+          { type: "button", className: "bt-watch-open", onClick: open },
+          (0, import_react78.createElement)("span", { className: "bt-watch-dot", "aria-hidden": true }),
+          (0, import_react78.createElement)("span", { className: "bt-watch-text" }, text)
+        ),
+        (0, import_react78.createElement)("button", { type: "button", className: "bt-watch-x", "aria-label": t("Dismiss"), onClick: () => hide(notice.id) }, "×")
+      );
+    })
+  );
+}
+function watchText(notice, now = Date.now(), tr = t) {
+  const name = notice.name ?? tr("A Bot");
+  const minutes = Math.max(1, Math.round((now - notice.at) / 6e4));
+  if (notice.kind === "stuck") {
+    return notice.text === "" ? tr("{name} has been on the same step for {n} min", { name, n: minutes }) : tr("{name} is stuck on {step} ({n} min)", { name, step: notice.text, n: minutes });
+  }
+  if (notice.kind === "waiting") return tr("{name} has waited {n} min for your answer", { name, n: minutes });
+  return tr("{name} finished a {n} min job", { name, n: Math.max(1, Math.round((notice.ran ?? 0) / 6e4)) });
+}
+var WATCH_CSS = `
+.bt-watch{display:flex;flex-direction:column;gap:4px;max-width:min(680px,100%);margin:0 auto 8px}
+.bt-watch-line{display:flex;align-items:center;border-radius:12px;background:var(--bt-main);box-shadow:0 0 0 .5px var(--bt-line-2),0 2px 8px -3px rgba(0,0,0,.14);font-size:12.5px;line-height:18px;color:var(--bt-ink-2);animation:bt-rise .18s ease-out backwards}
+.bt-watch-line:hover{background:color-mix(in srgb,var(--bt-ink) 3%,var(--bt-main))}
+.bt-watch-open{flex:1;min-width:0;display:flex;align-items:center;gap:8px;min-height:32px;padding:0 4px 0 12px;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.bt-watch-dot{flex:none;width:6px;height:6px;border-radius:50%;background:var(--bt-ink-3)}
+.bt-watch-line[data-kind="stuck"] .bt-watch-dot{background:var(--bt-warn)}
+.bt-watch-line[data-kind="waiting"] .bt-watch-dot{background:color-mix(in srgb,var(--bt-warn) 70%,var(--bt-star))}
+.bt-watch-line[data-kind="finished"] .bt-watch-dot{background:var(--bt-green)}
+.bt-watch-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bt-watch-x{flex:none;width:28px;height:28px;margin-right:2px;border:0;border-radius:8px;background:none;color:var(--bt-ink-3);font:inherit;font-size:15px;line-height:1;cursor:pointer}
+.bt-watch-x:hover{background:var(--bt-hover);color:var(--bt-ink)}
+@media (prefers-reduced-motion:reduce){.bt-watch-line{animation:none}}
+`;
+
 // src/client/user-text-rule.js
 var BOT_MENTION_ID = "bot-mention";
 var ORDER = 5;
@@ -45269,7 +45402,7 @@ function installBotMentionRule(userText, roster) {
 }
 
 // src/client/queue-dock.js
-var import_react78 = require("react");
+var import_react79 = require("react");
 var OWN_QUEUE_KINDS = /* @__PURE__ */ new Set(["user", "schedule", "user-question-reply"]);
 var EMPTY_QUEUE = [];
 var QUEUE_TEXT_FACTS = { collapseWhitespace: true, trimWhitespace: true };
@@ -45286,17 +45419,17 @@ function queueAttachments(content) {
 var fileSizeText2 = (bytes) => typeof bytes !== "number" || !Number.isFinite(bytes) ? "" : bytes < 1024 ? `${bytes} B` : bytes < 1048576 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1048576).toFixed(1)} MB`;
 function QueueFile({ attachment, label }) {
   const size = fileSizeText2(attachment.bytes);
-  return (0, import_react78.createElement)(
+  return (0, import_react79.createElement)(
     "span",
     { className: "bt-queue-file", "aria-label": label, title: attachment.name },
-    (0, import_react78.createElement)("span", { className: "bt-queue-fileicon", "aria-hidden": true }, (0, import_react78.createElement)(PaperclipIcon)),
-    (0, import_react78.createElement)("span", { className: "bt-queue-filename" }, attachment.name),
-    size !== "" ? (0, import_react78.createElement)("span", { className: "bt-queue-filesize" }, size) : null
+    (0, import_react79.createElement)("span", { className: "bt-queue-fileicon", "aria-hidden": true }, (0, import_react79.createElement)(PaperclipIcon)),
+    (0, import_react79.createElement)("span", { className: "bt-queue-filename" }, attachment.name),
+    size !== "" ? (0, import_react79.createElement)("span", { className: "bt-queue-filesize" }, size) : null
   );
 }
 function QueueThumb({ attachment, loadImage, label }) {
-  const [url, setUrl] = (0, import_react78.useState)(null);
-  (0, import_react78.useEffect)(() => {
+  const [url, setUrl] = (0, import_react79.useState)(null);
+  (0, import_react79.useEffect)(() => {
     let alive = true;
     loadImage(attachment).then((resolved) => {
       if (alive) setUrl(resolved);
@@ -45306,22 +45439,22 @@ function QueueThumb({ attachment, loadImage, label }) {
       alive = false;
     };
   }, [attachment, loadImage]);
-  return url === null ? (0, import_react78.createElement)("span", { className: "bt-queue-thumb", "aria-hidden": true }) : (0, import_react78.createElement)("img", { className: "bt-queue-thumb", src: url, alt: label });
+  return url === null ? (0, import_react79.createElement)("span", { className: "bt-queue-thumb", "aria-hidden": true }) : (0, import_react79.createElement)("img", { className: "bt-queue-thumb", src: url, alt: label });
 }
 function Preview({ text, renderFactorySlot }) {
   const rendered = renderFactorySlot?.("conversation.user.text", { text, facts: QUEUE_TEXT_FACTS, interactive: false, ellipsis: true });
-  return (0, import_react78.createElement)("span", { className: "bt-queue-preview" }, rendered ?? text);
+  return (0, import_react79.createElement)("span", { className: "bt-queue-preview" }, rendered ?? text);
 }
 function EditField({ text, onChange, onSave, onCancel }) {
-  const field = (0, import_react78.useRef)(null);
-  (0, import_react78.useEffect)(() => {
+  const field = (0, import_react79.useRef)(null);
+  (0, import_react79.useEffect)(() => {
     const node = field.current;
     if (node === null) return;
     node.focus();
     node.style.height = "auto";
     node.style.height = `${node.scrollHeight}px`;
   }, [text]);
-  return (0, import_react78.createElement)("textarea", {
+  return (0, import_react79.createElement)("textarea", {
     ref: field,
     className: "bt-queue-edit",
     value: text,
@@ -45340,28 +45473,28 @@ function EditField({ text, onChange, onSave, onCancel }) {
   });
 }
 function RowButton({ label, title, disabled, onClick, children }) {
-  return (0, import_react78.createElement)("button", { type: "button", className: "bt-queue-action", "aria-label": label, title: title ?? label, disabled, onClick }, children);
+  return (0, import_react79.createElement)("button", { type: "button", className: "bt-queue-action", "aria-label": label, title: title ?? label, disabled, onClick }, children);
 }
 function QueueDock({ useSession, useProjection, updateQueue, loadImage, renderFactorySlot, actions }) {
   const inbox = useProjection?.("inbox");
   const pendingSubmissions = useSession?.((s) => s.pendingSubmissions) ?? EMPTY_QUEUE;
-  const queue = (0, import_react78.useMemo)(() => {
+  const queue = (0, import_react79.useMemo)(() => {
     const rows2 = (inbox?.["next-turn"] ?? EMPTY_QUEUE).filter((row) => OWN_QUEUE_KINDS.has(row.source?.kind));
     const inChat = new Set(pendingSubmissions.filter((item) => item.placement === "transcript").map((item) => item.requestId));
     return inChat.size === 0 ? rows2 : rows2.filter(({ source }) => source === null || typeof source !== "object" || !("rpcId" in source) || !inChat.has(source.rpcId));
   }, [inbox, pendingSubmissions]);
-  const pendingQueue = (0, import_react78.useMemo)(() => {
+  const pendingQueue = (0, import_react79.useMemo)(() => {
     const admitted = new Set(queue.flatMap(({ source }) => source !== null && typeof source === "object" && "rpcId" in source ? [source.rpcId] : []));
     return pendingSubmissions.filter((submission) => submission.placement === "queued" && !admitted.has(submission.requestId));
   }, [pendingSubmissions, queue]);
   const rowCount = queue.length + pendingQueue.length;
   const running = useSession?.((s) => s.running) === true;
   const queueMutable = useSession?.((s) => s.subagent === null || s.subagent === void 0 || s.subagent.address?.mode === "continuable") ?? true;
-  const [editing, setEditing] = (0, import_react78.useState)(null);
-  const [busy, setBusy] = (0, import_react78.useState)(null);
-  const [collapsed, setCollapsed] = (0, import_react78.useState)(true);
-  const listId = (0, import_react78.useId)();
-  (0, import_react78.useEffect)(() => {
+  const [editing, setEditing] = (0, import_react79.useState)(null);
+  const [busy, setBusy] = (0, import_react79.useState)(null);
+  const [collapsed, setCollapsed] = (0, import_react79.useState)(true);
+  const listId = (0, import_react79.useId)();
+  (0, import_react79.useEffect)(() => {
     if (rowCount === 0 && !collapsed) setCollapsed(true);
     if (editing !== null && (!queueMutable || !queue.some((row) => row.id === editing.id))) setEditing(null);
   }, [collapsed, editing, queue, queueMutable, rowCount]);
@@ -45389,77 +45522,77 @@ function QueueDock({ useSession, useProjection, updateQueue, loadImage, renderFa
     if (editing === null || editing.text.trim() === "") return;
     if (await applyAction(editing.id, { kind: "edit", content: [{ type: "text", text: editing.text }] }, t("Couldn’t edit the queued message — it may have started already."))) setEditing(null);
   };
-  return (0, import_react78.createElement)(
+  return (0, import_react79.createElement)(
     "div",
     { className: "bt-queue-dock", "data-queue-dock": "" },
-    (0, import_react78.createElement)(
+    (0, import_react79.createElement)(
       "div",
       { className: "bt-queue-panel" },
-      rowCount > 1 && (0, import_react78.createElement)(
+      rowCount > 1 && (0, import_react79.createElement)(
         "button",
         { type: "button", className: "bt-queue-head", "aria-controls": listId, "aria-expanded": expanded, disabled: interactionActive, onClick: () => setCollapsed((value) => !value) },
-        (0, import_react78.createElement)("span", { className: "bt-queue-lead", "aria-hidden": true }, (0, import_react78.createElement)(QueueIcon)),
-        (0, import_react78.createElement)("span", { className: "bt-queue-count" }, t("{n} queued messages", { n: rowCount })),
-        !listVisible && pendingQueue.length > 0 && (0, import_react78.createElement)("span", { className: "bt-queue-status", role: "status" }, t("Sending…")),
-        (0, import_react78.createElement)("span", { className: "bt-queue-chev", "aria-hidden": true }, expanded ? (0, import_react78.createElement)(ChevronDownIcon) : (0, import_react78.createElement)(ChevronUpIcon))
+        (0, import_react79.createElement)("span", { className: "bt-queue-lead", "aria-hidden": true }, (0, import_react79.createElement)(QueueIcon)),
+        (0, import_react79.createElement)("span", { className: "bt-queue-count" }, t("{n} queued messages", { n: rowCount })),
+        !listVisible && pendingQueue.length > 0 && (0, import_react79.createElement)("span", { className: "bt-queue-status", role: "status" }, t("Sending…")),
+        (0, import_react79.createElement)("span", { className: "bt-queue-chev", "aria-hidden": true }, expanded ? (0, import_react79.createElement)(ChevronDownIcon) : (0, import_react79.createElement)(ChevronUpIcon))
       ),
-      (0, import_react78.createElement)(
+      (0, import_react79.createElement)(
         "ul",
         { id: listId, className: "bt-queue-list", hidden: !listVisible },
         listVisible && queue.map((row) => {
           const attachments = queueAttachments(row.content);
           const text = textOf(row.content);
-          return (0, import_react78.createElement)(
+          return (0, import_react79.createElement)(
             "li",
             { key: row.id, className: "bt-queue-row" },
-            rowCount === 1 && (0, import_react78.createElement)("span", { className: "bt-queue-lead", "aria-hidden": true }, (0, import_react78.createElement)(QueueIcon)),
-            editing?.id === row.id ? (0, import_react78.createElement)(EditField, { text: editing.text, onChange: (text2) => setEditing({ id: row.id, text: text2 }), onSave: saveEdit, onCancel: () => setEditing(null) }) : (0, import_react78.createElement)(
-              import_react78.Fragment,
+            rowCount === 1 && (0, import_react79.createElement)("span", { className: "bt-queue-lead", "aria-hidden": true }, (0, import_react79.createElement)(QueueIcon)),
+            editing?.id === row.id ? (0, import_react79.createElement)(EditField, { text: editing.text, onChange: (text2) => setEditing({ id: row.id, text: text2 }), onSave: saveEdit, onCancel: () => setEditing(null) }) : (0, import_react79.createElement)(
+              import_react79.Fragment,
               null,
-              attachments.length > 0 && (0, import_react78.createElement)(
+              attachments.length > 0 && (0, import_react79.createElement)(
                 "span",
                 { className: "bt-queue-attachments" },
-                attachments.map((item, index) => item.type === "image" ? (0, import_react78.createElement)(QueueThumb, { key: `${item.attachment.attachmentId}:${index}`, attachment: item.attachment, loadImage, label: t("Queued image") }) : (0, import_react78.createElement)(QueueFile, { key: `${item.attachment.attachmentId}:${item.attachment.name}:${index}`, attachment: item.attachment, label: t("Queued file {name}", { name: item.attachment.name }) }))
+                attachments.map((item, index) => item.type === "image" ? (0, import_react79.createElement)(QueueThumb, { key: `${item.attachment.attachmentId}:${index}`, attachment: item.attachment, loadImage, label: t("Queued image") }) : (0, import_react79.createElement)(QueueFile, { key: `${item.attachment.attachmentId}:${item.attachment.name}:${index}`, attachment: item.attachment, label: t("Queued file {name}", { name: item.attachment.name }) }))
               ),
-              (0, import_react78.createElement)(Preview, { text: row.content.filter((block) => block.type === "text").map((block) => block.text).join(""), renderFactorySlot })
+              (0, import_react79.createElement)(Preview, { text: row.content.filter((block) => block.type === "text").map((block) => block.text).join(""), renderFactorySlot })
             ),
-            queueMutable && (0, import_react78.createElement)(
+            queueMutable && (0, import_react79.createElement)(
               "div",
               { className: "bt-queue-actions" },
-              editing?.id === row.id ? (0, import_react78.createElement)(
-                import_react78.Fragment,
+              editing?.id === row.id ? (0, import_react79.createElement)(
+                import_react79.Fragment,
                 null,
-                (0, import_react78.createElement)(RowButton, { label: t("Save queued message"), disabled: busy !== null || editing.text.trim() === "", onClick: saveEdit }, (0, import_react78.createElement)(CheckIcon)),
-                (0, import_react78.createElement)(RowButton, { label: t("Cancel editing"), disabled: busy !== null, onClick: () => setEditing(null) }, (0, import_react78.createElement)(CloseIcon))
-              ) : (0, import_react78.createElement)(
-                import_react78.Fragment,
+                (0, import_react79.createElement)(RowButton, { label: t("Save queued message"), disabled: busy !== null || editing.text.trim() === "", onClick: saveEdit }, (0, import_react79.createElement)(CheckIcon)),
+                (0, import_react79.createElement)(RowButton, { label: t("Cancel editing"), disabled: busy !== null, onClick: () => setEditing(null) }, (0, import_react79.createElement)(CloseIcon))
+              ) : (0, import_react79.createElement)(
+                import_react79.Fragment,
                 null,
-                (0, import_react78.createElement)(RowButton, { label: t("Edit queued message"), title: text === null ? t("Contains non-text content, so editing is not supported yet") : void 0, disabled: busy !== null || text === null, onClick: () => {
+                (0, import_react79.createElement)(RowButton, { label: t("Edit queued message"), title: text === null ? t("Contains non-text content, so editing is not supported yet") : void 0, disabled: busy !== null || text === null, onClick: () => {
                   if (text !== null) setEditing({ id: row.id, text });
-                } }, (0, import_react78.createElement)(PencilIcon)),
-                (0, import_react78.createElement)(RowButton, { label: t("Delete queued message"), disabled: busy !== null, onClick: () => applyAction(row.id, { kind: "remove" }, t("Couldn’t delete the queued message — it may have started already.")) }, (0, import_react78.createElement)(TrashIcon)),
-                (0, import_react78.createElement)(RowButton, { label: t("Steer queued message"), title: running ? void 0 : t("Only while a turn is running"), disabled: busy !== null || !running, onClick: () => applyAction(row.id, { kind: "steer" }, t("Couldn’t steer the queued message. Try again.")) }, (0, import_react78.createElement)(ArrowUpIcon))
+                } }, (0, import_react79.createElement)(PencilIcon)),
+                (0, import_react79.createElement)(RowButton, { label: t("Delete queued message"), disabled: busy !== null, onClick: () => applyAction(row.id, { kind: "remove" }, t("Couldn’t delete the queued message — it may have started already.")) }, (0, import_react79.createElement)(TrashIcon)),
+                (0, import_react79.createElement)(RowButton, { label: t("Steer queued message"), title: running ? void 0 : t("Only while a turn is running"), disabled: busy !== null || !running, onClick: () => applyAction(row.id, { kind: "steer" }, t("Couldn’t steer the queued message. Try again.")) }, (0, import_react79.createElement)(ArrowUpIcon))
               )
             )
           );
         }),
-        listVisible && pendingQueue.map((submission) => (0, import_react78.createElement)(
+        listVisible && pendingQueue.map((submission) => (0, import_react79.createElement)(
           "li",
           { key: submission.requestId, className: "bt-queue-row bt-queue-pending" },
-          rowCount === 1 && (0, import_react78.createElement)("span", { className: "bt-queue-lead", "aria-hidden": true }, (0, import_react78.createElement)(QueueIcon)),
-          submission.attachments.length > 0 && (0, import_react78.createElement)(
+          rowCount === 1 && (0, import_react79.createElement)("span", { className: "bt-queue-lead", "aria-hidden": true }, (0, import_react79.createElement)(QueueIcon)),
+          submission.attachments.length > 0 && (0, import_react79.createElement)(
             "span",
             { className: "bt-queue-attachments" },
-            submission.attachments.map((attachment, index) => attachment.type === "image" ? (0, import_react78.createElement)("img", { key: `${attachment.value.previewUrl}:${index}`, className: "bt-queue-thumb", src: attachment.value.previewUrl, alt: t("Queued image") }) : (0, import_react78.createElement)(QueueFile, { key: `${attachment.value.attachmentId}:${attachment.value.name}:${index}`, attachment: attachment.value, label: t("Queued file {name}", { name: attachment.value.name }) }))
+            submission.attachments.map((attachment, index) => attachment.type === "image" ? (0, import_react79.createElement)("img", { key: `${attachment.value.previewUrl}:${index}`, className: "bt-queue-thumb", src: attachment.value.previewUrl, alt: t("Queued image") }) : (0, import_react79.createElement)(QueueFile, { key: `${attachment.value.attachmentId}:${attachment.value.name}:${index}`, attachment: attachment.value, label: t("Queued file {name}", { name: attachment.value.name }) }))
           ),
-          (0, import_react78.createElement)(Preview, { text: submission.text, renderFactorySlot }),
-          (0, import_react78.createElement)("span", { className: "bt-queue-status", role: "status" }, t("Sending…")),
-          queueMutable && (0, import_react78.createElement)(
+          (0, import_react79.createElement)(Preview, { text: submission.text, renderFactorySlot }),
+          (0, import_react79.createElement)("span", { className: "bt-queue-status", role: "status" }, t("Sending…")),
+          queueMutable && (0, import_react79.createElement)(
             "div",
             { className: "bt-queue-actions" },
-            (0, import_react78.createElement)(RowButton, { label: t("Edit queued message"), title: t("Sending…"), disabled: true }, (0, import_react78.createElement)(PencilIcon)),
-            (0, import_react78.createElement)(RowButton, { label: t("Delete queued message"), title: t("Sending…"), disabled: true }, (0, import_react78.createElement)(TrashIcon)),
-            (0, import_react78.createElement)(RowButton, { label: t("Steer queued message"), title: t("Sending…"), disabled: true }, (0, import_react78.createElement)(ArrowUpIcon))
+            (0, import_react79.createElement)(RowButton, { label: t("Edit queued message"), title: t("Sending…"), disabled: true }, (0, import_react79.createElement)(PencilIcon)),
+            (0, import_react79.createElement)(RowButton, { label: t("Delete queued message"), title: t("Sending…"), disabled: true }, (0, import_react79.createElement)(TrashIcon)),
+            (0, import_react79.createElement)(RowButton, { label: t("Steer queued message"), title: t("Sending…"), disabled: true }, (0, import_react79.createElement)(ArrowUpIcon))
           )
         ))
       )
@@ -45720,7 +45853,7 @@ function singleFlight(map, key, run2) {
 }
 
 // src/client/text-annotation.js
-var import_react79 = require("react");
+var import_react80 = require("react");
 var quoteMarkdown = (text) => text.replace(/\r\n?/gu, "\n").split("\n").map((line) => `> ${line}`).join("\n");
 var withAnnotation = (text, annotation) => annotation.trim() ? `${text}
 
@@ -45733,23 +45866,23 @@ function insertAnnotation(inputActions, text, annotation) {
 function TextSelectionAction({ sessionId, dismiss, readText, clearSelection, inputActions, useSession, useRoster, actions, t: hostT }) {
   const enabled = useSession((state) => !state.removed && (state.subagent === null || state.subagent.address.mode === "continuable" && state.subagent.parentAvailable === true));
   const team = useRoster((state) => state.byId[sessionId] !== void 0 || state.roomsById[sessionId] !== void 0);
-  const [editing, setEditing] = (0, import_react79.useState)(false);
-  const [excerpt, setExcerpt] = (0, import_react79.useState)(null);
-  const [annotation, setAnnotation] = (0, import_react79.useState)("");
-  const [sending, setSending] = (0, import_react79.useState)(false);
-  const [closing, setClosing] = (0, import_react79.useState)(false);
-  const field = (0, import_react79.useRef)(null);
-  const pending = (0, import_react79.useRef)(false);
-  const closeTimer = (0, import_react79.useRef)(null);
-  (0, import_react79.useEffect)(() => {
+  const [editing, setEditing] = (0, import_react80.useState)(false);
+  const [excerpt, setExcerpt] = (0, import_react80.useState)(null);
+  const [annotation, setAnnotation] = (0, import_react80.useState)("");
+  const [sending, setSending] = (0, import_react80.useState)(false);
+  const [closing, setClosing] = (0, import_react80.useState)(false);
+  const field = (0, import_react80.useRef)(null);
+  const pending = (0, import_react80.useRef)(false);
+  const closeTimer = (0, import_react80.useRef)(null);
+  (0, import_react80.useEffect)(() => {
     if (!enabled) dismiss();
   }, [enabled, dismiss]);
-  (0, import_react79.useEffect)(() => {
+  (0, import_react80.useEffect)(() => {
     if (!team || !enabled || !editing) return;
     field.current?.focus();
     if (typeof window !== "undefined") window.dispatchEvent(new Event("resize"));
   }, [team, enabled, editing]);
-  (0, import_react79.useEffect)(() => () => clearTimeout(closeTimer.current), []);
+  (0, import_react80.useEffect)(() => () => clearTimeout(closeTimer.current), []);
   if (!enabled) return null;
   const close = () => {
     clearSelection();
@@ -45822,7 +45955,7 @@ function TextSelectionAction({ sessionId, dismiss, readText, clearSelection, inp
     else void send();
   };
   if (!team) {
-    return (0, import_react79.createElement)("button", {
+    return (0, import_react80.createElement)("button", {
       type: "button",
       className: "bt-quote-plain",
       "aria-label": hostT("quote.add"),
@@ -45831,17 +45964,17 @@ function TextSelectionAction({ sessionId, dismiss, readText, clearSelection, inp
     }, hostT("quote.add"));
   }
   if (!editing) {
-    return (0, import_react79.createElement)(
+    return (0, import_react80.createElement)(
       "div",
       { className: "bt-selection-actions" },
-      (0, import_react79.createElement)("button", {
+      (0, import_react80.createElement)("button", {
         type: "button",
         className: "bt-selection-action",
         "aria-label": hostT("quote.add"),
         onPointerDown: (event) => event.preventDefault(),
         onClick: quoteOnly
       }, hostT("quote.add")),
-      (0, import_react79.createElement)("button", {
+      (0, import_react80.createElement)("button", {
         type: "button",
         className: "bt-selection-action bt-quote-annotate",
         "aria-label": t("Annotate"),
@@ -45850,12 +45983,12 @@ function TextSelectionAction({ sessionId, dismiss, readText, clearSelection, inp
       }, t("Annotate"))
     );
   }
-  return (0, import_react79.createElement)(
+  return (0, import_react80.createElement)(
     "section",
     { className: "bt-annotation", "aria-label": t("Annotate quote"), "data-leaving": closing || void 0, onPointerDown: (event) => event.stopPropagation() },
-    (0, import_react79.createElement)("label", { className: "bt-annotation-label", htmlFor: "bt-annotation-field" }, t("Annotation")),
-    (0, import_react79.createElement)("blockquote", { className: "bt-annotation-quote" }, quoteText()),
-    (0, import_react79.createElement)("textarea", {
+    (0, import_react80.createElement)("label", { className: "bt-annotation-label", htmlFor: "bt-annotation-field" }, t("Annotation")),
+    (0, import_react80.createElement)("blockquote", { className: "bt-annotation-quote" }, quoteText()),
+    (0, import_react80.createElement)("textarea", {
       id: "bt-annotation-field",
       ref: field,
       value: annotation,
@@ -45866,11 +45999,11 @@ function TextSelectionAction({ sessionId, dismiss, readText, clearSelection, inp
       onChange: (event) => setAnnotation(event.target.value),
       onKeyDown
     }),
-    (0, import_react79.createElement)(
+    (0, import_react80.createElement)(
       "div",
       { className: "bt-annotation-actions" },
-      (0, import_react79.createElement)("button", { type: "button", className: "bt-annotation-add", disabled: sending || closing, onClick: add, title: t("Add quote and annotation to the composer · Enter") }, t("Add")),
-      (0, import_react79.createElement)("button", { type: "button", className: "bt-annotation-send", disabled: sending || closing, onClick: () => void send(), title: t("Send quote and annotation · Ctrl+Enter") }, sending ? t("Sending…") : t("Send"))
+      (0, import_react80.createElement)("button", { type: "button", className: "bt-annotation-add", disabled: sending || closing, onClick: add, title: t("Add quote and annotation to the composer · Enter") }, t("Add")),
+      (0, import_react80.createElement)("button", { type: "button", className: "bt-annotation-send", disabled: sending || closing, onClick: () => void send(), title: t("Send quote and annotation · Ctrl+Enter") }, sending ? t("Sending…") : t("Send"))
     )
   );
 }
@@ -47027,6 +47160,7 @@ function apply(ctx) {
     [FEEDBACK_CSS, "feedback"],
     [ABOUT_CSS, "about"],
     [MEMBER_CSS, "members"],
+    [WATCH_CSS, "watch"],
     [TASK_CSS, "tasks"],
     [PASTE_CSS, "paste"],
     [OPENING_CSS, "opening"],
@@ -47141,6 +47275,8 @@ function apply(ctx) {
     () => shadow("conversation.composer.dock", { id: "activity", order: 0, priority: BOT_PRIORITY }, Nothing),
     () => shadow("conversation.composer.dock", { id: "usage", order: 1, priority: BOT_PRIORITY }, Nothing),
     () => shadow("conversation.composer.dock", { id: "btw", order: 2, priority: BOT_PRIORITY, inject: face }, BtwDock),
+    // What the watcher noticed about the team, above the composer, in every conversation.
+    () => shadow("conversation.composer.dock", { id: "watch", order: -1, priority: BOT_PRIORITY, inject: face }, WatchStrip),
     () => shadow("conversation.input.left", { id: "bot-paste", order: -110, inject: face }, PasteGuard),
     () => shadow("conversation.input.left", { id: "bot-plus", order: -100, inject: face }, ComposerPlus),
     () => shadow("conversation.input.right", { id: "bot-voice", order: 100, inject: face }, ComposerVoice),
