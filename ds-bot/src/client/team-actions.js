@@ -63,6 +63,11 @@ export function teamActions({ call, after, partFor, roster, ui, live, cards, hel
     // DS Bot's own Models page: the providers DSH serves, their keys and models.
     openModels: () => openSettings('models'),
     closeSettings: () => { ui.set(state => (state.settings ? { ...state, settings: null } : state)) },
+    // The dashboard is its own page, not a Settings page, so it closes the other
+    // floating surfaces and takes the whole window.
+    openDashboard: () => { ui.set(state => ({ ...state, dashboard: true, settings: null, menu: null, palette: null, newChat: null })) },
+    closeDashboard: () => { ui.set(state => (state.dashboard ? { ...state, dashboard: false } : state)) },
+
     openMemory: (id) => { ui.set(state => ({ ...state, memory: id, menu: null, palette: null })) },
     closeMemory: () => { ui.set(state => (state.memory ? { ...state, memory: null } : state)) },
     openConnectors: () => { ui.set(state => ({ ...state, settings: { page: 'connectors', id: null }, menu: null, palette: null, newChat: null })) },

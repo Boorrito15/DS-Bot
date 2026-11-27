@@ -1,6 +1,8 @@
 import { createElement as h, useCallback, useEffect, useRef, useState } from 'react'
 import { call } from './api.js'
 import { t } from './i18n.js'
+import { CloseIcon } from './icons.js'
+import { useEscape } from './overlay-hooks.js'
 
 // -------------------------------------------------------------------------
 // The dashboard: the team as people, not as numbers. Who is working and on what, who
@@ -116,6 +118,18 @@ function dayLabel(at, now) {
   try { return new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short' }).format(date) } catch { return date.toDateString() }
 }
 
+// The page is its own place in the app, not a row in Settings: it answers one question,
+// and opening it should not mean walking past the settings list to reach it.
+export function DashboardScreen({ roster, actions }) {
+  const close = () => actions.closeDashboard?.()
+  useEscape(() => { if (close) close() })
+  return h('div', { className: 'bt-dashboard', role: 'dialog', 'aria-modal': true, 'aria-label': t('Dashboard') },
+    h('div', { className: 'bt-dashboard-head' },
+      h('div', { className: 'bt-dashboard-title' }, t('Dashboard')),
+      actions.closeDashboard ? h('button', { type: 'button', className: 'bt-icon-btn bt-dashboard-close', 'aria-label': `${t('Close')} ${t('Dashboard')}`, title: `${t('Close')} ${t('Dashboard')}`, onClick: close }, h(CloseIcon)) : null),
+    h('div', { className: 'bt-dashboard-body' }, h(DashboardPage, { roster, actions })))
+}
+
 export function DashboardPage({ roster, actions }) {
   const [live, setLive] = useState({ work: {}, rooms: {}, approvals: [], waiting: {}, rows: [], next: null })
   const [loading, setLoading] = useState(false)
@@ -174,6 +188,12 @@ export function DashboardPage({ roster, actions }) {
 }
 
 export const DASHBOARD_CSS = `
+.bt-dashboard{position:fixed;inset:var(--dsh-frame-chrome-top,0px) 0 0;z-index:62;display:flex;flex-direction:column;background:var(--bt-main);overflow:hidden}
+.bt-dashboard-head{flex:none;display:flex;align-items:center;gap:8px;height:52px;padding:0 14px 0 18px;border-bottom:.5px solid var(--bt-line-2)}
+.bt-dashboard-title{flex:1;min-width:0;font-size:15px;font-weight:600;color:var(--bt-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bt-dashboard-close{flex:none}
+.bt-dashboard-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:14px 18px 40px}
+.bt-dashboard-body .bt-dash{width:100%;max-width:720px;margin:0 auto}
 .bt-dash{display:flex;flex-direction:column;gap:10px;padding:4px 2px 24px}
 .bt-dash-sum{font-size:12.5px;line-height:18px;color:var(--bt-ink-3)}
 .bt-dash-err{font-size:12px;line-height:17px;color:var(--bt-danger)}

@@ -1058,7 +1058,7 @@ export function AccountLauncher({ seat = true, settingsOpen, actions }) {
   const openModels = actions.openModels
   const groups = [
     [
-      [t('Dashboard'), BoardIcon, () => actions.openSettings('dashboard')],
+      [t('Dashboard'), BoardIcon, () => actions.openDashboard()],
       [t('Usage'), GaugeIcon, () => actions.openSettings('usage')],
       openModels ? [t('Models and API keys'), SlidersIcon, () => openModels()] : null,
       [t('Connectors'), ConnectorIcon, () => actions.openConnectors()],
