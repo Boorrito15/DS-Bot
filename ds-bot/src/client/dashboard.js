@@ -88,6 +88,12 @@ export function teamRows(roster, live, now) {
   return [...bots, ...groupRows].sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name))
 }
 
+function countBox(value, label, tone) {
+  return h('div', { className: 'bt-dash-count', 'data-tone': tone },
+    h('span', { className: 'bt-dash-count-n' }, String(value)),
+    h('span', { className: 'bt-dash-count-l' }, label))
+}
+
 function Dot({ kind }) {
   return h('span', { className: 'bt-dash-dot', 'data-kind': kind, 'aria-hidden': true })
 }
@@ -148,7 +154,51 @@ export function previewReading(now = Date.now()) {
     waiting: {},
     rows,
     next: 'p:4',
+    failed: [{ id: 'failed:p:x', at: now - 95 * MIN, botId: 'p-runner', botName: 'Runner', code: 'TRANSPORT' }],
+    since: 86_400_000,
+    at: now,
     preview: true,
+  }
+}
+
+// The four numbers that say whether the day is going well, each counted from what really
+// happened: turns that finished, turns that failed, things waiting on the user, and how
+// long since anyone did anything. A quiet day and a broken day look the same in a list of
+// rows; they do not look the same here.
+export function countsOf({ live, roster, now, since = 86_400_000 }) {
+  const rows = (live?.rows ?? []).filter(row => row.at >= now - since)
+  const failed = (live?.failed ?? []).filter(row => row.at >= now - since)
+  const approvals = live?.approvals ?? []
+  const waiting = live?.waiting ?? {}
+  const waitingOn = new Set([...approvals.map(entry => entry.botId), ...Object.keys(waiting)]).size
+  const bots = Object.values(roster?.byId ?? {}).filter(bot => bot.hidden !== true).length
+  const last = rows.reduce((newest, row) => (row.at > newest ? row.at : newest), 0)
+  return {
+    finished: rows.length,
+    failed: failed.length,
+    waitingOn,
+    bots,
+    quietFor: last === 0 ? null : now - last,
+  }
+}
+
+// `since` is how far back the numbers reach, in words, kept short enough for a label.
+export function spanText(ms, tr = t) {
+  if (!Number.isFinite(ms) || ms <= 0) return tr('today')
+  const days = Math.round(ms / 86_400_000)
+  if (days <= 1) return tr('last 24 hours')
+  if (days === 7) return tr('last 7 days')
+  return tr('in the last {n} days', { n: days })
+}
+
+// What each number means when something is wrong: a failure or a queue at your door is
+// worth a colour; an ordinary count is not.
+export function toneOf(counts = {}) {
+  return {
+    finished: 'plain',
+    failed: counts.failed > 0 ? 'bad' : 'plain',
+    waitingOn: counts.waitingOn > 0 ? 'ask' : 'plain',
+    quietFor: counts.quietFor !== null && counts.quietFor > 3 * 86_400_000 ? 'warn' : 'plain',
   }
 }
 
@@ -170,14 +220,15 @@ export function DashboardPage({ roster, actions, preview = false }) {
   const [failed, setFailed] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   const [shown, setShown] = useState(PAGE)
+  const [span, setSpan] = useState(86_400_000)
   const busy = useRef(false)
 
-  const read = useCallback(async (limit = PAGE) => {
+  const read = useCallback(async (limit = PAGE, reach = 86_400_000) => {
     if (preview) return
     if (busy.current) return
     busy.current = true
     try {
-      const value = await call('dashboard', { limit })
+      const value = await call('dashboard', { limit, since: reach })
       setLive({ ...value, rows: value.rows ?? [] })
       setFailed(false)
     } catch { setFailed(true) } finally { busy.current = false }
@@ -185,12 +236,15 @@ export function DashboardPage({ roster, actions, preview = false }) {
 
   useEffect(() => {
     if (preview) { setLive(previewReading(Date.now())); return undefined }
-    void read(shown)
-    const timer = setInterval(() => { void read(shown); setNow(Date.now()) }, LIVE_MS)
+    void read(shown, span)
+    const timer = setInterval(() => { void read(shown, span); setNow(Date.now()) }, LIVE_MS)
     return () => clearInterval(timer)
-  }, [read, shown, preview])
+  }, [read, shown, span, preview])
 
-  const rows = teamRows(preview && live.roster ? live.roster : roster, live, now)
+  const team = preview && live.roster ? live.roster : roster
+  const rows = teamRows(team, live, now)
+  const counts = countsOf({ live, roster: team, now, since: span })
+  const countsTone = toneOf(counts)
   const days = daysOf(live.rows)
   const openRow = (row) => {
     if (row.kind === 'group') { actions.showDetails?.(row.id) ?? actions.openSession?.(row.id) } else actions.openSession?.(row.id)
@@ -199,6 +253,16 @@ export function DashboardPage({ roster, actions, preview = false }) {
     preview ? h('div', { className: 'bt-dash-preview', role: 'note' }, t('A made-up team, to show the page. Nothing here is real.')) : null,
     h('div', { className: 'bt-dash-sum', role: 'status' }, summaryOf(rows)),
     failed ? h('div', { className: 'bt-dash-err', role: 'alert' }, t('Could not read the team just now. Trying again.')) : null,
+    h('div', { className: 'bt-dash-counts', role: 'group', 'aria-label': spanText(span) },
+      countBox(counts.finished, t('finished'), countsTone.finished),
+      countBox(counts.failed, t('Failed'), countsTone.failed),
+      countBox(counts.waitingOn, t('waiting on you'), countsTone.waitingOn),
+      h('div', { className: 'bt-dash-count', 'data-tone': countsTone.quietFor },
+        h('span', { className: 'bt-dash-count-n' }, counts.quietFor === null ? '—' : awayText(counts.quietFor)),
+        h('span', { className: 'bt-dash-count-l' }, t('since anything finished'))),
+      h('div', { className: 'bt-dash-span' },
+        [[86_400_000, t('Today')], [7 * 86_400_000, t('7 days')], [30 * 86_400_000, t('30 days')]].map(([ms, label]) =>
+          h('button', { key: ms, type: 'button', className: 'bt-dash-span-btn', 'aria-pressed': span === ms, onClick: () => setSpan(ms) }, label)))),
     h('div', { className: 'bt-dash-people' },
       rows.map(row => h('button', {
         key: `${row.kind}:${row.id}`, type: 'button', className: 'bt-dash-row', 'data-kind': row.kind,
@@ -234,6 +298,16 @@ export const DASHBOARD_CSS = `
 .bt-dash{display:flex;flex-direction:column;gap:10px;padding:4px 2px 24px}
 .bt-dash-preview{font-size:12px;line-height:17px;color:var(--bt-ink-3);padding:6px 9px;border-radius:8px;background:var(--bt-tag-bg)}
 .bt-dash-sum{font-size:12.5px;line-height:18px;color:var(--bt-ink-3)}
+.bt-dash-counts{display:flex;align-items:flex-end;gap:22px;flex-wrap:wrap;padding:12px 14px;border-radius:12px;background:var(--bt-tag-bg)}
+.bt-dash-count{display:flex;flex-direction:column;gap:1px;min-width:0}
+.bt-dash-count-n{font-size:17px;line-height:22px;font-weight:600;color:var(--bt-ink);font-variant-numeric:tabular-nums}
+.bt-dash-count-l{font-size:11.5px;line-height:16px;color:var(--bt-ink-3)}
+.bt-dash-count[data-tone=bad] .bt-dash-count-n{color:var(--bt-danger)}
+.bt-dash-count[data-tone=warn] .bt-dash-count-n{color:var(--bt-warn)}
+.bt-dash-span{display:flex;gap:2px;margin-left:auto}
+.bt-dash-span-btn{height:26px;padding:0 9px;border:0;border-radius:999px;background:none;color:var(--bt-ink-3);font:inherit;font-size:12px;cursor:pointer;transition:background-color .12s ease,color .12s ease}
+.bt-dash-span-btn:hover{background:var(--bt-hover);color:var(--bt-ink-2)}
+.bt-dash-span-btn[aria-pressed=true]{background:var(--bt-main);box-shadow:inset 0 0 0 .5px var(--bt-line-2);color:var(--bt-ink)}
 .bt-dash-err{font-size:12px;line-height:17px;color:var(--bt-danger)}
 .bt-dash-people{display:flex;flex-direction:column;gap:2px;margin:0 -8px}
 .bt-dash-row{display:flex;align-items:center;gap:10px;min-height:52px;padding:6px 10px;border:0;border-radius:12px;background:none;color:var(--bt-ink);font:inherit;text-align:left;cursor:pointer;transition:background-color .12s ease}

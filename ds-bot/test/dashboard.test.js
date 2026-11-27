@@ -18,9 +18,10 @@ runInNewContext(bundle.outputFiles[0].text, {
   Intl,
   Date,
 })
-const { workLine, stateOf, summaryOf, teamRows } = module.exports
+const { workLine, stateOf, summaryOf, teamRows, countsOf, toneOf, spanText } = module.exports
 
 const MIN = 60_000
+const DAY = 86_400_000
 
 test('a finished row keeps who, what, and how long it took', () => {
   const row = finishedRow({ id: 's:1', at: 10 * MIN, start: 3 * MIN, kind: 'bot', botId: 'b', botName: 'Writer', text: '  Wrote   the docs ', steps: 4 })
@@ -89,4 +90,46 @@ test('a group with members working is its own row', () => {
   assert.equal(group.state, 'work')
   assert.equal(group.text.includes('Check the logs'), true)
   assert.match(group.text, /Check the logs/)
+})
+
+test('the day is counted from what happened, not from how the list looks', () => {
+  const now = 100 * MIN
+  const live = {
+    rows: [
+      { id: 'a', at: now - 10 * MIN },
+      { id: 'b', at: now - 60 * MIN },
+      { id: 'c', at: now - 3 * DAY },
+    ],
+    failed: [{ id: 'f1', at: now - 5 * MIN }, { id: 'f2', at: now - 4 * DAY }],
+    approvals: [{ botId: 'a' }, { botId: 'a' }, { botId: 'b' }],
+    waiting: { c: true },
+  }
+  const roster = { byId: { a: { id: 'a' }, b: { id: 'b' }, c: { id: 'c' }, hidden: { id: 'hidden', hidden: true } }, roomsById: {} }
+  const day = countsOf({ live, roster, now })
+  assert.equal(day.finished, 2, 'the row from three days ago is outside today')
+  assert.equal(day.failed, 1)
+  // Two approvals for the same Bot are still one thing waiting for the user.
+  assert.equal(day.waitingOn, 3)
+  assert.equal(day.bots, 3, 'a hidden Bot is not on the team')
+  assert.equal(day.quietFor, 10 * MIN)
+  // An empty day is not a quiet day: there is nothing to be quiet.
+  assert.equal(countsOf({ live: {}, roster, now }).quietFor, null)
+  assert.equal(countsOf({ live: {}, roster, now }).finished, 0)
+})
+
+test('a failure and a queue at your door are coloured, an ordinary count is not', () => {
+  const calm = toneOf({ finished: 4, failed: 0, waitingOn: 0, quietFor: 2 * MIN })
+  assert.equal([calm.finished, calm.failed, calm.waitingOn, calm.quietFor].join(), 'plain,plain,plain,plain')
+  const rough = toneOf({ finished: 0, failed: 2, waitingOn: 1, quietFor: 5 * DAY })
+  assert.equal(rough.failed, 'bad')
+  assert.equal(rough.waitingOn, 'ask')
+  assert.equal(rough.quietFor, 'warn')
+  // Never worked before is not "quiet for long".
+  assert.equal(toneOf({ failed: 0, waitingOn: 0, quietFor: null }).quietFor, 'plain')
+})
+
+test('how far back the numbers reach is said in words', () => {
+  assert.equal(spanText(DAY), 'last 24 hours')
+  assert.equal(spanText(7 * DAY), 'last 7 days')
+  assert.equal(spanText(30 * DAY), 'in the last 30 days')
 })

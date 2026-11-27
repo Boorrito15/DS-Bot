@@ -267,6 +267,16 @@ export function install(rt) {
     return rt.save()
   }
 
+  // Turns that broke since `floor`, for the dashboard's numbers. The diagnostics log
+  // already records every failed turn with its Bot and its time — it is what the repair
+  // card and the problem report read — so the dashboard counts it rather than guessing.
+  const botFailures = async (floor) => {
+    const list = await rt.diagnostics?.entries?.() ?? []
+    return list
+      .filter(entry => entry.source === 'turn' && entry.time >= floor)
+      .map(entry => ({ id: `turn:${entry.sessionId ?? ''}:${entry.time}`, at: entry.time, botId: '', botName: entry.bot ?? '', code: entry.code ?? 'UNKNOWN' }))
+  }
+
   const handle = async (endpoint, payload, signal) => {
     try {
       const body = payload ?? {}
@@ -367,12 +377,21 @@ export function install(rt) {
         case 'dashboard': {
           await rt.load()
           const recent = await rt.finishedPage?.({ limit: Number(body.limit) || 60, ...(typeof body.before === 'string' ? { before: body.before } : {}) }) ?? { rows: [], next: null }
+          // The day's numbers come with it. A failure is read from the conversation itself:
+          // DSH writes a `turn-error` node there when a turn breaks, so this counts what
+          // really happened and nothing that did not.
+          const since = Number(body.since) > 0 ? Number(body.since) : 86_400_000
+          const floor = Date.now() - since
+          const failed = await botFailures(floor)
           return ok({
             work: rt.workView?.() ?? {},
             rooms: rt.roomWorkView?.() ?? {},
             approvals: rt.approvalsView?.() ?? [],
             waiting: rt.waitingView?.() ?? {},
             ...recent,
+            failed,
+            since,
+            at: Date.now(),
           })
         }
         // What the watcher (watcher.js) makes of the work a window reports: the notices

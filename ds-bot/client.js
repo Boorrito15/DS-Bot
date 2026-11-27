@@ -146,6 +146,9 @@ var JA = {
   "Yesterday": "昨日",
   "Answered": "返答済み",
   "Nothing finished yet. Work a Bot does will be listed here.": "まだ完了した作業はありません。Bot が終えた作業がここに並びます。",
+  "finished": "完了",
+  "waiting on you": "あなたの返事待ち",
+  "since anything finished": "最後の完了から",
   "A made-up team, to show the page. Nothing here is real.": "ページを見るための架空のチームです。ここにあるものは本物ではありません。",
   "Show earlier": "もっと前の",
   "Could not read the team just now. Trying again.": "チームを読めませんでした。もう一度試します。",
@@ -2600,6 +2603,9 @@ var KO = {
   "Yesterday": "어제",
   "Answered": "답변함",
   "Nothing finished yet. Work a Bot does will be listed here.": "아직 끝난 작업이 없습니다. Bot이 끝낸 일이 여기에 나옵니다.",
+  "finished": "완료",
+  "waiting on you": "당신의 답을 기다림",
+  "since anything finished": "마지막 완료 후",
   "A made-up team, to show the page. Nothing here is real.": "페이지를 보여 주기 위한 가상의 팀입니다. 여기 있는 것은 실제가 아닙니다.",
   "Show earlier": "더 이전",
   "Could not read the team just now. Trying again.": "팀을 읽지 못했습니다. 다시 시도합니다.",
@@ -5102,6 +5108,9 @@ var ES = {
   "Yesterday": "Ayer",
   "Answered": "Respondido",
   "Nothing finished yet. Work a Bot does will be listed here.": "Aún no hay trabajo terminado. Lo que hagan los Bots aparecerá aquí.",
+  "finished": "terminadas",
+  "waiting on you": "esperando tu respuesta",
+  "since anything finished": "desde la última",
   "A made-up team, to show the page. Nothing here is real.": "Un equipo inventado, solo para mostrar la página. Nada de esto es real.",
   "Show earlier": "Ver anteriores",
   "Could not read the team just now. Trying again.": "No se pudo leer el equipo. Reintentando.",
@@ -7607,6 +7616,9 @@ var FR = {
   "Yesterday": "Hier",
   "Answered": "Répondu",
   "Nothing finished yet. Work a Bot does will be listed here.": "Rien de terminé pour le moment. Ce que font les Bots apparaîtra ici.",
+  "finished": "terminées",
+  "waiting on you": "en attente de toi",
+  "since anything finished": "depuis la dernière",
   "A made-up team, to show the page. Nothing here is real.": "Une équipe inventée, juste pour montrer la page. Rien ici n'est réel.",
   "Show earlier": "Voir plus tôt",
   "Could not read the team just now. Trying again.": "Impossible de lire l'équipe. Nouvel essai.",
@@ -10061,6 +10073,9 @@ var DE = {
   "Yesterday": "Gestern",
   "Answered": "Geantwortet",
   "Nothing finished yet. Work a Bot does will be listed here.": "Noch nichts fertig. Was ein Bot erledigt, steht hier.",
+  "finished": "erledigt",
+  "waiting on you": "warten auf dich",
+  "since anything finished": "seit dem letzten Abschluss",
   "A made-up team, to show the page. Nothing here is real.": "Ein erfundenes Team, nur um die Seite zu zeigen. Nichts davon ist echt.",
   "Show earlier": "Früheres anzeigen",
   "Could not read the team just now. Trying again.": "Das Team war nicht lesbar. Neuer Versuch.",
@@ -12562,6 +12577,9 @@ var ZH = {
   "Yesterday": "昨天",
   "Answered": "已回复",
   "Nothing finished yet. Work a Bot does will be listed here.": "还没有完成的任务。Bot 做完的事会列在这里。",
+  "finished": "完成",
+  "waiting on you": "等你答复",
+  "since anything finished": "距上次完成",
   "A made-up team, to show the page. Nothing here is real.": "这是一个虚构的团队，只用来看页面。这里的东西都不是真的。",
   "Show earlier": "更早的",
   "Could not read the team just now. Trying again.": "刚才读不到团队，正在重试。",
@@ -41511,6 +41529,14 @@ function teamRows(roster, live, now) {
   const rank = (row) => row.state === "ask" ? 0 : row.state === "work" ? 1 : 2;
   return [...bots, ...groupRows].sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
 }
+function countBox(value, label, tone) {
+  return (0, import_react67.createElement)(
+    "div",
+    { className: "bt-dash-count", "data-tone": tone },
+    (0, import_react67.createElement)("span", { className: "bt-dash-count-n" }, String(value)),
+    (0, import_react67.createElement)("span", { className: "bt-dash-count-l" }, label)
+  );
+}
 function Dot2({ kind }) {
   return (0, import_react67.createElement)("span", { className: "bt-dash-dot", "data-kind": kind, "aria-hidden": true });
 }
@@ -41569,7 +41595,41 @@ function previewReading(now = Date.now()) {
     waiting: {},
     rows: rows2,
     next: "p:4",
+    failed: [{ id: "failed:p:x", at: now - 95 * MIN, botId: "p-runner", botName: "Runner", code: "TRANSPORT" }],
+    since: 864e5,
+    at: now,
     preview: true
+  };
+}
+function countsOf({ live, roster, now, since = 864e5 }) {
+  const rows2 = (live?.rows ?? []).filter((row) => row.at >= now - since);
+  const failed = (live?.failed ?? []).filter((row) => row.at >= now - since);
+  const approvals = live?.approvals ?? [];
+  const waiting = live?.waiting ?? {};
+  const waitingOn = (/* @__PURE__ */ new Set([...approvals.map((entry) => entry.botId), ...Object.keys(waiting)])).size;
+  const bots = Object.values(roster?.byId ?? {}).filter((bot) => bot.hidden !== true).length;
+  const last = rows2.reduce((newest, row) => row.at > newest ? row.at : newest, 0);
+  return {
+    finished: rows2.length,
+    failed: failed.length,
+    waitingOn,
+    bots,
+    quietFor: last === 0 ? null : now - last
+  };
+}
+function spanText2(ms, tr = t) {
+  if (!Number.isFinite(ms) || ms <= 0) return tr("today");
+  const days = Math.round(ms / 864e5);
+  if (days <= 1) return tr("last 24 hours");
+  if (days === 7) return tr("last 7 days");
+  return tr("in the last {n} days", { n: days });
+}
+function toneOf(counts2 = {}) {
+  return {
+    finished: "plain",
+    failed: counts2.failed > 0 ? "bad" : "plain",
+    waitingOn: counts2.waitingOn > 0 ? "ask" : "plain",
+    quietFor: counts2.quietFor !== null && counts2.quietFor > 3 * 864e5 ? "warn" : "plain"
   };
 }
 function DashboardScreen({ roster, actions, preview = false }) {
@@ -41595,13 +41655,14 @@ function DashboardPage({ roster, actions, preview = false }) {
   const [failed, setFailed] = (0, import_react67.useState)(false);
   const [now, setNow] = (0, import_react67.useState)(() => Date.now());
   const [shown, setShown] = (0, import_react67.useState)(PAGE2);
+  const [span, setSpan] = (0, import_react67.useState)(864e5);
   const busy = (0, import_react67.useRef)(false);
-  const read = (0, import_react67.useCallback)(async (limit = PAGE2) => {
+  const read = (0, import_react67.useCallback)(async (limit = PAGE2, reach = 864e5) => {
     if (preview) return;
     if (busy.current) return;
     busy.current = true;
     try {
-      const value = await call("dashboard", { limit });
+      const value = await call("dashboard", { limit, since: reach });
       setLive({ ...value, rows: value.rows ?? [] });
       setFailed(false);
     } catch {
@@ -41615,14 +41676,17 @@ function DashboardPage({ roster, actions, preview = false }) {
       setLive(previewReading(Date.now()));
       return void 0;
     }
-    void read(shown);
+    void read(shown, span);
     const timer = setInterval(() => {
-      void read(shown);
+      void read(shown, span);
       setNow(Date.now());
     }, LIVE_MS);
     return () => clearInterval(timer);
-  }, [read, shown, preview]);
-  const rows2 = teamRows(preview && live.roster ? live.roster : roster, live, now);
+  }, [read, shown, span, preview]);
+  const team = preview && live.roster ? live.roster : roster;
+  const rows2 = teamRows(team, live, now);
+  const counts2 = countsOf({ live, roster: team, now, since: span });
+  const countsTone = toneOf(counts2);
   const days = daysOf(live.rows);
   const openRow = (row) => {
     if (row.kind === "group") {
@@ -41635,6 +41699,24 @@ function DashboardPage({ roster, actions, preview = false }) {
     preview ? (0, import_react67.createElement)("div", { className: "bt-dash-preview", role: "note" }, t("A made-up team, to show the page. Nothing here is real.")) : null,
     (0, import_react67.createElement)("div", { className: "bt-dash-sum", role: "status" }, summaryOf(rows2)),
     failed ? (0, import_react67.createElement)("div", { className: "bt-dash-err", role: "alert" }, t("Could not read the team just now. Trying again.")) : null,
+    (0, import_react67.createElement)(
+      "div",
+      { className: "bt-dash-counts", role: "group", "aria-label": spanText2(span) },
+      countBox(counts2.finished, t("finished"), countsTone.finished),
+      countBox(counts2.failed, t("Failed"), countsTone.failed),
+      countBox(counts2.waitingOn, t("waiting on you"), countsTone.waitingOn),
+      (0, import_react67.createElement)(
+        "div",
+        { className: "bt-dash-count", "data-tone": countsTone.quietFor },
+        (0, import_react67.createElement)("span", { className: "bt-dash-count-n" }, counts2.quietFor === null ? "—" : awayText(counts2.quietFor)),
+        (0, import_react67.createElement)("span", { className: "bt-dash-count-l" }, t("since anything finished"))
+      ),
+      (0, import_react67.createElement)(
+        "div",
+        { className: "bt-dash-span" },
+        [[864e5, t("Today")], [7 * 864e5, t("7 days")], [30 * 864e5, t("30 days")]].map(([ms, label]) => (0, import_react67.createElement)("button", { key: ms, type: "button", className: "bt-dash-span-btn", "aria-pressed": span === ms, onClick: () => setSpan(ms) }, label))
+      )
+    ),
     (0, import_react67.createElement)(
       "div",
       { className: "bt-dash-people" },
@@ -41692,6 +41774,16 @@ var DASHBOARD_CSS = `
 .bt-dash{display:flex;flex-direction:column;gap:10px;padding:4px 2px 24px}
 .bt-dash-preview{font-size:12px;line-height:17px;color:var(--bt-ink-3);padding:6px 9px;border-radius:8px;background:var(--bt-tag-bg)}
 .bt-dash-sum{font-size:12.5px;line-height:18px;color:var(--bt-ink-3)}
+.bt-dash-counts{display:flex;align-items:flex-end;gap:22px;flex-wrap:wrap;padding:12px 14px;border-radius:12px;background:var(--bt-tag-bg)}
+.bt-dash-count{display:flex;flex-direction:column;gap:1px;min-width:0}
+.bt-dash-count-n{font-size:17px;line-height:22px;font-weight:600;color:var(--bt-ink);font-variant-numeric:tabular-nums}
+.bt-dash-count-l{font-size:11.5px;line-height:16px;color:var(--bt-ink-3)}
+.bt-dash-count[data-tone=bad] .bt-dash-count-n{color:var(--bt-danger)}
+.bt-dash-count[data-tone=warn] .bt-dash-count-n{color:var(--bt-warn)}
+.bt-dash-span{display:flex;gap:2px;margin-left:auto}
+.bt-dash-span-btn{height:26px;padding:0 9px;border:0;border-radius:999px;background:none;color:var(--bt-ink-3);font:inherit;font-size:12px;cursor:pointer;transition:background-color .12s ease,color .12s ease}
+.bt-dash-span-btn:hover{background:var(--bt-hover);color:var(--bt-ink-2)}
+.bt-dash-span-btn[aria-pressed=true]{background:var(--bt-main);box-shadow:inset 0 0 0 .5px var(--bt-line-2);color:var(--bt-ink)}
 .bt-dash-err{font-size:12px;line-height:17px;color:var(--bt-danger)}
 .bt-dash-people{display:flex;flex-direction:column;gap:2px;margin:0 -8px}
 .bt-dash-row{display:flex;align-items:center;gap:10px;min-height:52px;padding:6px 10px;border:0;border-radius:12px;background:none;color:var(--bt-ink);font:inherit;text-align:left;cursor:pointer;transition:background-color .12s ease}
