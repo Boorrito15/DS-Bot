@@ -8,6 +8,10 @@ Every commit on our branch appears here. Upstream commits that arrived through a
 
 ## 2026-11-27
 
+**Desktop**
+
+- Change: the reading pill over a long reply loses its back-to-start arrow. The section name beside it already jumps to where the reader is. ([6bccd07e])
+
 **Phone (build)**
 
 - Fix: each iOS build now carries a build number that only goes up, taken from the commit count. Before, every build of a release read the same and SideStore never offered the update. ([88516b3a])
@@ -153,3 +157,4 @@ Every commit on our branch appears here. Upstream commits that arrived through a
 [dc70e097]: https://github.com/Boorrito15/DS-Bot/commit/dc70e097
 [5bf57ed1]: https://github.com/Boorrito15/DS-Bot/commit/5bf57ed1
 [88516b3a]: https://github.com/Boorrito15/DS-Bot/commit/88516b3a
+[6bccd07e]: https://github.com/Boorrito15/DS-Bot/commit/6bccd07e
