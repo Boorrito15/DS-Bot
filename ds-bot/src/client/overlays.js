@@ -80,6 +80,6 @@ export function Overlays({ useRoster, useUi, useSessions, useSessionStatus, useA
     ui.voice ? createPortal(h(VoiceMode, { key: ui.voice, sessionId: ui.voice, paneLeft: layout.column, roster, actions, useSessions, useSessionStatus }), document.body) : null,
     menu ? createPortal(h(ContextMenu, { key: `${menu.kind ?? ''}:${menu.id}:${menu.x}:${menu.y}`, menu, roster, actions, useWork, leaving: menuLeaving }), document.body) : null,
     settings ? createPortal(h(SettingsDialog, { page: settings.page, id: settings.id, roster, actions, useUpdate, leaving: settingsLeaving }), document.body) : null,
-    ui.dashboard === true ? createPortal(h(DashboardScreen, { roster, actions }), document.body) : null,
+    ui.dashboard === true ? createPortal(h(DashboardScreen, { roster, actions, preview: ui.dashboardPreview === true }), document.body) : null,
     owner ? createPortal(h(MemoryDialog, { key: owner.id, owner, actions, leaving: memoryLeaving }), document.body) : null)
 }

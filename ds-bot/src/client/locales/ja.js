@@ -23,6 +23,7 @@ export const JA = {
   "Yesterday": "昨日",
   "Answered": "返答済み",
   "Nothing finished yet. Work a Bot does will be listed here.": "まだ完了した作業はありません。Bot が終えた作業がここに並びます。",
+  "A made-up team, to show the page. Nothing here is real.": "ページを見るための架空のチームです。ここにあるものは本物ではありません。",
   "Show earlier": "もっと前の",
   "Could not read the team just now. Trying again.": "チームを読めませんでした。もう一度試します。",
   "min": "分",

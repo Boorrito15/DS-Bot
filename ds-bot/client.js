@@ -146,6 +146,7 @@ var JA = {
   "Yesterday": "昨日",
   "Answered": "返答済み",
   "Nothing finished yet. Work a Bot does will be listed here.": "まだ完了した作業はありません。Bot が終えた作業がここに並びます。",
+  "A made-up team, to show the page. Nothing here is real.": "ページを見るための架空のチームです。ここにあるものは本物ではありません。",
   "Show earlier": "もっと前の",
   "Could not read the team just now. Trying again.": "チームを読めませんでした。もう一度試します。",
   "min": "分",
@@ -2599,6 +2600,7 @@ var KO = {
   "Yesterday": "어제",
   "Answered": "답변함",
   "Nothing finished yet. Work a Bot does will be listed here.": "아직 끝난 작업이 없습니다. Bot이 끝낸 일이 여기에 나옵니다.",
+  "A made-up team, to show the page. Nothing here is real.": "페이지를 보여 주기 위한 가상의 팀입니다. 여기 있는 것은 실제가 아닙니다.",
   "Show earlier": "더 이전",
   "Could not read the team just now. Trying again.": "팀을 읽지 못했습니다. 다시 시도합니다.",
   "min": "분",
@@ -5100,6 +5102,7 @@ var ES = {
   "Yesterday": "Ayer",
   "Answered": "Respondido",
   "Nothing finished yet. Work a Bot does will be listed here.": "Aún no hay trabajo terminado. Lo que hagan los Bots aparecerá aquí.",
+  "A made-up team, to show the page. Nothing here is real.": "Un equipo inventado, solo para mostrar la página. Nada de esto es real.",
   "Show earlier": "Ver anteriores",
   "Could not read the team just now. Trying again.": "No se pudo leer el equipo. Reintentando.",
   "min": "min",
@@ -7604,6 +7607,7 @@ var FR = {
   "Yesterday": "Hier",
   "Answered": "Répondu",
   "Nothing finished yet. Work a Bot does will be listed here.": "Rien de terminé pour le moment. Ce que font les Bots apparaîtra ici.",
+  "A made-up team, to show the page. Nothing here is real.": "Une équipe inventée, juste pour montrer la page. Rien ici n'est réel.",
   "Show earlier": "Voir plus tôt",
   "Could not read the team just now. Trying again.": "Impossible de lire l'équipe. Nouvel essai.",
   "min": "min",
@@ -10057,6 +10061,7 @@ var DE = {
   "Yesterday": "Gestern",
   "Answered": "Geantwortet",
   "Nothing finished yet. Work a Bot does will be listed here.": "Noch nichts fertig. Was ein Bot erledigt, steht hier.",
+  "A made-up team, to show the page. Nothing here is real.": "Ein erfundenes Team, nur um die Seite zu zeigen. Nichts davon ist echt.",
   "Show earlier": "Früheres anzeigen",
   "Could not read the team just now. Trying again.": "Das Team war nicht lesbar. Neuer Versuch.",
   "min": "Min.",
@@ -12557,6 +12562,7 @@ var ZH = {
   "Yesterday": "昨天",
   "Answered": "已回复",
   "Nothing finished yet. Work a Bot does will be listed here.": "还没有完成的任务。Bot 做完的事会列在这里。",
+  "A made-up team, to show the page. Nothing here is real.": "这是一个虚构的团队，只用来看页面。这里的东西都不是真的。",
   "Show earlier": "更早的",
   "Could not read the team just now. Trying again.": "刚才读不到团队，正在重试。",
   "min": "分钟",
@@ -41536,7 +41542,37 @@ function dayLabel2(at, now) {
     return date.toDateString();
   }
 }
-function DashboardScreen({ roster, actions }) {
+function previewReading(now = Date.now()) {
+  const MIN = 6e4;
+  const rows2 = [
+    { id: "p:1", at: now - 4 * MIN, start: now - 7 * MIN, ms: 3 * MIN, kind: "bot", botId: "p-writer", botName: "Writer", text: "Rewrote the onboarding email", steps: 6 },
+    { id: "p:2", at: now - 26 * MIN, start: now - 41 * MIN, ms: 15 * MIN, kind: "bot", botId: "p-research", botName: "Researcher", text: "Compared three hosting providers", steps: 11 },
+    { id: "p:3", at: now - 2 * 36e5, start: now - 2 * 36e5 - 9 * MIN, ms: 9 * MIN, kind: "bot", botId: "p-runner", botName: "Runner", text: "Fixed the failing checkout test", steps: 4 },
+    { id: "p:4", at: now - 3 * 36e5, start: now - 3 * 36e5 - 18 * MIN, ms: 18 * MIN, kind: "group", botId: "p-writer", botName: "Launch", roomId: "p-room", roomName: "Launch", text: "Drafted the launch checklist", steps: 9 }
+  ];
+  const previewRoster = {
+    byId: {
+      "p-writer": { id: "p-writer", name: "Writer" },
+      "p-research": { id: "p-research", name: "Researcher" },
+      "p-runner": { id: "p-runner", name: "Runner" }
+    },
+    roomsById: { "p-room": { id: "p-room", name: "Launch" } }
+  };
+  return {
+    roster: previewRoster,
+    work: {
+      "p-writer": { label: "Writing the pricing page", since: now - 6 * MIN },
+      "p-research": { label: "Reading two more reviews", since: now - 2 * MIN }
+    },
+    rooms: { "p-room": [{ botId: "p-writer", self: true, since: now - 6 * MIN }, { botId: "p-research" }] },
+    approvals: [{ botId: "p-runner", roomId: null }, { botId: "p-writer", roomId: null }],
+    waiting: {},
+    rows: rows2,
+    next: "p:4",
+    preview: true
+  };
+}
+function DashboardScreen({ roster, actions, preview = false }) {
   const close = () => actions.closeDashboard?.();
   useEscape(() => {
     if (close) close();
@@ -41550,10 +41586,10 @@ function DashboardScreen({ roster, actions }) {
       (0, import_react67.createElement)("div", { className: "bt-dashboard-title" }, t("Dashboard")),
       actions.closeDashboard ? (0, import_react67.createElement)("button", { type: "button", className: "bt-icon-btn bt-dashboard-close", "aria-label": `${t("Close")} ${t("Dashboard")}`, title: `${t("Close")} ${t("Dashboard")}`, onClick: close }, (0, import_react67.createElement)(CloseIcon)) : null
     ),
-    (0, import_react67.createElement)("div", { className: "bt-dashboard-body" }, (0, import_react67.createElement)(DashboardPage, { roster, actions }))
+    (0, import_react67.createElement)("div", { className: "bt-dashboard-body" }, (0, import_react67.createElement)(DashboardPage, { roster, actions, preview }))
   );
 }
-function DashboardPage({ roster, actions }) {
+function DashboardPage({ roster, actions, preview = false }) {
   const [live, setLive] = (0, import_react67.useState)({ work: {}, rooms: {}, approvals: [], waiting: {}, rows: [], next: null });
   const [loading, setLoading] = (0, import_react67.useState)(false);
   const [failed, setFailed] = (0, import_react67.useState)(false);
@@ -41561,6 +41597,7 @@ function DashboardPage({ roster, actions }) {
   const [shown, setShown] = (0, import_react67.useState)(PAGE2);
   const busy = (0, import_react67.useRef)(false);
   const read = (0, import_react67.useCallback)(async (limit = PAGE2) => {
+    if (preview) return;
     if (busy.current) return;
     busy.current = true;
     try {
@@ -41572,16 +41609,20 @@ function DashboardPage({ roster, actions }) {
     } finally {
       busy.current = false;
     }
-  }, []);
+  }, [preview]);
   (0, import_react67.useEffect)(() => {
+    if (preview) {
+      setLive(previewReading(Date.now()));
+      return void 0;
+    }
     void read(shown);
     const timer = setInterval(() => {
       void read(shown);
       setNow(Date.now());
     }, LIVE_MS);
     return () => clearInterval(timer);
-  }, [read, shown]);
-  const rows2 = teamRows(roster, live, now);
+  }, [read, shown, preview]);
+  const rows2 = teamRows(preview && live.roster ? live.roster : roster, live, now);
   const days = daysOf(live.rows);
   const openRow = (row) => {
     if (row.kind === "group") {
@@ -41591,6 +41632,7 @@ function DashboardPage({ roster, actions }) {
   return (0, import_react67.createElement)(
     "div",
     { className: "bt-dash" },
+    preview ? (0, import_react67.createElement)("div", { className: "bt-dash-preview", role: "note" }, t("A made-up team, to show the page. Nothing here is real.")) : null,
     (0, import_react67.createElement)("div", { className: "bt-dash-sum", role: "status" }, summaryOf(rows2)),
     failed ? (0, import_react67.createElement)("div", { className: "bt-dash-err", role: "alert" }, t("Could not read the team just now. Trying again.")) : null,
     (0, import_react67.createElement)(
@@ -41648,6 +41690,7 @@ var DASHBOARD_CSS = `
 .bt-dashboard-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:14px 18px 40px}
 .bt-dashboard-body .bt-dash{width:100%;max-width:720px;margin:0 auto}
 .bt-dash{display:flex;flex-direction:column;gap:10px;padding:4px 2px 24px}
+.bt-dash-preview{font-size:12px;line-height:17px;color:var(--bt-ink-3);padding:6px 9px;border-radius:8px;background:var(--bt-tag-bg)}
 .bt-dash-sum{font-size:12.5px;line-height:18px;color:var(--bt-ink-3)}
 .bt-dash-err{font-size:12px;line-height:17px;color:var(--bt-danger)}
 .bt-dash-people{display:flex;flex-direction:column;gap:2px;margin:0 -8px}
@@ -44159,7 +44202,7 @@ function Overlays({ useRoster, useUi, useSessions, useSessionStatus, useActivity
     ui2.voice ? (0, import_react_dom12.createPortal)((0, import_react74.createElement)(VoiceMode, { key: ui2.voice, sessionId: ui2.voice, paneLeft: layout.column, roster, actions, useSessions, useSessionStatus }), document.body) : null,
     menu ? (0, import_react_dom12.createPortal)((0, import_react74.createElement)(ContextMenu, { key: `${menu.kind ?? ""}:${menu.id}:${menu.x}:${menu.y}`, menu, roster, actions, useWork, leaving: menuLeaving }), document.body) : null,
     settings ? (0, import_react_dom12.createPortal)((0, import_react74.createElement)(SettingsDialog, { page: settings.page, id: settings.id, roster, actions, useUpdate, leaving: settingsLeaving }), document.body) : null,
-    ui2.dashboard === true ? (0, import_react_dom12.createPortal)((0, import_react74.createElement)(DashboardScreen, { roster, actions }), document.body) : null,
+    ui2.dashboard === true ? (0, import_react_dom12.createPortal)((0, import_react74.createElement)(DashboardScreen, { roster, actions, preview: ui2.dashboardPreview === true }), document.body) : null,
     owner ? (0, import_react_dom12.createPortal)((0, import_react74.createElement)(MemoryDialog, { key: owner.id, owner, actions, leaving: memoryLeaving }), document.body) : null
   );
 }
@@ -46507,7 +46550,8 @@ function apply(ctx) {
   const reactionStore = sharedMap(STORAGE.reactions);
   const seenStore = sharedMap(STORAGE.seen);
   let seenAt = seenStore.read();
-  const ui2 = createSource({ details: null, view: "details", readOnlyPart: null, renaming: false, tab: null, side: null, newChat: null, exchange: null, menu: null, voice: null, palette: null, quote: null, paste: {}, pendingOpen: null, settings: null, dashboard: false, memory: null, toast: null, signIn: null, renameAgent: null, unread: unreadStore.read(), reactions: reactionStore.read(), visits: {}, panelYield: false, leftDrawer: false, bootFailed: false, goalCompose: null, goalOpen: null });
+  const previewDashboard = new URLSearchParams(globalThis.location?.search ?? "").has("dashboard");
+  const ui2 = createSource({ details: null, view: "details", readOnlyPart: null, renaming: false, tab: null, side: null, newChat: null, exchange: null, menu: null, voice: null, palette: null, quote: null, paste: {}, pendingOpen: null, settings: null, dashboard: previewDashboard, dashboardPreview: previewDashboard, memory: null, toast: null, signIn: null, renameAgent: null, unread: unreadStore.read(), reactions: reactionStore.read(), visits: {}, panelYield: false, leftDrawer: false, bootFailed: false, goalCompose: null, goalOpen: null });
   let sidebarSaved = readSidebar();
   const sidebarPref = createSource(sidebarSaved.pref);
   const frame = createSource({ viewport: typeof window === "undefined" ? 0 : window.innerWidth, sidebarWidth: sidebarSaved.width, collapsedWidth: 0, collapsed: false });

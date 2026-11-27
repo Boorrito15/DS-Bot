@@ -23,6 +23,7 @@ export const FR = {
   "Yesterday": "Hier",
   "Answered": "Répondu",
   "Nothing finished yet. Work a Bot does will be listed here.": "Rien de terminé pour le moment. Ce que font les Bots apparaîtra ici.",
+  "A made-up team, to show the page. Nothing here is real.": "Une équipe inventée, juste pour montrer la page. Rien ici n'est réel.",
   "Show earlier": "Voir plus tôt",
   "Could not read the team just now. Trying again.": "Impossible de lire l'équipe. Nouvel essai.",
   "min": "min",

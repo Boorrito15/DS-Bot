@@ -28,6 +28,7 @@ const ZH = {
   "Yesterday": "昨天",
   "Answered": "已回复",
   "Nothing finished yet. Work a Bot does will be listed here.": "还没有完成的任务。Bot 做完的事会列在这里。",
+  "A made-up team, to show the page. Nothing here is real.": "这是一个虚构的团队，只用来看页面。这里的东西都不是真的。",
   "Show earlier": "更早的",
   "Could not read the team just now. Trying again.": "刚才读不到团队，正在重试。",
   "min": "分钟",

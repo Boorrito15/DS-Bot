@@ -118,19 +118,53 @@ function dayLabel(at, now) {
   try { return new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short' }).format(date) } catch { return date.toDateString() }
 }
 
+// A look at the page without a team behind it: a Bot that is working, one waiting for an
+// answer, one quiet, a group, and a day of finished work. Nothing here is real, and the
+// page says so above the rows.
+export function previewReading(now = Date.now()) {
+  const MIN = 60_000
+  const rows = [
+    { id: 'p:1', at: now - 4 * MIN, start: now - 7 * MIN, ms: 3 * MIN, kind: 'bot', botId: 'p-writer', botName: 'Writer', text: 'Rewrote the onboarding email', steps: 6 },
+    { id: 'p:2', at: now - 26 * MIN, start: now - 41 * MIN, ms: 15 * MIN, kind: 'bot', botId: 'p-research', botName: 'Researcher', text: 'Compared three hosting providers', steps: 11 },
+    { id: 'p:3', at: now - 2 * 3_600_000, start: now - 2 * 3_600_000 - 9 * MIN, ms: 9 * MIN, kind: 'bot', botId: 'p-runner', botName: 'Runner', text: 'Fixed the failing checkout test', steps: 4 },
+    { id: 'p:4', at: now - 3 * 3_600_000, start: now - 3 * 3_600_000 - 18 * MIN, ms: 18 * MIN, kind: 'group', botId: 'p-writer', botName: 'Launch', roomId: 'p-room', roomName: 'Launch', text: 'Drafted the launch checklist', steps: 9 },
+  ]
+  const previewRoster = {
+    byId: {
+      'p-writer': { id: 'p-writer', name: 'Writer' },
+      'p-research': { id: 'p-research', name: 'Researcher' },
+      'p-runner': { id: 'p-runner', name: 'Runner' },
+    },
+    roomsById: { 'p-room': { id: 'p-room', name: 'Launch' } },
+  }
+  return {
+    roster: previewRoster,
+    work: {
+      'p-writer': { label: 'Writing the pricing page', since: now - 6 * MIN },
+      'p-research': { label: 'Reading two more reviews', since: now - 2 * MIN },
+    },
+    rooms: { 'p-room': [{ botId: 'p-writer', self: true, since: now - 6 * MIN }, { botId: 'p-research' }] },
+    approvals: [{ botId: 'p-runner', roomId: null }, { botId: 'p-writer', roomId: null }],
+    waiting: {},
+    rows,
+    next: 'p:4',
+    preview: true,
+  }
+}
+
 // The page is its own place in the app, not a row in Settings: it answers one question,
 // and opening it should not mean walking past the settings list to reach it.
-export function DashboardScreen({ roster, actions }) {
+export function DashboardScreen({ roster, actions, preview = false }) {
   const close = () => actions.closeDashboard?.()
   useEscape(() => { if (close) close() })
   return h('div', { className: 'bt-dashboard', role: 'dialog', 'aria-modal': true, 'aria-label': t('Dashboard') },
     h('div', { className: 'bt-dashboard-head' },
       h('div', { className: 'bt-dashboard-title' }, t('Dashboard')),
       actions.closeDashboard ? h('button', { type: 'button', className: 'bt-icon-btn bt-dashboard-close', 'aria-label': `${t('Close')} ${t('Dashboard')}`, title: `${t('Close')} ${t('Dashboard')}`, onClick: close }, h(CloseIcon)) : null),
-    h('div', { className: 'bt-dashboard-body' }, h(DashboardPage, { roster, actions })))
+    h('div', { className: 'bt-dashboard-body' }, h(DashboardPage, { roster, actions, preview })))
 }
 
-export function DashboardPage({ roster, actions }) {
+export function DashboardPage({ roster, actions, preview = false }) {
   const [live, setLive] = useState({ work: {}, rooms: {}, approvals: [], waiting: {}, rows: [], next: null })
   const [loading, setLoading] = useState(false)
   const [failed, setFailed] = useState(false)
@@ -139,6 +173,7 @@ export function DashboardPage({ roster, actions }) {
   const busy = useRef(false)
 
   const read = useCallback(async (limit = PAGE) => {
+    if (preview) return
     if (busy.current) return
     busy.current = true
     try {
@@ -146,20 +181,22 @@ export function DashboardPage({ roster, actions }) {
       setLive({ ...value, rows: value.rows ?? [] })
       setFailed(false)
     } catch { setFailed(true) } finally { busy.current = false }
-  }, [])
+  }, [preview])
 
   useEffect(() => {
+    if (preview) { setLive(previewReading(Date.now())); return undefined }
     void read(shown)
     const timer = setInterval(() => { void read(shown); setNow(Date.now()) }, LIVE_MS)
     return () => clearInterval(timer)
-  }, [read, shown])
+  }, [read, shown, preview])
 
-  const rows = teamRows(roster, live, now)
+  const rows = teamRows(preview && live.roster ? live.roster : roster, live, now)
   const days = daysOf(live.rows)
   const openRow = (row) => {
     if (row.kind === 'group') { actions.showDetails?.(row.id) ?? actions.openSession?.(row.id) } else actions.openSession?.(row.id)
   }
   return h('div', { className: 'bt-dash' },
+    preview ? h('div', { className: 'bt-dash-preview', role: 'note' }, t('A made-up team, to show the page. Nothing here is real.')) : null,
     h('div', { className: 'bt-dash-sum', role: 'status' }, summaryOf(rows)),
     failed ? h('div', { className: 'bt-dash-err', role: 'alert' }, t('Could not read the team just now. Trying again.')) : null,
     h('div', { className: 'bt-dash-people' },
@@ -195,6 +232,7 @@ export const DASHBOARD_CSS = `
 .bt-dashboard-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:14px 18px 40px}
 .bt-dashboard-body .bt-dash{width:100%;max-width:720px;margin:0 auto}
 .bt-dash{display:flex;flex-direction:column;gap:10px;padding:4px 2px 24px}
+.bt-dash-preview{font-size:12px;line-height:17px;color:var(--bt-ink-3);padding:6px 9px;border-radius:8px;background:var(--bt-tag-bg)}
 .bt-dash-sum{font-size:12.5px;line-height:18px;color:var(--bt-ink-3)}
 .bt-dash-err{font-size:12px;line-height:17px;color:var(--bt-danger)}
 .bt-dash-people{display:flex;flex-direction:column;gap:2px;margin:0 -8px}

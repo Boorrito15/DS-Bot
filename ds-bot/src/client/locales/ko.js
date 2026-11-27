@@ -20,6 +20,7 @@ export const KO = {
   "Yesterday": "어제",
   "Answered": "답변함",
   "Nothing finished yet. Work a Bot does will be listed here.": "아직 끝난 작업이 없습니다. Bot이 끝낸 일이 여기에 나옵니다.",
+  "A made-up team, to show the page. Nothing here is real.": "페이지를 보여 주기 위한 가상의 팀입니다. 여기 있는 것은 실제가 아닙니다.",
   "Show earlier": "더 이전",
   "Could not read the team just now. Trying again.": "팀을 읽지 못했습니다. 다시 시도합니다.",
   "min": "분",
