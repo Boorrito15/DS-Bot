@@ -28,6 +28,8 @@ const ZH = {
   "Yesterday": "昨天",
   "Answered": "已回复",
   "Nothing finished yet. Work a Bot does will be listed here.": "还没有完成的任务。Bot 做完的事会列在这里。",
+  "Changed {file}": "改好了 {file}",
+  "Changed {file} and {n} more": "改好了 {file} 等 {n} 个",
   "finished": "完成",
   "waiting on you": "等你答复",
   "since anything finished": "距上次完成",

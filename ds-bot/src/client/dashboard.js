@@ -98,6 +98,15 @@ function Dot({ kind }) {
   return h('span', { className: 'bt-dash-dot', 'data-kind': kind, 'aria-hidden': true })
 }
 
+/** What one finished turn actually left behind, in the fewest words that are true. */
+export function doneLine(row) {
+  const files = Array.isArray(row?.touched) ? row.touched : []
+  if (files.length === 0) return row?.text || t('Answered')
+  const name = files[0].split('/').pop()
+  if (files.length === 1) return t('Changed {file}', { file: name })
+  return t('Changed {file} and {n} more', { file: name, n: files.length - 1 })
+}
+
 function daysOf(pageRows) {
   const days = []
   let current = null
@@ -130,8 +139,8 @@ function dayLabel(at, now) {
 export function previewReading(now = Date.now()) {
   const MIN = 60_000
   const rows = [
-    { id: 'p:1', at: now - 4 * MIN, start: now - 7 * MIN, ms: 3 * MIN, kind: 'bot', botId: 'p-writer', botName: 'Writer', text: 'Rewrote the onboarding email', steps: 6 },
-    { id: 'p:2', at: now - 26 * MIN, start: now - 41 * MIN, ms: 15 * MIN, kind: 'bot', botId: 'p-research', botName: 'Researcher', text: 'Compared three hosting providers', steps: 11 },
+    { id: 'p:1', at: now - 4 * MIN, start: now - 7 * MIN, ms: 3 * MIN, kind: 'bot', botId: 'p-writer', botName: 'Writer', text: 'Rewrote the onboarding email in three places and left the tone alone.', steps: 6, touched: ['emails/onboarding.md'] },
+    { id: 'p:2', at: now - 26 * MIN, start: now - 41 * MIN, ms: 15 * MIN, kind: 'bot', botId: 'p-research', botName: 'Researcher', text: 'Compared three hosting providers on price and support hours.', steps: 11 },
     { id: 'p:3', at: now - 2 * 3_600_000, start: now - 2 * 3_600_000 - 9 * MIN, ms: 9 * MIN, kind: 'bot', botId: 'p-runner', botName: 'Runner', text: 'Fixed the failing checkout test', steps: 4 },
     { id: 'p:4', at: now - 3 * 3_600_000, start: now - 3 * 3_600_000 - 18 * MIN, ms: 18 * MIN, kind: 'group', botId: 'p-writer', botName: 'Launch', roomId: 'p-room', roomName: 'Launch', text: 'Drafted the launch checklist', steps: 9 },
   ]
@@ -281,7 +290,13 @@ export function DashboardPage({ roster, actions, preview = false }) {
         h('div', { className: 'bt-dash-day-label' }, dayLabel(day.at, now)),
         day.rows.map(row => h('div', { key: row.id, className: 'bt-dash-done' },
           h('span', { className: 'bt-dash-done-name' }, row.roomName || row.botName),
-          h('span', { className: 'bt-dash-done-what' }, row.text || t('Answered')),
+          h('span', { className: 'bt-dash-done-text' },
+            h('span', { className: 'bt-dash-done-what' }, doneLine(row)),
+            // What the Bot said it was doing is the second line, not the first: the page
+            // answers "what got done", and the sentence is only the evidence for it.
+            row.touched?.length > 0 && row.text
+              ? h('span', { className: 'bt-dash-done-said' }, row.text)
+              : null),
           h('span', { className: 'bt-dash-done-time' }, `${minutes(row.ms)} ${t('min')}`))))),
     live.next !== null && live.rows.length >= shown
       ? h('button', { type: 'button', className: 'bt-dash-more', disabled: loading, onClick: () => { setLoading(true); setShown(value => value + PAGE); setLoading(false) } }, t('Show earlier'))
@@ -328,7 +343,9 @@ export const DASHBOARD_CSS = `
 .bt-dash-day-label{font-size:11.5px;line-height:17px;color:var(--bt-ink-3);margin:8px 0 2px}
 .bt-dash-done{display:flex;align-items:baseline;gap:8px;min-width:0;font-size:12.5px;line-height:18px;padding:3px 0}
 .bt-dash-done-name{flex:none;max-width:34%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--bt-ink-2)}
-.bt-dash-done-what{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--bt-ink-3)}
+.bt-dash-done-text{display:flex;flex-direction:column;min-width:0;flex:1;gap:1px}
+.bt-dash-done-what{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--bt-ink-2)}
+.bt-dash-done-said{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--bt-ink-3);font-size:11.5px;line-height:16px}
 .bt-dash-done-time{flex:none;font-variant-numeric:tabular-nums;color:var(--bt-ink-3)}
 .bt-dash-more{align-self:center;margin-top:10px;height:30px;padding:0 14px;border:0;border-radius:999px;background:var(--bt-main);box-shadow:inset 0 0 0 .5px var(--bt-line-2);color:var(--bt-ink-2);font:inherit;font-size:12.5px;cursor:pointer}
 .bt-dash-more:hover{background:var(--bt-hover)}

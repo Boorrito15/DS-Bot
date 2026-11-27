@@ -146,6 +146,8 @@ var JA = {
   "Yesterday": "昨日",
   "Answered": "返答済み",
   "Nothing finished yet. Work a Bot does will be listed here.": "まだ完了した作業はありません。Bot が終えた作業がここに並びます。",
+  "Changed {file}": "{file} を更新しました",
+  "Changed {file} and {n} more": "{file} など {n} 件を更新しました",
   "finished": "完了",
   "waiting on you": "あなたの返事待ち",
   "since anything finished": "最後の完了から",
@@ -2603,6 +2605,8 @@ var KO = {
   "Yesterday": "어제",
   "Answered": "답변함",
   "Nothing finished yet. Work a Bot does will be listed here.": "아직 끝난 작업이 없습니다. Bot이 끝낸 일이 여기에 나옵니다.",
+  "Changed {file}": "{file} 수정됨",
+  "Changed {file} and {n} more": "{file} 외 {n}개 수정됨",
   "finished": "완료",
   "waiting on you": "당신의 답을 기다림",
   "since anything finished": "마지막 완료 후",
@@ -5108,6 +5112,8 @@ var ES = {
   "Yesterday": "Ayer",
   "Answered": "Respondido",
   "Nothing finished yet. Work a Bot does will be listed here.": "Aún no hay trabajo terminado. Lo que hagan los Bots aparecerá aquí.",
+  "Changed {file}": "Cambiado {file}",
+  "Changed {file} and {n} more": "Cambiado {file} y {n} más",
   "finished": "terminadas",
   "waiting on you": "esperando tu respuesta",
   "since anything finished": "desde la última",
@@ -7616,6 +7622,8 @@ var FR = {
   "Yesterday": "Hier",
   "Answered": "Répondu",
   "Nothing finished yet. Work a Bot does will be listed here.": "Rien de terminé pour le moment. Ce que font les Bots apparaîtra ici.",
+  "Changed {file}": "{file} modifié",
+  "Changed {file} and {n} more": "{file} et {n} autres modifiés",
   "finished": "terminées",
   "waiting on you": "en attente de toi",
   "since anything finished": "depuis la dernière",
@@ -10073,6 +10081,8 @@ var DE = {
   "Yesterday": "Gestern",
   "Answered": "Geantwortet",
   "Nothing finished yet. Work a Bot does will be listed here.": "Noch nichts fertig. Was ein Bot erledigt, steht hier.",
+  "Changed {file}": "{file} geändert",
+  "Changed {file} and {n} more": "{file} und {n} weitere geändert",
   "finished": "erledigt",
   "waiting on you": "warten auf dich",
   "since anything finished": "seit dem letzten Abschluss",
@@ -12577,6 +12587,8 @@ var ZH = {
   "Yesterday": "昨天",
   "Answered": "已回复",
   "Nothing finished yet. Work a Bot does will be listed here.": "还没有完成的任务。Bot 做完的事会列在这里。",
+  "Changed {file}": "改好了 {file}",
+  "Changed {file} and {n} more": "改好了 {file} 等 {n} 个",
   "finished": "完成",
   "waiting on you": "等你答复",
   "since anything finished": "距上次完成",
@@ -41540,6 +41552,13 @@ function countBox(value, label, tone) {
 function Dot2({ kind }) {
   return (0, import_react67.createElement)("span", { className: "bt-dash-dot", "data-kind": kind, "aria-hidden": true });
 }
+function doneLine(row) {
+  const files = Array.isArray(row?.touched) ? row.touched : [];
+  if (files.length === 0) return row?.text || t("Answered");
+  const name = files[0].split("/").pop();
+  if (files.length === 1) return t("Changed {file}", { file: name });
+  return t("Changed {file} and {n} more", { file: name, n: files.length - 1 });
+}
 function daysOf(pageRows) {
   const days = [];
   let current2 = null;
@@ -41571,8 +41590,8 @@ function dayLabel2(at, now) {
 function previewReading(now = Date.now()) {
   const MIN = 6e4;
   const rows2 = [
-    { id: "p:1", at: now - 4 * MIN, start: now - 7 * MIN, ms: 3 * MIN, kind: "bot", botId: "p-writer", botName: "Writer", text: "Rewrote the onboarding email", steps: 6 },
-    { id: "p:2", at: now - 26 * MIN, start: now - 41 * MIN, ms: 15 * MIN, kind: "bot", botId: "p-research", botName: "Researcher", text: "Compared three hosting providers", steps: 11 },
+    { id: "p:1", at: now - 4 * MIN, start: now - 7 * MIN, ms: 3 * MIN, kind: "bot", botId: "p-writer", botName: "Writer", text: "Rewrote the onboarding email in three places and left the tone alone.", steps: 6, touched: ["emails/onboarding.md"] },
+    { id: "p:2", at: now - 26 * MIN, start: now - 41 * MIN, ms: 15 * MIN, kind: "bot", botId: "p-research", botName: "Researcher", text: "Compared three hosting providers on price and support hours.", steps: 11 },
     { id: "p:3", at: now - 2 * 36e5, start: now - 2 * 36e5 - 9 * MIN, ms: 9 * MIN, kind: "bot", botId: "p-runner", botName: "Runner", text: "Fixed the failing checkout test", steps: 4 },
     { id: "p:4", at: now - 3 * 36e5, start: now - 3 * 36e5 - 18 * MIN, ms: 18 * MIN, kind: "group", botId: "p-writer", botName: "Launch", roomId: "p-room", roomName: "Launch", text: "Drafted the launch checklist", steps: 9 }
   ];
@@ -41753,7 +41772,14 @@ function DashboardPage({ roster, actions, preview = false }) {
         "div",
         { key: row.id, className: "bt-dash-done" },
         (0, import_react67.createElement)("span", { className: "bt-dash-done-name" }, row.roomName || row.botName),
-        (0, import_react67.createElement)("span", { className: "bt-dash-done-what" }, row.text || t("Answered")),
+        (0, import_react67.createElement)(
+          "span",
+          { className: "bt-dash-done-text" },
+          (0, import_react67.createElement)("span", { className: "bt-dash-done-what" }, doneLine(row)),
+          // What the Bot said it was doing is the second line, not the first: the page
+          // answers "what got done", and the sentence is only the evidence for it.
+          row.touched?.length > 0 && row.text ? (0, import_react67.createElement)("span", { className: "bt-dash-done-said" }, row.text) : null
+        ),
         (0, import_react67.createElement)("span", { className: "bt-dash-done-time" }, `${minutes(row.ms)} ${t("min")}`)
       ))
     )),
@@ -41804,7 +41830,9 @@ var DASHBOARD_CSS = `
 .bt-dash-day-label{font-size:11.5px;line-height:17px;color:var(--bt-ink-3);margin:8px 0 2px}
 .bt-dash-done{display:flex;align-items:baseline;gap:8px;min-width:0;font-size:12.5px;line-height:18px;padding:3px 0}
 .bt-dash-done-name{flex:none;max-width:34%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--bt-ink-2)}
-.bt-dash-done-what{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--bt-ink-3)}
+.bt-dash-done-text{display:flex;flex-direction:column;min-width:0;flex:1;gap:1px}
+.bt-dash-done-what{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--bt-ink-2)}
+.bt-dash-done-said{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--bt-ink-3);font-size:11.5px;line-height:16px}
 .bt-dash-done-time{flex:none;font-variant-numeric:tabular-nums;color:var(--bt-ink-3)}
 .bt-dash-more{align-self:center;margin-top:10px;height:30px;padding:0 14px;border:0;border-radius:999px;background:var(--bt-main);box-shadow:inset 0 0 0 .5px var(--bt-line-2);color:var(--bt-ink-2);font:inherit;font-size:12.5px;cursor:pointer}
 .bt-dash-more:hover{background:var(--bt-hover)}

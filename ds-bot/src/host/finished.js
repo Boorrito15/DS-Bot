@@ -12,17 +12,18 @@
 import { join } from 'node:path'
 import { mkdir, unlink } from 'node:fs/promises'
 
-const VERSION = 1
+const VERSION = 2
 // Kept in memory when there is no database: enough for a working day.
 const MEMORY_ROWS = 2000
 // A row is a summary, not a transcript.
 const TEXT_MAX = 220
 
 /** The row for one finished turn or round, or undefined when there is nothing to keep. */
-export function finishedRow({ id, at, start, kind, botId, botName, roomId, roomName, text, steps }) {
+export function finishedRow({ id, at, start, kind, botId, botName, roomId, roomName, text, steps, touched: writes }) {
   if (typeof id !== 'string' || id === '') return undefined
   if (typeof botName !== 'string' || botName === '') return undefined
   const from = Number.isFinite(start) && start > 0 && start <= at ? start : at
+  const changed = touched(writes ?? [], touchedOf(text))
   return {
     id,
     at,
@@ -35,7 +36,31 @@ export function finishedRow({ id, at, start, kind, botId, botName, roomId, roomN
     roomName: roomName ?? '',
     steps: Number.isInteger(steps) && steps > 0 ? steps : 0,
     text: String(text ?? '').replace(/\s+/g, ' ').trim().slice(0, TEXT_MAX),
+    // What was actually changed, when the Bot says it in its answer: the dashboard shows
+    // that instead of the sentence it said it in.
+    ...(changed.length > 0 ? { touched: changed } : {}),
   }
+}
+
+/** The files a Bot's own answer says it changed: path-shaped words in a message that talks
+ *  about changing things, never every name that looks like a file. */
+const TOUCHED_MAX = 8
+const CHANGED_WORDS = /\b(wrote|write|writes|wrote to|saved|save|created|create|updated|update|fixed|fix|changed|change|added|add|removed|removed|edited|edit|renamed|moved|deleted|rewrote|rewrite)\b/i
+function touchedOf(text) {
+  const said = String(text ?? '')
+  if (!CHANGED_WORDS.test(said)) return []
+  const found = said.match(/(?:[\w.-]+\/)+[\w.-]+\.\w{1,8}|\b[\w-]+\.(?:md|js|mjs|ts|tsx|jsx|json|yaml|yml|css|html|sql|py|sh|txt|csv|toml)\b/g) ?? []
+  return found
+}
+function touched(...names) {
+  const kept = []
+  for (const name of names.flat()) {
+    const path = String(name ?? '').trim()
+    if (path === '' || path.length > 120 || kept.includes(path)) continue
+    kept.push(path)
+    if (kept.length === TOUCHED_MAX) break
+  }
+  return kept
 }
 
 /** Newest first, bounded by `limit`; `before` names the last row of the page before. */
@@ -78,14 +103,17 @@ function sqliteStore(DatabaseSync, path) {
         DROP TABLE IF EXISTS finished;
         CREATE TABLE finished (id TEXT PRIMARY KEY, at INTEGER NOT NULL, start INTEGER NOT NULL, ms INTEGER NOT NULL, kind TEXT NOT NULL, bot_id TEXT NOT NULL, bot_name TEXT NOT NULL, room_id TEXT NOT NULL, room_name TEXT NOT NULL, steps INTEGER NOT NULL, text TEXT NOT NULL);
         CREATE INDEX finished_at ON finished (at);
+        -- What a finished turn changed, so the page can say what was done rather than
+        -- what was said.
+        ALTER TABLE finished ADD COLUMN touched TEXT NOT NULL DEFAULT '[]';
         PRAGMA user_version = ${VERSION};`)
     }
-    const COLUMNS = 'id, at, start, ms, kind, bot_id, bot_name, room_id, room_name, steps, text'
-    const put = db.prepare(`INSERT OR REPLACE INTO finished (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+    const COLUMNS = 'id, at, start, ms, kind, bot_id, bot_name, room_id, room_name, steps, text, touched'
+    const put = db.prepare(`INSERT OR REPLACE INTO finished (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
     const first = db.prepare(`SELECT ${COLUMNS} FROM finished ORDER BY at DESC LIMIT ?`)
     const byId = db.prepare(`SELECT ${COLUMNS} FROM finished WHERE at <= (SELECT at FROM finished WHERE id = ?) AND id != ? ORDER BY at DESC, id DESC LIMIT ?`)
     return {
-      add: (row) => { put.run(row.id, row.at, row.start, row.ms, row.kind, row.botId, row.botName, row.roomId, row.roomName, row.steps, row.text) },
+      add: (row) => { put.run(row.id, row.at, row.start, row.ms, row.kind, row.botId, row.botName, row.roomId, row.roomName, row.steps, row.text, JSON.stringify(row.touched ?? [])) },
       page: ({ limit, before } = {}) => {
         const size = Math.min(Math.max(Number(limit) || 60, 1), 200)
         // One extra row says whether there is more to read, without a second query.
@@ -101,11 +129,20 @@ function sqliteStore(DatabaseSync, path) {
   }
 }
 
+function keptTouched(raw) {
+  if (Array.isArray(raw)) return raw.filter(name => typeof name === 'string').slice(0, TOUCHED_MAX)
+  try {
+    const parsed = JSON.parse(String(raw ?? '[]'))
+    return Array.isArray(parsed) ? parsed.filter(name => typeof name === 'string').slice(0, TOUCHED_MAX) : []
+  } catch { return [] }
+}
+
 function toRow(raw) {
   return {
     id: raw.id, at: raw.at, start: raw.start, ms: raw.ms, kind: raw.kind,
     botId: raw.bot_id, botName: raw.bot_name, roomId: raw.room_id, roomName: raw.room_name,
     steps: raw.steps, text: raw.text,
+    ...(keptTouched(raw.touched).length > 0 ? { touched: keptTouched(raw.touched) } : {}),
   }
 }
 

@@ -23,6 +23,8 @@ export const JA = {
   "Yesterday": "昨日",
   "Answered": "返答済み",
   "Nothing finished yet. Work a Bot does will be listed here.": "まだ完了した作業はありません。Bot が終えた作業がここに並びます。",
+  "Changed {file}": "{file} を更新しました",
+  "Changed {file} and {n} more": "{file} など {n} 件を更新しました",
   "finished": "完了",
   "waiting on you": "あなたの返事待ち",
   "since anything finished": "最後の完了から",

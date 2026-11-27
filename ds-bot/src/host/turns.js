@@ -473,7 +473,26 @@ export function install(rt) {
     if (name !== undefined) setActivity(id, name === 'ask_user' || name === 'show_view' ? undefined : activityOf(name))
     else if (entry.turn !== undefined) setActivity(id, 'thinking')
   }
+  // Tools whose arguments name a file being written. What a turn changed is read from
+  // these, so the dashboard can say "changed pricing.md" rather than repeat a sentence.
+  const WRITE_TOOLS = new Set(['write', 'edit', 'multiedit', 'create_file', 'str_replace_editor', 'notebook_edit', 'apply_patch'])
+  const noteWritten = (entry, name, args) => {
+    if (!WRITE_TOOLS.has(String(name ?? '').toLowerCase())) return
+    try {
+      const given = JSON.parse(args || '{}')
+      for (const key of ['file_path', 'path', 'file', 'notebook_path']) {
+        const value = given?.[key]
+        if (typeof value === 'string' && value.trim() !== '') {
+          const written = entry.written ??= []
+          const path = value.trim().slice(0, 120)
+          if (!written.includes(path) && written.length < 8) written.push(path)
+        }
+      }
+    } catch { /* arguments that are not JSON name no file */ }
+  }
+
   const startCall = (id, entry, callId, name, args) => {
+    noteWritten(entry, name, args)
     if (typeof callId === 'string') (entry.calls ??= new Map()).set(callId, { name, args })
     // The turn's steps so far, so a chat can show what is being done rather than only
     // the newest call: a Bot that runs ten commands should not look idle between them.
@@ -927,6 +946,7 @@ export function install(rt) {
         entry.info = undefined
         entry.toolCount = 0
         entry.steps = []
+        entry.written = []
         entry.usage = undefined
         entry.suppressedSubagent = false
         // A turn turned away before its first step may end without a turn/end.
@@ -1213,6 +1233,7 @@ export function install(rt) {
               ...(room ? { roomId: room.id, roomName: room.name } : {}),
               steps: entry.steps?.length ?? entry.toolCount ?? 0,
               text: entry.lastText ?? '',
+              ...(entry.written?.length > 0 ? { touched: entry.written } : {}),
             })
           }
         }

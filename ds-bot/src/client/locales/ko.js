@@ -20,6 +20,8 @@ export const KO = {
   "Yesterday": "어제",
   "Answered": "답변함",
   "Nothing finished yet. Work a Bot does will be listed here.": "아직 끝난 작업이 없습니다. Bot이 끝낸 일이 여기에 나옵니다.",
+  "Changed {file}": "{file} 수정됨",
+  "Changed {file} and {n} more": "{file} 외 {n}개 수정됨",
   "finished": "완료",
   "waiting on you": "당신의 답을 기다림",
   "since anything finished": "마지막 완료 후",

@@ -18,7 +18,7 @@ runInNewContext(bundle.outputFiles[0].text, {
   Intl,
   Date,
 })
-const { workLine, stateOf, summaryOf, teamRows, countsOf, toneOf, spanText } = module.exports
+const { workLine, stateOf, summaryOf, teamRows, countsOf, toneOf, spanText, doneLine } = module.exports
 
 const MIN = 60_000
 const DAY = 86_400_000
@@ -132,4 +132,12 @@ test('how far back the numbers reach is said in words', () => {
   assert.equal(spanText(DAY), 'last 24 hours')
   assert.equal(spanText(7 * DAY), 'last 7 days')
   assert.equal(spanText(30 * DAY), 'in the last 30 days')
+})
+
+test('a finished row says what changed before it repeats what was said', () => {
+  assert.equal(doneLine({ touched: ['course/operations/01-run-model.md'], text: 'Done — it is in the ops files now.' }), 'Changed 01-run-model.md')
+  assert.equal(doneLine({ touched: ['a/x.md', 'a/y.md', 'a/z.md'] }), 'Changed x.md and 2 more')
+  // Nothing changed, so the Bot's own words are all there is; a silent turn still says something.
+  assert.equal(doneLine({ text: 'Answered the question' }), 'Answered the question')
+  assert.equal(doneLine({}), 'Answered')
 })

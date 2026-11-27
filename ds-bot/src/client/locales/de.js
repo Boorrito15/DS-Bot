@@ -20,6 +20,8 @@ export const DE = {
   "Yesterday": "Gestern",
   "Answered": "Geantwortet",
   "Nothing finished yet. Work a Bot does will be listed here.": "Noch nichts fertig. Was ein Bot erledigt, steht hier.",
+  "Changed {file}": "{file} geändert",
+  "Changed {file} and {n} more": "{file} und {n} weitere geändert",
   "finished": "erledigt",
   "waiting on you": "warten auf dich",
   "since anything finished": "seit dem letzten Abschluss",
