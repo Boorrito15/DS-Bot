@@ -15,6 +15,10 @@
 #   node ds-bot/dev/mock-llm.mjs &
 #   DS_BOT_TEST_MODEL_URL=http://127.0.0.1:8799/v1 scripts/test-server.sh start
 #
+# To open it to another computer over Tailscale:
+#   DS_BOT_TEST_HOST=0.0.0.0 DS_BOT_TEST_TRUSTED_HOST=aldens-mac-mini.tailef7269.ts.net \
+#     scripts/test-server.sh start
+#
 # The home is <repo>/.test-server, which git ignores. Deleting it throws the test
 # team away; nothing in it is worth keeping.
 set -euo pipefail
@@ -23,6 +27,8 @@ REPO="$(cd "$(dirname "$0")/.." && pwd)"
 HOME_DIR="$REPO/.test-server"
 LOG="$HOME_DIR/server.log"
 PORT="${DS_BOT_TEST_PORT:-61830}"
+# Loopback by default; a host name or 0.0.0.0 lets another computer reach it.
+BIND_HOST="${DS_BOT_TEST_HOST:-127.0.0.1}"
 PID_FILE="$HOME_DIR/server.pid"
 
 usage() { sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; }
@@ -81,7 +87,8 @@ NODE
     model_env=(DEEPSEEK_BASE_URL="$DS_BOT_TEST_MODEL_URL" DEEPSEEK_API_KEY=mock-key)
   fi
   DSH_HOME="$HOME_DIR" nohup env ${model_env[@]+"${model_env[@]}"} \
-    /opt/homebrew/bin/dsh --profile web --host 127.0.0.1 --port "$PORT" --no-open >> "$LOG" 2>&1 &
+    /opt/homebrew/bin/dsh --profile web --host "$BIND_HOST" --port "$PORT" --no-open \
+    ${DS_BOT_TEST_TRUSTED_HOST:+--trusted-host "$DS_BOT_TEST_TRUSTED_HOST"} >> "$LOG" 2>&1 &
   echo $! > "$PID_FILE"
   # The address carries a one-time sign-in, so it has to be read back from the log.
   for _ in $(seq 1 60); do
