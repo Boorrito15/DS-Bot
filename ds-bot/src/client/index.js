@@ -60,6 +60,7 @@ import { ErrorToast, FEEDBACK_CSS } from './feedback.js'
 import { ABOUT_CSS } from './about.js'
 import { MEMBER_CSS, MemberDock } from './member-status.js'
 import { WATCH_CSS, WatchStrip } from './watcher.js'
+import { DASHBOARD_CSS } from './dashboard.js'
 import { TASK_CSS } from './task-board.js'
 import { IM_CSS } from './im-page.js'
 import { GOAL_CSS } from './goal.js'
@@ -1245,6 +1246,7 @@ export function apply(ctx) {
     [ABOUT_CSS, 'about'],
     [MEMBER_CSS, 'members'],
     [WATCH_CSS, 'watch'],
+    [DASHBOARD_CSS, 'dashboard'],
     [TASK_CSS, 'tasks'],
     [PASTE_CSS, 'paste'],
     [OPENING_CSS, 'opening'],

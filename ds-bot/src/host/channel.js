@@ -195,7 +195,7 @@ export function install(rt) {
   }
   // What a host that only reads the team may still answer.
   // Updates change the dsh profile, not the team, so a reading host may run them too.
-  const READS = new Set(['secret-store', 'secret-unlock', 'state', 'models', 'efforts', 'providers', 'provider-models', 'earlier', 'chat', 'run-stats', 'room-progress', 'group-rows', 'exchange', 'exchange-text', 'file-text', 'usage', 'schedules', 'memory-view', 'browser-wait', 'browser-result', 'diagnostics', 'diagnostics-log', 'diagnostics-clear', 'subscriptions', 'update-check', 'update-install', 'dsh-update-install', 'repo-stars', 'approval-answer', 'thinking', 'watch-check', 'avatar-library', 'computer-system-status', 'computer-shot', 'local-agents', 'local-agent-models', 'browser-frame', 'hello', 'notices', 'avatar', 'room-chat', 'usage-summary', 'image', 'markdown-image', 'file-download', 'changes-check', 'changes-summary', 'changes-diff'])
+  const READS = new Set(['secret-store', 'secret-unlock', 'state', 'models', 'efforts', 'providers', 'provider-models', 'earlier', 'chat', 'run-stats', 'room-progress', 'group-rows', 'exchange', 'exchange-text', 'file-text', 'usage', 'schedules', 'memory-view', 'browser-wait', 'browser-result', 'diagnostics', 'diagnostics-log', 'diagnostics-clear', 'subscriptions', 'update-check', 'update-install', 'dsh-update-install', 'repo-stars', 'approval-answer', 'thinking', 'watch-check', 'dashboard', 'avatar-library', 'computer-system-status', 'computer-shot', 'local-agents', 'local-agent-models', 'browser-frame', 'hello', 'notices', 'avatar', 'room-chat', 'usage-summary', 'image', 'markdown-image', 'file-download', 'changes-check', 'changes-summary', 'changes-diff'])
 
   async function setPrefs(body) {
     if (body.theme !== undefined) {
@@ -362,6 +362,19 @@ export function install(rt) {
         }
         // DSH's own whole-log figures for the current part of a Bot's chat, the ones its
         // status bar shows; a window without that bar shows them in the Bot's details.
+        // The dashboard (dashboard.js on the client): who is working and on what, who is
+        // waiting on the user, and finished work paged back as far as they scroll.
+        case 'dashboard': {
+          await rt.load()
+          const recent = await rt.finishedPage?.({ limit: Number(body.limit) || 60, ...(typeof body.before === 'string' ? { before: body.before } : {}) }) ?? { rows: [], next: null }
+          return ok({
+            work: rt.workView?.() ?? {},
+            rooms: rt.roomWorkView?.() ?? {},
+            approvals: rt.approvalsView?.() ?? [],
+            waiting: rt.waitingView?.() ?? {},
+            ...recent,
+          })
+        }
         // What the watcher (watcher.js) makes of the work a window reports: the notices
         // worth showing, and when the look happened. Reading the team is all it does.
         case 'watch-check':

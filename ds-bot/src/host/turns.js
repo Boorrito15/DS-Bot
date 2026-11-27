@@ -1195,6 +1195,27 @@ export function install(rt) {
         // turn is settled from the Session's log, is not one (resume.js does that).
         const watched = entry.turn !== undefined
         const turn = entry.turn
+        // Kept for the dashboard: who finished what, and how long it took. The turn the
+        // user wrote to, in their own chat or as a member of a group; a Bot answering
+        // another Bot is not news for the person reading the page.
+        if (watched && entry.since !== undefined) {
+          const owner = rt.groupOwners.get(id)
+          const botId = owner?.botId ?? rt.chatOwners.get(id)
+          const bot = botId === undefined ? undefined : rt.botOf(botId)
+          const room = owner === undefined ? undefined : rt.roomOf(owner.roomId)
+          if (bot !== undefined && entry.info?.role !== 'room' && entry.info?.from === undefined) {
+            rt.noteFinished?.({
+              id: `${id}:${turn}`,
+              start: entry.since,
+              kind: owner === undefined ? 'bot' : 'group',
+              botId: bot.id,
+              botName: bot.name,
+              ...(room ? { roomId: room.id, roomName: room.name } : {}),
+              steps: entry.steps?.length ?? entry.toolCount ?? 0,
+              text: entry.lastText ?? '',
+            })
+          }
+        }
         entry.turn = undefined
         entry.info = undefined
         entry.texts = []

@@ -10,6 +10,8 @@ Every commit on our branch appears here. Upstream commits that arrived through a
 
 **Desktop**
 
+- New: a Dashboard page, listed first in settings. It shows the team as people: every Bot and group chat as a row, saying what it is working on or when it last finished, with the ones waiting on you at the top. Below, everything finished, grouped by day, going back as far as you scroll. The record of finished work is kept in a small database beside the usage ledger, so it survives a restart. ([7f72b99d])
+
 - Fix: the working row's count and the plan card under a finished turn now come from the same list and the same sum. Before, a row could read 0/7 beside a card reading 6/7. The card is a card rather than loose lines, folds past three steps, and stays in the transcript when the reader scrolls back. ([7df57204])
 
 - New: the watcher, a strip above the composer that says what has gone wrong with the team's work, so a Bot does not sit still unwatched. Three things only: a Bot stuck on one step past a limit, a Bot or an approval waiting on you past a limit, and a long job reaching its end. Each line opens the Bot it names and can be dismissed; nothing is said twice. The switches and limits sit in the team's preferences, defaulting to 5, 2 and 10 minutes. ([408a9fb6])

@@ -133,6 +133,7 @@ test('apply registers listeners and effects in a fixed order', (t) => {
     'effect ds-bot: live feed',
     'on session/event',
     'effect ds-bot: im',
+    'effect ds-bot: finished work',
     'effect ds-bot: watcher record',
     'effect ds-bot: phone link',
     'effect ds-bot: api route',
