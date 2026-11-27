@@ -1465,7 +1465,6 @@ div:has(> nav [class*="_marks"]){display:none!important}
 .bt-reading>button:hover,.bt-reading>button[aria-expanded=true]{background:var(--bt-hover);color:var(--bt-ink)}
 .bt-reading>button:focus-visible{outline:2px solid var(--bt-accent);outline-offset:1px}
 .bt-reading>button svg{flex:none;width:14px;height:14px}
-.bt-reading>.bt-reading-up{flex:none;justify-content:center;width:24px;padding:0}
 .bt-reading-label{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .bt-reading>.bt-reading-menu{position:absolute;top:calc(100% + 4px);left:0;max-width:min(360px,calc(100vw - 32px));max-height:min(420px,60vh);overflow-y:auto}
 .bt-reading-menu>button[data-depth="1"]{padding-left:20px}

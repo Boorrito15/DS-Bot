@@ -171,7 +171,6 @@ export function ReplyGuide({ box, active }) {
     outline.length === 0
       ? h('button', { type: 'button', className: 'bt-reading-start', onClick: toStart }, h(ArrowUpIcon), t('Start of reply'))
       : [
-        h('button', { key: 'start', type: 'button', className: 'bt-reading-up', 'aria-label': t('Back to the start of this reply'), title: t('Back to the start of this reply'), onClick: toStart }, h(ArrowUpIcon)),
         h('button', {
           key: 'sections', ref: trigger, type: 'button', className: 'bt-reading-section', 'aria-haspopup': 'menu', 'aria-expanded': menu,
           'aria-label': t('Sections in this reply: {section}', { section: label }), title: label,
