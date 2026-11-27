@@ -106,6 +106,7 @@ const noticeText = (line) => {
   if (line.reason === 'paused' && line.idle) return `Paused: ${[line.from, ...(line.names ?? [])].filter(Boolean).join(' and ')} went back and forth ${line.limit} times without progress (no tool used, only thanks or repeats). The calls to @${(line.names ?? []).join(' and @')} wait until the user writes here; do not call them again.`
   if (line.reason === 'paused') return `Paused: Bots have called each other ${line.limit} times since the user last wrote here. The calls to @${(line.names ?? []).join(' and @')} wait until the user continues or writes here; do not call them again.`
   if (line.reason === 'admin-passed') return `${(line.names ?? []).join(' and ') || 'The admin'} did not answer or call anyone; call a member with @Name.`
+  if (line.reason === 'stopped-by-user') return 'Stopped, as you asked.'
   if (line.reason === 'folder') return `The group's folder ${line.path} is gone, so its members work in the team workspace; set the group's folder again in the group's settings.`
   if (line.reason === 'goal') return goalNotice(line)
   if (line.reason === 'failed') return `${(line.names ?? []).join(' and ')} stopped: its model call failed (${line.detail}). What it was doing here is not finished; the user can switch its model in its settings or ask it to go on.`
@@ -126,6 +127,17 @@ const transcript = (lines, textOfLine = line => line.text) => lines.map(line => 
 
 // Models often echo the transcript format ("Name: …") despite the instruction.
 export const stripOwnName = (name, text) => text.replace(new RegExp(`^\\s*\\**${escapeRegExp(name)}\\**\\s*[:：]\\s*`), '').trim()
+// The user writing "stop" in a group means stop, not one more round of the team
+// answering about whether stopping is a good idea. Matched narrowly so ordinary work
+// ("the build stopped") is never taken for it: a short message, addressed at nobody.
+const STOP_WORDS = /^(?:please\s+)?(?:just\s+)?(?:stop|stop\s+it|stop\s+now|stop\s+everything|everyone\s+stop|all\s+stop|halt|enough|cut\s+it(?:\s+out)?|quit\s+it|that'?s\s+enough)(?:\s+(?:now|please|everyone|all|you\s+lot))?\s*[.!]*$/i
+export function askingToStop(text) {
+  const said = String(text ?? '').replace(/\s+/g, ' ').trim()
+  if (said === '' || said.length > 40) return false
+  // A mention or a question is the user talking to someone, not calling the round off.
+  return !/[?]/.test(said) && !/@\w/.test(said) && STOP_WORDS.test(said)
+}
+
 export const isPass = text => text === '' || /^\s*[[【(（]\s*pass\s*[\]】)）]|^\s*pass\s*[.。!！]?\s*$/i.test(text)
 
 // Who "@" calls, in order, by the same rule the bubbles draw. `references` are the
@@ -313,6 +325,7 @@ export function install(rt) {
       case 'helper-failed': return { kind: 'helper-failed', ...who, ...(record.stopReason ? { stopReason: record.stopReason } : {}), ...(record.helper ? { helper: record.helper } : {}), text: record.detail, time }
       case 'missed': return { kind: 'missed', ...who, time }
       case 'admin-passed': return { kind: 'admin-passed', ...who, time }
+      case 'stopped-by-user': return { kind: 'stopped-by-user', ...who, time }
       case 'paused': return { kind: 'paused', idle: record.idle, ...who, name: bot?.name ?? record.from, count: record.count ?? record.limit, limit: record.limit, names: record.names, time }
       case 'folder': return { kind: 'folder', text: noticeText(record), time }
       case 'goal': {
@@ -955,6 +968,24 @@ export function install(rt) {
     void rt.save().catch(() => {})
   }
 
+  // The user's own stop among the posts waiting for a round: a command for the group,
+  // never a topic to answer. Returns it, or undefined when none of them is one.
+  const askedToStop = posts => posts.find(post => post.botId === undefined && (post.files ?? []).length === 0 && askingToStop(post.text))
+  // The stop is written in the group, the round it called off ends, and the group says
+  // once that it stopped, so the sentence is not left looking unanswered.
+  async function sayStopped(room, posts) {
+    for (const post of posts) {
+      if (post.logged !== undefined) continue
+      const text = [post.text, ...(post.files ?? []).map(fileLine)].filter(Boolean).join('\n')
+      say(room, { who: 'User', text, ...(post.via === undefined ? {} : { via: post.via }), session: true })
+    }
+    unpauseRoomIdle(room)
+    laterPosts.delete(room.id)
+    await rt.stopRoomWork(room.id).catch(error => rt.warn('ds-bot: stopping %s after the user said stop failed: %s', room.name, error))
+    say(room, { who: 'DS Bot', kind: 'notice', reason: 'stopped-by-user' })
+    await rt.save()
+  }
+
   // Consecutive idle steps in this room since the user last wrote here or a member worked
   // (#853). A step is one Bot turn that used no tool: the post that opens a round is not
   // a step of its own, so a round and the answer it gets count once. The count lives on
@@ -1277,6 +1308,13 @@ export function install(rt) {
         continue
       }
       if (post.botId !== undefined) continue
+      // "Stop" is an instruction to the round, not something for the team to discuss:
+      // every member's turn here ends, and the group says it did.
+      if ((post.files ?? []).length === 0 && askingToStop(post.text)) {
+        round.userMessage = true
+        await sayStopped(room, [post])
+        continue
+      }
       // The user's message, as one the round takes in from the Session's inbox.
       const text = [post.text, ...(post.files ?? []).map(fileLine)].filter(Boolean).join('\n')
       say(room, { who: 'User', text, ...(post.files === undefined ? {} : { files: post.files }), ...(post.via === undefined ? {} : { via: post.via }), session: true })
@@ -1535,7 +1573,10 @@ export function install(rt) {
         // What a stopped round left waiting goes first.
         const left = laterPosts.get(room.id) ?? []
         laterPosts.delete(room.id)
-        startRound(room, [...left, ...queued], exec.agent, exec.callId)
+        // "Stop" with nothing running is still an instruction, not a topic: it is said
+        // in the group, the group answers it once, and no round opens for it.
+        if (askedToStop(queued)) sayStopped(room, queued)
+        else startRound(room, [...left, ...queued], exec.agent, exec.callId)
       }
       exec.concludeTurn?.()
       return JSON.stringify({ from, anchor })

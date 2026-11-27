@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { isPass, mentionsIn, referenceNote, stripOwnName } from '../src/host/groups.js'
+import { askingToStop, isPass, mentionsIn, referenceNote, stripOwnName } from '../src/host/groups.js'
 import { attachReference } from '../src/host/turns.js'
 
 const members = [{ name: 'M' }, { name: 'Mx' }, { name: 'K' }, { name: 'Writer' }]
@@ -56,4 +56,23 @@ test('a reference takes out only its own "@label", so a typed call with the same
   // "@Kate" is not the reference "K", so the "@K" after it is the one taken out.
   assert.deepEqual(names(mentionsIn('@Kate, @K', [...members, { name: 'Kate' }], [{ labels: ['K'] }])), { all: false, found: ['Kate'] })
   assert.deepEqual(names(mentionsIn('@K notes and @K', members, [{ labels: ['K notes'] }])), { all: false, found: ['K'] })
+})
+
+test('the user saying stop in a group is read as stop, and ordinary writing is not', () => {
+  // What was actually said while the team kept working.
+  assert.equal(askingToStop('Just stop you\'re burning so many credits'), false, 'a sentence with a reason in it is the round to read, not a command')
+  assert.equal(askingToStop('stop'), true)
+  assert.equal(askingToStop('Stop.'), true)
+  assert.equal(askingToStop('  please stop  '), true)
+  assert.equal(askingToStop('stop now'), true)
+  assert.equal(askingToStop('everyone stop'), true)
+  assert.equal(askingToStop('enough'), true)
+  assert.equal(askingToStop('cut it out'), true)
+  assert.equal(askingToStop('that\'s enough!'), true)
+  // Work that mentions stopping is not an instruction to stop.
+  assert.equal(askingToStop('the build stopped at step 4'), false)
+  assert.equal(askingToStop('stop the server and rerun the tests'), false)
+  assert.equal(askingToStop('should I stop?'), false)
+  assert.equal(askingToStop('@Chief stop'), false, 'addressing a member is a request to that member')
+  assert.equal(askingToStop(''), false)
 })
