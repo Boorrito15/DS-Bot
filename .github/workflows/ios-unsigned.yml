@@ -1,0 +1,92 @@
+name: ios-unsigned
+
+# Builds the Expo iOS app with signing disabled and publishes the .ipa as a
+# release asset. SideStore signs it on-device with a free Apple ID.
+
+on:
+  push:
+    paths: ['.github/workflows/ios-unsigned.yml']
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 1'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci --no-audit --no-fund
+        working-directory: mobile
+
+      - run: npm ci --no-audit --no-fund
+        working-directory: link
+
+      - run: npx expo prebuild --platform ios --clean --no-install
+        working-directory: mobile
+        env:
+          CI: '1'
+
+      - name: Install pods (Expo modules from source)
+        working-directory: mobile/ios
+        env:
+          # Expo ships precompiled xcframeworks for its modules; when one resolves
+          # against a different expo-modules-core ABI, dyld aborts at launch with
+          # "Symbol not found". Building every module from source keeps them in sync.
+          EXPO_USE_PRECOMPILED_MODULES: '0'
+        run: |
+          echo "EXPO_USE_PRECOMPILED_MODULES=$EXPO_USE_PRECOMPILED_MODULES"
+          pod install
+          echo "--- prebuilt xcframeworks still vendored (expect none) ---"
+          find Pods -maxdepth 3 -name "*.xcframework" | head -10 || true
+
+      - name: Build app (unsigned)
+        working-directory: mobile
+        run: |
+          set -euo pipefail
+          WS=$(ls -d ios/*.xcworkspace | head -1)
+          PROJECT=$(ls -d ios/*.xcodeproj | head -1)
+          APP_NAME=$(basename "$PROJECT" .xcodeproj)
+          echo "workspace=$WS app=$APP_NAME"
+          SCHEMES=$(xcodebuild -list -json -workspace "$WS" 2>/dev/null | python3 -c "import json,sys; print(' '.join(json.load(sys.stdin)['workspace']['schemes']))")
+          echo "schemes: $SCHEMES"
+          SCHEME=$(echo "$SCHEMES" | APP_NAME="$APP_NAME" python3 -c "import os,sys; n=os.environ['APP_NAME']; s=sys.stdin.read().split(); print(n if n in s else [x for x in s if not x.startswith('Pods')][0])")
+          echo "chosen scheme: $SCHEME"
+          xcodebuild -workspace "$WS" -scheme "$SCHEME" -configuration Release -sdk iphoneos -derivedDataPath "$PWD/build/dd" CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build | tail -30
+
+      - name: Package IPA
+        working-directory: mobile
+        run: |
+          set -euo pipefail
+          echo "--- products ---"
+          ls -la "$PWD/build/dd/Build/Products/Release-iphoneos" | head -30
+          APP=$(find "$PWD/build/dd/Build/Products" -maxdepth 2 -name "*.app" | head -1)
+          echo "app=$APP"
+          test -n "$APP"
+          test -d "$APP"
+          rm -rf build/Payload
+          mkdir -p build/Payload
+          cp -R "$APP" build/Payload/
+          # ditto, not zip: preserves the symlinks inside the frameworks,
+          # which a plain zip flattens and which breaks on install.
+          ditto -c -k --sequesterRsrc --keepParent build/Payload build/DS-Bot-unsigned.ipa
+          ls -lh build/DS-Bot-unsigned.ipa
+          shasum -a 256 build/DS-Bot-unsigned.ipa
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ios-unsigned
+          name: iOS unsigned build
+          body: |
+            Unsigned DS Bot iOS build for SideStore sideloading.
+            Commit: ${{ github.sha }}
+          files: mobile/build/DS-Bot-unsigned.ipa
+          make_latest: false
